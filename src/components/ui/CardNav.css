@@ -1,0 +1,289 @@
+.card-nav-container {
+  position: relative;
+  width: 100%;
+  z-index: 1100;
+  box-sizing: border-box;
+}
+
+.card-nav {
+  display: block;
+  height: 72px; /* Standard navbar height */
+  padding: 0;
+  background-color: #172e36; /* Solid deep teal/slate */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* Subtle edge */
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1); /* Layered shadows for depth */
+  position: relative;
+  overflow: hidden;
+  transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease;
+  color: white;
+  z-index: 1000;
+}
+
+.card-nav:hover, .card-nav.open {
+  background-color: #172e36; /* Keep consistent color */
+}
+
+.card-nav.open {
+  height: 300px; /* Increased height */
+  background-color: rgba(23, 46, 54, 0.98); /* Less transparent when open */
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.card-nav-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 2.5rem; /* Generous padding */
+  z-index: 2;
+  gap: 32px;
+}
+
+.hamburger-menu {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  gap: 5px;
+  width: 48px; 
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.hamburger-menu:hover {
+  opacity: 0.8;
+}
+
+.hamburger-line {
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  border-radius: 2px;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease;
+  transform-origin: 50% 50%;
+}
+
+.hamburger-menu.open .hamburger-line:first-child {
+  transform: translateY(3.5px) rotate(45deg);
+}
+
+.hamburger-menu.open .hamburger-line:last-child {
+  transform: translateY(-3.5px) rotate(-45deg);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.logo {
+  height: 32px; /* Slightly larger logo */
+  width: auto;
+  object-fit: contain;
+}
+
+.card-nav-search-container {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 1; 
+  max-width: 640px; 
+  margin-left: auto; 
+  margin-right: 32px;
+}
+
+.card-nav-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.card-nav-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 72px; 
+  bottom: 0;
+  padding: 0.5rem 2.5rem 1rem 2.5rem; /* Reduced padding for compactness */
+  display: flex;
+  align-items: stretch; /* Cards stretch to fill height */
+  gap: 20px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgba(23, 46, 54, 0), rgba(23, 46, 54, 1) 10%); /* Fade in bg */
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.card-nav.open .card-nav-content {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.4s ease 0.1s, visibility 0s linear 0s;
+}
+
+.nav-card {
+  flex: 1;
+  min-width: 0;
+  border-radius: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 16px; /* Reduced padding */
+  gap: 12px;
+  user-select: none;
+  background-color: rgba(255, 255, 255, 0.03) !important; 
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.nav-card:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px); /* Reduced hover lift */
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.nav-card-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 13px; /* Slightly smaller */
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 4px; /* Reduced margin */
+}
+
+.nav-card-links {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* Reduced gap */
+}
+
+.nav-card-link {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 15px; /* Slightly smaller */
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Ensure left alignment */
+  gap: 12px;
+  color: white !important; 
+  padding: 8px 12px; /* Reduced padding */
+  border-radius: 8px;
+  background-color: transparent;
+  max-width: 100%;
+}
+
+.nav-link-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-card-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding-left: 16px; /* Subtle slide effect */
+}
+
+.nav-card-link-icon {
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: all 0.2s ease;
+}
+
+.nav-card-link:hover .nav-card-link-icon {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .card-nav.open {
+    height: auto;
+    min-height: 100vh; /* Full screen on mobile */
+    overflow-y: auto;
+  }
+
+  .card-nav-container {
+    width: 100%;
+    top: 0;
+  }
+  
+  .card-nav {
+    position: fixed; /* Fixed on mobile */
+    top: 0;
+    left: 0;
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .card-nav-top {
+    padding: 0 1rem;
+    gap: 12px;
+  }
+
+  .logo {
+    height: 28px;
+  }
+
+  .card-nav-search-container {
+    display: none; /* Hide search on mobile header, maybe move to content? */
+  }
+  
+  .card-nav-right-actions {
+    display: none; 
+  }
+
+  .card-nav-content {
+    flex-direction: column;
+    padding: 1rem;
+    padding-top: 1rem;
+    gap: 16px;
+    background: #172e36; /* Solid bg on mobile */
+    height: auto;
+    position: relative;
+    top: 0;
+  }
+
+  .nav-card {
+    height: auto;
+    flex: none;
+    padding: 16px;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .nav-card-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .nav-card-link {
+    font-size: 16px;
+    padding: 12px;
+    background-color: rgba(0,0,0,0.2);
+  }
+}
