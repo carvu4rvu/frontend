@@ -1,0 +1,248 @@
+/* Admin Notifications page */
+
+.notifications-page {
+  min-height: 100%;
+  background: linear-gradient(180deg, #f0f4f8 0%, #e8eef4 100%);
+}
+
+.notifications-header {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 1px 3px rgba(23, 46, 54, 0.08);
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(23, 46, 54, 0.06);
+}
+
+.notifications-header .chakra-heading {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #172e36;
+}
+
+.notifications-add-btn {
+  background: #172e36 !important;
+  color: #fbeec8 !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding-inline: 1.25rem;
+  box-shadow: 0 2px 4px rgba(23, 46, 54, 0.2);
+}
+.notifications-add-btn:hover {
+  background: #1e3d47 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(23, 46, 54, 0.25);
+}
+
+/* Filter tabs */
+.notifications-tabs .chakra-tabs__tablist {
+  background: #fff;
+  border-radius: 10px 10px 0 0;
+  padding: 0.25rem;
+  gap: 0.25rem;
+  border: 1px solid rgba(23, 46, 54, 0.08);
+  border-bottom: none;
+  box-shadow: 0 -1px 2px rgba(0,0,0,0.04);
+}
+.notifications-tabs .chakra-tabs__tab {
+  border-radius: 8px;
+  font-weight: 500;
+  color: #5a6c75;
+}
+.notifications-tabs .chakra-tabs__tab[aria-selected="true"] {
+  background: #172e36;
+  color: #fbeec8;
+}
+.notifications-tabs .chakra-tabs__tabpanel {
+  padding: 0;
+}
+
+/* Table card */
+.notifications-table-wrap {
+  background: #fff;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 1px 3px rgba(23, 46, 54, 0.08);
+  border: 1px solid rgba(23, 46, 54, 0.06);
+  border-top: none;
+  overflow: hidden;
+}
+.notifications-table-wrap .chakra-table {
+  font-size: 0.9rem;
+}
+.notifications-table-wrap thead th {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  padding: 0.875rem 1rem;
+}
+.notifications-table-wrap tbody td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+}
+.notifications-table-wrap tbody tr {
+  transition: background 0.15s ease;
+}
+.notifications-table-wrap tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Action buttons in table */
+.notifications-table-wrap .chakra-iconbutton {
+  border-radius: 6px;
+  color: #5a6c75;
+}
+.notifications-table-wrap .chakra-iconbutton:hover {
+  background: #e8eef4;
+  color: #172e36;
+}
+
+/* Pagination */
+.notifications-pagination {
+  margin-top: 1rem;
+}
+.notifications-pagination .chakra-button {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* Modals */
+.notifications-modal {
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(23, 46, 54, 0.15);
+  overflow: hidden;
+}
+.notifications-modal .chakra-modal__header {
+  font-weight: 600;
+  color: #172e36;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1.25rem 1.5rem;
+}
+.notifications-modal .chakra-modal__body {
+  padding: 1.5rem;
+}
+.notifications-modal .chakra-modal__footer {
+  border-top: 1px solid #e2e8f0;
+  padding: 1rem 1.5rem;
+  gap: 0.75rem;
+}
+.notifications-modal .chakra-form__label {
+  font-weight: 500;
+  color: #2d3748;
+}
+
+/* Target section in modal */
+.send-to-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 0.5rem;
+}
+.send-to-section .section-title {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+.target-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.target-option-card {
+  flex: 1 1 140px;
+  min-width: 120px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  font-weight: 500;
+  color: #4a5568;
+}
+.target-option-card:hover {
+  border-color: #c2b38a;
+  background: #fffbeb;
+  color: #172e36;
+}
+.target-option-card.selected {
+  border-color: #172e36;
+  background: #172e36;
+  color: #fbeec8;
+}
+.target-option-card .option-label {
+  display: block;
+  font-size: 0.875rem;
+}
+.target-option-card .option-hint {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.85;
+  margin-top: 0.15rem;
+}
+
+/* Role checkboxes when "Any role(s)" selected */
+.roles-check-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  padding: 0.75rem 0;
+}
+.roles-check-wrap .chakra-checkbox {
+  white-space: nowrap;
+}
+.roles-check-wrap .chakra-checkbox__label {
+  font-weight: 500;
+}
+
+/* Manual selection: user list with search */
+.manual-selection-wrap {
+  margin-top: 0.75rem;
+}
+.manual-selection-search {
+  margin-bottom: 0.75rem;
+}
+.manual-selection-search .chakra-input {
+  border-radius: 8px;
+  border-color: #e2e8f0;
+}
+.manual-selection-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.5rem;
+}
+.manual-selection-list .chakra-checkbox {
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.15rem;
+}
+.manual-selection-list .chakra-checkbox:hover {
+  background: #f8fafc;
+}
+.manual-selection-list .user-role-badge {
+  font-size: 0.7rem;
+  margin-left: 0.35rem;
+  opacity: 0.9;
+}
+.manual-selection-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+.manual-selection-actions .chakra-button {
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+/* Empty state */
+.notifications-empty {
+  color: #718096;
+  padding: 3rem 1rem;
+  text-align: center;
+}

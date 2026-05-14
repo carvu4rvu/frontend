@@ -1,0 +1,166 @@
+/* Company Dashboard – analytics & layout */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.company-dashboard-page {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: 100vh;
+  color: #1e293b;
+  padding-bottom: 3rem;
+}
+
+.company-dashboard-page .company-dashboard-welcome {
+  background: linear-gradient(135deg, #172e36 0%, #1e3a47 100%);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  padding: 1.75rem 2rem;
+  transition: box-shadow 0.2s;
+}
+
+.company-dashboard-page .company-dashboard-welcome:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.company-dashboard-page .company-dashboard-stat-card {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  padding: 1.25rem 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.company-dashboard-page .company-dashboard-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.company-dashboard-page .company-dashboard-section-card {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  padding: 1.5rem 1.75rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s;
+}
+
+.company-dashboard-page .company-dashboard-section-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.company-dashboard-page .company-dashboard-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.company-dashboard-page .company-dashboard-section-head .section-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f3e8;
+  color: #d4a960;
+  flex-shrink: 0;
+}
+
+.company-dashboard-page .company-dashboard-section-head .section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #172e36;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.company-dashboard-page .company-dashboard-chart-wrap {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  padding: 1.5rem 1.75rem;
+  height: 100%;
+  min-height: 280px;
+}
+
+.company-dashboard-page .company-dashboard-chart-wrap .chart-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #172e36;
+  margin: 0 0 1rem 0;
+  letter-spacing: -0.01em;
+}
+
+.company-dashboard-page .company-dashboard-chart-canvas {
+  height: 240px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.company-dashboard-page .company-dashboard-quick-action {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  padding: 1rem 1.25rem;
+  height: auto;
+  min-height: 64px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.company-dashboard-page .company-dashboard-quick-action:hover {
+  border-color: #d4a960;
+  background: #fefcf7;
+}
+
+.company-dashboard-page .company-dashboard-activity-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+
+.company-dashboard-page .company-dashboard-activity-item:last-child {
+  border-bottom: none;
+}
+
+.company-dashboard-page .company-dashboard-activity-item:hover {
+  background: #fafbfc;
+}
+
+.company-dashboard-page .company-dashboard-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.company-dashboard-page .company-dashboard-summary-cell {
+  text-align: center;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.company-dashboard-page .company-dashboard-summary-cell .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #172e36;
+  margin: 0 0 0.25rem 0;
+}
+
+.company-dashboard-page .company-dashboard-summary-cell .label {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0;
+}

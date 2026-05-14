@@ -1,0 +1,515 @@
+/* Academics Profile – clean professional UI */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.academics-profile-page {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: calc(100vh - 72px);
+  color: #1e293b;
+}
+
+/* Header – sticky summary card */
+.academics-profile-header {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.academics-profile-header h1 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.academics-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.academics-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.5rem 1rem;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  min-width: 100px;
+}
+
+.academics-stat-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.academics-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.academics-stat-value--cgpa { color: #4f46e5; }
+.academics-stat-value--credits { color: #0d9488; }
+.academics-stat-value--credits-earned { color: #0d9488; }
+.academics-stat-value--backlogs { color: #dc2626; }
+.academics-stat-value--backlogs-zero { color: #059669; }
+.academics-stat-value--cleared { color: #059669; }
+
+.academics-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .academics-stat-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .academics-stats-row {
+    gap: 0.75rem;
+  }
+  .academics-stat-item {
+    min-width: 80px;
+  }
+  .academics-stat-value {
+    font-size: 1.1rem;
+  }
+}
+
+/* Add semester button */
+.academics-add-semester-wrap {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.academics-add-semester-btn {
+  padding: 0.625rem 1.25rem;
+  background: #1e293b !important;
+  color: white !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  border: none;
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.25);
+  transition: all 0.2s ease;
+}
+
+.academics-add-semester-btn:hover:not(:disabled) {
+  background: #334155 !important;
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.35);
+}
+
+/* Semester cards */
+.academics-semester-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.academics-semester-card {
+  background: white;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.academics-semester-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.08);
+}
+
+.academics-semester-card--expanded {
+  border-color: #4f46e5;
+  box-shadow: 0 4px 20px -4px rgba(79, 70, 229, 0.25);
+}
+
+.academics-semester-card--draft {
+  border-style: dashed;
+  border-color: #94a3b8;
+}
+
+.academics-semester-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.academics-semester-card-header:hover {
+  background: #f8fafc;
+}
+
+.academics-semester-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.academics-semester-badge {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 800;
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.academics-semester-card--draft .academics-semester-badge {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.academics-semester-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.academics-semester-card-meta {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.academics-semester-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.academics-semester-card-stats .earned { color: #0d9488; }
+.academics-semester-card-stats .backlogs { color: #ea580c; }
+.academics-semester-card-stats .backlogs-zero { color: #059669; }
+.academics-semester-card-stats .dot { color: #cbd5e1; }
+
+.academics-semester-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.academics-sgpa-display {
+  text-align: right;
+}
+
+.academics-sgpa-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.academics-sgpa-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #4f46e5;
+}
+
+.academics-chevron {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  transition: all 0.2s;
+}
+
+.academics-semester-card--expanded .academics-chevron {
+  color: #4f46e5;
+  background: #eef2ff;
+  transform: rotate(180deg);
+}
+
+/* Collapse body */
+.academics-semester-body {
+  border-top: 1px solid #e2e8f0;
+  padding: 1.5rem 1.5rem 1.5rem 2rem;
+  background: #fafbfc;
+}
+
+.academics-semester-body-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+/* Table */
+.academics-courses-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.academics-courses-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.academics-courses-table th {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.academics-courses-table th[data-numeric] {
+  text-align: right;
+}
+
+.academics-courses-table td {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.academics-courses-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.academics-courses-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.academics-courses-table .grade-cell {
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.academics-add-course-btn {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: #f8fafc !important;
+  color: #4f46e5 !important;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.academics-add-course-btn:hover {
+  background: #f1f5f9 !important;
+}
+
+/* Summary stats below table */
+.academics-form-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.academics-form-stat {
+  padding: 0.5rem 1rem;
+  background: #f1f5f9;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.academics-form-stat-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.academics-form-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.academics-save-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.academics-save-btn {
+  padding: 0.625rem 1.25rem;
+  background: #4f46e5 !important;
+  color: white !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  border: none;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  transition: all 0.2s ease;
+}
+
+.academics-save-btn:hover:not(:disabled) {
+  background: #4338ca !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+/* Marksheet link */
+.academics-marksheet-link {
+  font-size: 0.875rem;
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.academics-marksheet-link:hover {
+  color: #4338ca;
+}
+
+/* View-only badge */
+/* Request Unlock button (in view row) */
+.academics-unlock-btn {
+  font-weight: 600;
+  border-radius: 0.5rem;
+}
+
+.academics-requested-badge {
+  white-space: nowrap;
+}
+
+/* Modal submit button */
+.academics-unlock-submit-btn {
+  background: #4f46e5 !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  min-height: 40px;
+  transition: all 0.2s ease;
+}
+
+.academics-unlock-submit-btn:hover:not(:disabled) {
+  background: #4338ca !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+/* Empty state */
+.academics-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 1rem;
+  border: 2px dashed #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.academics-empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.academics-empty-state-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.5rem;
+}
+
+.academics-empty-state-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+
+.academics-empty-state-btn {
+  padding: 0.625rem 1.25rem;
+  background: #4f46e5 !important;
+  color: white !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  border: none;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  transition: all 0.2s ease;
+}
+
+.academics-empty-state-btn:hover {
+  background: #4338ca !important;
+}
+
+.academics-empty-state-locked {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+/* Locked alert */
+.academics-locked-alert {
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #bfdbfe;
+}
+
+/* Loading state */
+.academics-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+}
+
+/* Input styling in cells */
+.academics-course-input {
+  font-size: 0.875rem !important;
+  color: #0f172a !important;
+  min-width: 0;
+}
+
+.academics-course-input::placeholder {
+  color: #94a3b8;
+}
