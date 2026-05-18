@@ -302,21 +302,59 @@ const AdminDashboard = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch data directly from parent tables including all schools
-        // We fetch ALL students now to show comprehensive counts
-        const [studentsPage, drives, offers, companies, allSchools, dashboardStats] = await Promise.all([
-          PlacementService.getAllStudents({ opt_in_only: false, page: 1, page_size: 100 }),
-          PlacementService.getAllDrives(),
-          PlacementService.getAllJobOffers(),
-          PlacementService.getAllCompanies(),
-          PlacementService.getSchools(),
-          PlacementService.getDashboardStats()
-        ]);
+        const analytics = await PlacementService.getDashboardAnalytics();
+        if (!analytics) return;
 
-        const allStudents = studentsPage?.students ?? [];
-        processData(allStudents, drives, offers, companies, allSchools, dashboardStats);
+        setStats({
+          totalRegistered: analytics.students?.totalRegistered ?? 0,
+          totalStudents: analytics.students?.totalSeeking ?? 0,
+          schoolWise: analytics.students?.schoolWise ?? [],
+          drives: analytics.drives ?? { total: 0, ongoing: 0, upcoming: 0, completed: 0 },
+          offers: analytics.offers ?? { total: 0, percent: '0%', placed: 0, placedPercent: '0%' },
+          breakdown: analytics.breakdown ?? {
+            fullTime: 0,
+            fullTimePercent: '0%',
+            internships: 0,
+            internshipsPercent: '0%',
+            internshipCumFulltime: 0,
+            internshipCumFulltimePercent: '0%',
+          },
+          ctc: analytics.ctc ?? { highest: '0 LPA', average: '0 LPA', lowest: '0 LPA' },
+        });
+
+        setPlacementTableData(analytics.placementBySchool ?? []);
+
+        const chartLabels = analytics.chart?.labels ?? [];
+        const chartValues = analytics.chart?.data ?? [];
+        setChartData({
+          labels: chartLabels,
+          datasets: [{
+            label: 'Number of Students',
+            data: chartValues,
+            borderColor: '#2d3748',
+            backgroundColor: 'rgba(45, 55, 72, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#2d3748',
+          }],
+        });
+
+        setPartners((analytics.partners ?? []).map((c) => ({
+          name: c.name,
+          color: c.color || 'gray.600',
+          fontFamily: c.fontFamily,
+          logo: c.logo,
+          industry: c.industry || c.company_type || 'Technology',
+          website: c.website || '',
+          location: c.location || 'Unknown',
+          description: c.description || '',
+          style: {
+            color: c.color,
+            fontFamily: c.fontFamily,
+          },
+        })));
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        console.error('Error fetching dashboard data:', error);
       } finally {
         setLoading(false);
       }
@@ -324,186 +362,6 @@ const AdminDashboard = () => {
 
     fetchData();
   }, []);
-
-  const processData = (allStudents, drives, offers, companies, allSchools, dashboardStats) => {
-    // 1. Student Metrics
-    const seekingStudentsOnly = allStudents.filter(s => s.opt_in);
-    
-    // Use the accurate counts from the database if available, fallback to client-side count
-    const totalRegistered = dashboardStats?.total_registered ?? allStudents.length;
-    const totalSeeking = dashboardStats?.total_seeking ?? seekingStudentsOnly.length;
-    const totalEligible = dashboardStats?.total_eligible ?? allStudents.filter(s => s.is_placement_eligible).length;
-
-    // 2. School-wise Stats & Placement Table Data
-    // Extract school names from nested school object or direct field
-    const getSchoolName = (s) => s.schools?.name || s.schools?.abbreviation || s.school || 'Unknown';
-    
-    // Use all schools from the database, sorted by name
-    const schools = allSchools.map(s => s.name || s.abbreviation).sort();
-    
-    const schoolWise = schools.map(school => ({
-      name: school,
-      count: seekingStudentsOnly.filter(s => getSchoolName(s) === school).length
-    }));
-
-    const placementData = schools.map(school => {
-      const schoolStudents = seekingStudentsOnly.filter(s => getSchoolName(s) === school);
-      const schoolUsns = schoolStudents.map(s => s.usn);
-      
-      // Filter offers for this school's students
-      const offersForSchool = offers.filter(o => schoolUsns.includes(o.student_id) || schoolUsns.includes(o.usn));
-      
-      const uniquePlaced = new Set(offersForSchool.map(o => o.student_id || o.usn)).size;
-      const totalOffers = offersForSchool.length;
-      
-      // Categorize by job type
-      const fullTime = new Set(offersForSchool.filter(o => {
-        const jobType = (o.job_type || '').toLowerCase();
-        return jobType.includes('full-time') || jobType.includes('full time') || jobType === 'placement';
-      }).map(o => o.student_id || o.usn)).size;
-      
-      const internship = new Set(offersForSchool.filter(o => {
-        const jobType = (o.job_type || '').toLowerCase();
-        return (jobType.includes('internship') || jobType === 'capstone') && !jobType.includes('full');
-      }).map(o => o.student_id || o.usn)).size;
-      
-      const ppo = new Set(offersForSchool.filter(o => {
-        const jobType = (o.job_type || '').toLowerCase();
-        return jobType.includes('ppo') || (jobType.includes('intern') && jobType.includes('full'));
-      }).map(o => o.student_id || o.usn)).size;
-
-      return {
-        school,
-        total: schoolStudents.length,
-        fullTime,
-        internship,
-        ppo,
-        totalOffers,
-        percent: schoolStudents.length ? ((uniquePlaced / schoolStudents.length) * 100).toFixed(2) : 0,
-        placed: uniquePlaced
-      };
-    });
-
-    setPlacementTableData(placementData);
-
-    // 3. Drives Stats
-    const now = new Date();
-    const driveStats = {
-      total: drives.length,
-      ongoing: drives.filter(d => d.placement_status === 'Open' || d.placement_status === 'Ongoing').length,
-      upcoming: drives.filter(d => new Date(d.event_datetime) > now && d.placement_status !== 'Closed' && d.placement_status !== 'Completed').length,
-      completed: drives.filter(d => d.placement_status === 'Closed' || d.placement_status === 'Completed').length
-    };
-
-    // 4. Overall Stats (Aggregated)
-    const totalOffers = offers.length;
-    const uniquePlacedTotal = new Set(offers.map(o => o.student_id || o.usn)).size;
-    
-    // Fix: Use Set for unique students in totals too
-    const fullTimeTotal = new Set(offers.filter(o => {
-      const jobType = (o.job_type || '').toLowerCase();
-      return jobType.includes('full-time') || jobType.includes('full time') || jobType === 'placement';
-    }).map(o => o.student_id || o.usn)).size;
-    
-    const internshipTotal = new Set(offers.filter(o => {
-      const jobType = (o.job_type || '').toLowerCase();
-      return (jobType.includes('internship') || jobType === 'capstone') && !jobType.includes('full');
-    }).map(o => o.student_id || o.usn)).size;
-    
-    const ppoTotal = new Set(offers.filter(o => {
-      const jobType = (o.job_type || '').toLowerCase();
-      return jobType.includes('ppo') || (jobType.includes('intern') && jobType.includes('full'));
-    }).map(o => o.student_id || o.usn)).size;
-
-    // 5. CTC Stats
-    const ctcs = offers.map(o => {
-      // Parse CTC from various fields
-      let val = 0;
-      if (o.ctc_max_lpa) {
-        val = parseFloat(o.ctc_max_lpa);
-      } else if (o.ctc_min_lpa) {
-        val = parseFloat(o.ctc_min_lpa);
-      } else if (o.ctc) {
-        // Fallback for old data or helper field
-        const parts = o.ctc.toString().split('-');
-        val = parseFloat(parts[parts.length - 1]);
-      }
-      return isNaN(val) ? 0 : val;
-    }).filter(v => v > 0);
-
-    const maxCtc = ctcs.length ? Math.max(...ctcs) : 0;
-    const minCtc = ctcs.length ? Math.min(...ctcs) : 0;
-    const avgCtc = ctcs.length ? (ctcs.reduce((a, b) => a + b, 0) / ctcs.length).toFixed(2) : 0;
-
-    // 6. Chart Data (CTC Distribution)
-    // Ranges: 0-4, 4-8, 8-12, 12-16, 16-20, 20-24, 24-28, 28+
-    const ctcRanges = [0, 0, 0, 0, 0, 0, 0, 0];
-    ctcs.forEach(c => {
-      if (c < 4) ctcRanges[0]++;
-      else if (c < 8) ctcRanges[1]++;
-      else if (c < 12) ctcRanges[2]++;
-      else if (c < 16) ctcRanges[3]++;
-      else if (c < 20) ctcRanges[4]++;
-      else if (c < 24) ctcRanges[5]++;
-      else if (c < 28) ctcRanges[6]++;
-      else ctcRanges[7]++;
-    });
-
-    setChartData({
-      labels: ['0-4 LPA', '4-8 LPA', '8-12 LPA', '12-16 LPA', '16-20 LPA', '20-24 LPA', '24-28 LPA', '28+ LPA'],
-      datasets: [{
-        label: 'Number of Students',
-        data: ctcRanges,
-        borderColor: '#2d3748',
-        backgroundColor: 'rgba(45, 55, 72, 0.1)',
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: '#2d3748',
-      }]
-    });
-
-    setStats({
-      totalRegistered,
-      totalStudents: totalSeeking,
-      schoolWise,
-      drives: driveStats,
-      offers: {
-        total: totalOffers,
-        percent: totalSeeking ? ((totalOffers / totalSeeking) * 100).toFixed(2) + '%' : '0%',
-        placed: uniquePlacedTotal,
-        placedPercent: totalSeeking ? ((uniquePlacedTotal / totalSeeking) * 100).toFixed(2) + '%' : '0%'
-      },
-      breakdown: {
-        fullTime: fullTimeTotal,
-        fullTimePercent: totalOffers ? ((fullTimeTotal / totalOffers) * 100).toFixed(2) + '%' : '0%',
-        internships: internshipTotal,
-        internshipsPercent: totalOffers ? ((internshipTotal / totalOffers) * 100).toFixed(2) + '%' : '0%',
-        internshipCumFulltime: ppoTotal,
-        internshipCumFulltimePercent: totalOffers ? ((ppoTotal / totalOffers) * 100).toFixed(2) + '%' : '0%'
-      },
-      ctc: {
-        highest: maxCtc + ' LPA',
-        average: avgCtc + ' LPA',
-        lowest: minCtc + ' LPA'
-      }
-    });
-
-    // 7. Partners
-    setPartners(companies.map(c => ({
-      name: c.company_name,
-      color: c.color || "gray.600",
-      fontFamily: c.fontFamily,
-      logo: c.logo || c.company_logo_link,
-      industry: c.company_type || "Technology",
-      website: c.website || "",
-      location: c.address || "Unknown",
-      description: c.description || "",
-      style: {
-        color: c.color,
-        fontFamily: c.fontFamily
-      }
-    })));
-  };
 
   // Helper to handle school selection
   const toggleSchool = (schoolName) => {

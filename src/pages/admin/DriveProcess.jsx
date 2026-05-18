@@ -43,6 +43,7 @@ import { getFileUrl } from '../../utils/fileUrl';
 import { PlacementService } from '../../services/placement.service';
 import AdminLayout from '../../components/AdminLayout';
 import AddStudentsToDrive from '../../components/placement/AddStudentsToDrive';
+import { getEffectiveRoundStatus, isVisibleOnRoundTab } from '../../utils/placementRoundProgression';
 import './DriveProcess.css';
 
 /** Map round display name (from drive.process_rounds) to API field key */
@@ -57,6 +58,10 @@ const ROUND_TO_FIELD = {
   'group discussion': 'gd_status',
   technical: 'technical_round_status',
   'technical round': 'technical_round_status',
+  'technical round 1': 'technical_round_status',
+  'technical 1': 'technical_round_status',
+  'technical round 2': 'interview_status',
+  'technical 2': 'interview_status',
   interview: 'interview_status',
   'hr round': 'hr_round_status',
   hr: 'hr_round_status',
@@ -70,19 +75,95 @@ function getRoundField(roundName) {
   return ROUND_TO_FIELD[key] || null;
 }
 
-/** Student has active placement violation or disciplinary record (already in drive — show in red). */
+/**
+ * Primary violation category for this student in the current drive (API-scoped).
+ * malpractice → red | disciplinary → orange | placement_policy → yellow
+ */
+function getCompliancePrimaryCategory(process) {
+  if (!process) return null;
+  const fromApi = process.compliance?.primary_category;
+  if (fromApi) return fromApi;
+  if (process.malpractice === true) return 'malpractice';
+  if ((process.disciplinary ?? 0) > 0) return 'disciplinary';
+  if ((process.placement_violations ?? 0) > 0) return 'placement_policy';
+  return null;
+}
+
 function hasComplianceIssue(process) {
-  if (!process) return false;
-  if (process.has_compliance_issue === true) return true;
-  return (Number(process.placement_violations) || 0) > 0 || (Number(process.disciplinary) || 0) > 0;
+  return getCompliancePrimaryCategory(process) != null;
 }
 
 function getProcessRowClassName(process, extraClasses = '') {
   const classes = ['process-row'];
-  if (process?.malpractice) classes.push('malpractice-row');
-  if (hasComplianceIssue(process)) classes.push('compliance-violation-row');
+  const cat = getCompliancePrimaryCategory(process);
+  if (cat === 'malpractice') classes.push('malpractice-row');
+  else if (cat === 'disciplinary') classes.push('disciplinary-row');
+  else if (cat === 'placement_policy') classes.push('placement-policy-row');
   if (extraClasses) classes.push(extraClasses);
   return classes.join(' ');
+}
+
+function getComplianceRowBg(process, fallback = 'transparent') {
+  const cat = getCompliancePrimaryCategory(process);
+  if (cat === 'malpractice') return 'red.50';
+  if (cat === 'disciplinary') return 'orange.50';
+  if (cat === 'placement_policy') return 'yellow.50';
+  return fallback;
+}
+
+function getComplianceRowHoverBg(process, fallback = 'gray.50') {
+  const cat = getCompliancePrimaryCategory(process);
+  if (cat === 'malpractice') return 'red.100';
+  if (cat === 'disciplinary') return 'orange.100';
+  if (cat === 'placement_policy') return 'yellow.100';
+  return fallback;
+}
+
+function getComplianceRowBorder(process) {
+  const cat = getCompliancePrimaryCategory(process);
+  if (cat === 'malpractice') return 'red.200';
+  if (cat === 'disciplinary') return 'orange.200';
+  if (cat === 'placement_policy') return 'yellow.300';
+  return 'gray.100';
+}
+
+function getComplianceTooltip(process) {
+  if (process?.compliance?.tooltip) return process.compliance.tooltip;
+  const labels = process?.compliance_labels;
+  if (Array.isArray(labels) && labels.length) return labels.join('\n');
+  const cat = getCompliancePrimaryCategory(process);
+  if (cat === 'malpractice') return 'Malpractice in this drive';
+  if (cat === 'disciplinary') return 'Active disciplinary record';
+  if (cat === 'placement_policy') return 'Placement policy violation (this drive or global)';
+  return undefined;
+}
+
+function ViolationBadges({ process }) {
+  const cat = getCompliancePrimaryCategory(process);
+  if (!cat) return null;
+  const labels = process?.compliance_labels || [];
+  const pillClass =
+    cat === 'malpractice'
+      ? 'violation-pill violation-pill-malpractice'
+      : cat === 'disciplinary'
+        ? 'violation-pill violation-pill-disciplinary'
+        : 'violation-pill violation-pill-policy';
+  const shortLabel =
+    cat === 'malpractice'
+      ? 'Malpractice'
+      : cat === 'disciplinary'
+        ? 'Disciplinary'
+        : 'Policy';
+  return (
+    <Wrap spacing={1} mt={1}>
+      <WrapItem>
+        <span className={pillClass} title={getComplianceTooltip(process)}>
+          {shortLabel}
+          {labels.length > 1 ? ` (+${labels.length - 1})` : ''}
+        </span>
+      </WrapItem>
+    </Wrap>
+  );
 }
 
 /** Check if a student passed a round based on field value */
@@ -289,18 +370,9 @@ const DriveProcess = () => {
       });
     }
     
-    // Round views (0+): must be registered + approved + passed all previous rounds
+    // Round views (0+): include active candidates + eliminated (downstream NOT QUALIFIED)
     if (currentActiveRoundIndex >= 0 && currentActiveRoundIndex < roundFields.length) {
-      result = result.filter((p) => {
-        if (!isRegistered(p)) return false;
-        if (p.approved_status !== 'Qualified') return false;
-        for (let i = 0; i < currentActiveRoundIndex; i++) {
-          const field = roundFields[i];
-          if (!field || field === 'approved_status') continue;
-          if (!isRoundPassed(p, field)) return false;
-        }
-        return true;
-      });
+      result = result.filter((p) => isVisibleOnRoundTab(p, currentActiveRoundIndex, roundFields));
     }
     
     // Apply search filter
@@ -315,13 +387,30 @@ const DriveProcess = () => {
     // Apply status filter in All Rounds view
     if (currentActiveRoundIndex === -1 && statusFilter) {
       result = result.filter((p) => {
-        if (statusFilter === 'malpractice') return p.malpractice === true;
+        if (statusFilter === 'malpractice') {
+          return p.malpractice === true || getCompliancePrimaryCategory(p) === 'malpractice';
+        }
+        if (statusFilter === 'disciplinary') return getCompliancePrimaryCategory(p) === 'disciplinary';
+        if (statusFilter === 'placement_policy') return getCompliancePrimaryCategory(p) === 'placement_policy';
         if (statusFilter === 'selected') return p.final_select_status === true;
         if (statusFilter === 'pending') {
-          return roundFields.some((field) => field && p[field] == null);
+          return roundFields.some((field) => {
+            if (!field) return false;
+            return getEffectiveRoundStatus(p, field, roundFields).key === 'pending';
+          });
         }
         if (statusFilter === 'rejected') {
-          return roundFields.some((field) => field && p[field] === false);
+          return roundFields.some((field) => {
+            if (!field) return false;
+            const st = getEffectiveRoundStatus(p, field, roundFields);
+            return st.key === 'failed' || st.key === 'malpractice';
+          });
+        }
+        if (statusFilter === 'not_qualified') {
+          return roundFields.some((field) => {
+            if (!field) return false;
+            return getEffectiveRoundStatus(p, field, roundFields).key === 'not_qualified';
+          });
         }
         return true;
       });
@@ -398,35 +487,16 @@ const DriveProcess = () => {
     handleProcessFieldChange(id, field, options[nextIndex]);
   };
 
-  const formatRoundStatusPill = (value, field) => {
-    // Handle registration_status (string values)
-    if (field === 'registration_status') {
-      const v = String(value || '').toLowerCase();
-      const statusClass =
-        v === 'registered' ? 'status-pass' : v === 'not registered' ? 'status-fail' : 'status-pending';
-      const statusText =
-        v === 'registered' ? 'REGISTERED' : v === 'not registered' ? 'NOT REGISTERED' : 'PENDING';
-      return (
-        <span className={`status-pill ${statusClass}`}>{statusText}</span>
-      );
+  /** Derived status: PASSED / FAILED / PENDING / NOT QUALIFIED / MALPRACTICE (terminal propagation). */
+  const formatRoundStatusPill = (process, field) => {
+    if (!process || !field) {
+      return <span className="status-pill status-pending">PENDING</span>;
     }
-    // Handle approved_status (string values)
-    if (field === 'approved_status') {
-      const statusClass =
-        value === 'Qualified' ? 'status-pass' : value === 'Not Qualified' ? 'status-fail' : 'status-pending';
-      const statusText =
-        value === 'Qualified' ? 'QUALIFIED' : value === 'Not Qualified' ? 'NOT QUALIFIED' : 'PENDING';
-      return (
-        <span className={`status-pill ${statusClass}`}>{statusText}</span>
-      );
-    }
-    // Handle boolean values
-    const statusClass =
-      value === true ? 'status-pass' : value === false ? 'status-fail' : 'status-pending';
-    const statusText =
-      value === true ? 'PASSED' : value === false ? 'FAILED' : 'PENDING';
+    const st = getEffectiveRoundStatus(process, field, roundFields);
     return (
-      <span className={`status-pill ${statusClass}`}>{statusText}</span>
+      <span className={`status-pill ${st.cssClass}`} title={st.key === 'not_qualified' ? 'Eliminated in an earlier stage' : undefined}>
+        {st.label}
+      </span>
     );
   };
   
@@ -679,7 +749,9 @@ const DriveProcess = () => {
   // Calculate stats
   const totalStudents = processes.length;
   const approvedCount = processes.filter((p) => p.approved_status === 'Qualified').length;
-  const malpracticeCount = processes.filter((p) => p.malpractice === true).length;
+  const malpracticeCount = processes.filter((p) => getCompliancePrimaryCategory(p) === 'malpractice').length;
+  const disciplinaryCount = processes.filter((p) => getCompliancePrimaryCategory(p) === 'disciplinary').length;
+  const policyViolationCount = processes.filter((p) => getCompliancePrimaryCategory(p) === 'placement_policy').length;
   const selectedCount = processes.filter((p) => p.final_select_status === true).length;
 
   return (
@@ -819,6 +891,14 @@ const DriveProcess = () => {
                     <Text fontSize="10px" color={malpracticeCount > 0 ? 'red.600' : 'gray.500'} fontWeight="bold" textTransform="uppercase">Malpractice</Text>
                     <Text fontSize="sm" fontWeight="bold" color={malpracticeCount > 0 ? 'red.700' : 'gray.700'}>{malpracticeCount}</Text>
                   </Box>
+                  <Box className="stat-card" bg={disciplinaryCount > 0 ? 'orange.50' : 'gray.50'} px={4} py={2} borderRadius="lg" textAlign="center" minW="72px">
+                    <Text fontSize="10px" color={disciplinaryCount > 0 ? 'orange.600' : 'gray.500'} fontWeight="bold" textTransform="uppercase">Disciplinary</Text>
+                    <Text fontSize="sm" fontWeight="bold" color={disciplinaryCount > 0 ? 'orange.700' : 'gray.700'}>{disciplinaryCount}</Text>
+                  </Box>
+                  <Box className="stat-card" bg={policyViolationCount > 0 ? 'yellow.50' : 'gray.50'} px={4} py={2} borderRadius="lg" textAlign="center" minW="88px">
+                    <Text fontSize="10px" color={policyViolationCount > 0 ? 'yellow.700' : 'gray.500'} fontWeight="bold" textTransform="uppercase">Policy</Text>
+                    <Text fontSize="sm" fontWeight="bold" color={policyViolationCount > 0 ? 'yellow.800' : 'gray.700'}>{policyViolationCount}</Text>
+                  </Box>
                 </HStack>
               </Flex>
             </Box>
@@ -953,9 +1033,12 @@ const DriveProcess = () => {
                       borderColor="gray.200"
                     >
                       <option value="malpractice">Malpractice</option>
+                      <option value="disciplinary">Disciplinary</option>
+                      <option value="placement_policy">Placement policy</option>
                       <option value="selected">Final Selected</option>
                       <option value="pending">Has Pending</option>
                       <option value="rejected">Has Rejected</option>
+                      <option value="not_qualified">Not Qualified (downstream)</option>
                     </Select>
                   )}
                   
@@ -1172,21 +1255,21 @@ const DriveProcess = () => {
                                   process,
                                   isJobOffersTab && selectedForOffers.includes(process.usn) ? 'selected-row' : ''
                                 )}
-                                _hover={{ bg: hasComplianceIssue(process) ? 'red.100' : isJobOffersTab ? 'green.50' : 'gray.50' }}
+                                _hover={{
+                                  bg: getComplianceRowHoverBg(
+                                    process,
+                                    isJobOffersTab ? 'green.50' : 'gray.50'
+                                  ),
+                                }}
                                 borderBottomWidth="1px"
-                                borderColor={hasComplianceIssue(process) ? 'red.200' : 'gray.100'}
-                                bg={
-                                  hasComplianceIssue(process)
-                                    ? 'red.50'
-                                    : isJobOffersTab && selectedForOffers.includes(process.usn)
-                                      ? 'green.50'
-                                      : 'transparent'
-                                }
-                                title={
-                                  hasComplianceIssue(process)
-                                    ? 'This student has an active placement violation or disciplinary record'
-                                    : undefined
-                                }
+                                borderColor={getComplianceRowBorder(process)}
+                                bg={getComplianceRowBg(
+                                  process,
+                                  isJobOffersTab && selectedForOffers.includes(process.usn)
+                                    ? 'green.50'
+                                    : 'transparent'
+                                )}
+                                title={getComplianceTooltip(process)}
                               >
                                 {isJobOffersTab ? (
                                   <>
@@ -1217,6 +1300,7 @@ const DriveProcess = () => {
                                       <Box fontSize="xs" color="gray.500">
                                         {process.student_name || '-'}
                                       </Box>
+                                      <ViolationBadges process={process} />
                                     </Td>
                                     <Td px={3} py={3} fontSize="sm" color="gray.600">
                                       {process.school || '-'}
@@ -1246,9 +1330,10 @@ const DriveProcess = () => {
                                       <Box fontSize="xs" color="gray.500">
                                         {process.student_name || '-'}
                                       </Box>
+                                      <ViolationBadges process={process} />
                                     </Td>
                                     <Td px={3} py={3} textAlign="center" title="Set by student; auto-expires after deadline">
-                                      {formatRoundStatusPill(process.registration_status, 'registration_status')}
+                                      {formatRoundStatusPill(process, 'registration_status')}
                                     </Td>
                                     <Td
                                       px={3}
@@ -1258,7 +1343,7 @@ const DriveProcess = () => {
                                       onClick={() => canSetSelectionStatus && cycleCellValue(process.id, 'approved_status')}
                                       title={canSetSelectionStatus ? 'Click to toggle status' : 'Set status enabled only when drive is ongoing'}
                                     >
-                                      {formatRoundStatusPill(process.approved_status, 'approved_status')}
+                                      {formatRoundStatusPill(process, 'approved_status')}
                                     </Td>
                                     {roundFields.map((field, i) => (
                                       <Td
@@ -1270,7 +1355,7 @@ const DriveProcess = () => {
                                         onClick={() => canSetSelectionStatus && field && cycleCellValue(process.id, field)}
                                         title={canSetSelectionStatus ? 'Click to toggle status' : 'Set status enabled only when drive is ongoing'}
                                       >
-                                        {formatRoundStatusPill(field ? process[field] : null, field)}
+                                        {formatRoundStatusPill(process, field)}
                                       </Td>
                                     ))}
                                     <Td px={3} py={3} textAlign="center">
@@ -1312,6 +1397,7 @@ const DriveProcess = () => {
                                       <Box fontSize="xs" color="gray.500">
                                         {process.student_name || '-'}
                                       </Box>
+                                      <ViolationBadges process={process} />
                                     </Td>
                                     <Td px={4} py={3}>
                                       {currentSingleRoundField ? (
@@ -1319,14 +1405,11 @@ const DriveProcess = () => {
                                           {/* registration_status: read-only, set by student; auto-expires after deadline */}
                                           {currentSingleRoundField === 'registration_status' ? (
                                             <Box title="Set by student; auto-expires after deadline">
-                                              {formatRoundStatusPill(process.registration_status, 'registration_status')}
+                                              {formatRoundStatusPill(process, 'registration_status')}
                                             </Box>
                                           ) : !canSetSelectionStatus ? (
                                             <Box title="Set status enabled only when drive is ongoing">
-                                              {formatRoundStatusPill(
-                                                currentSingleRoundField === 'approved_status' ? process.approved_status : process[currentSingleRoundField],
-                                                currentSingleRoundField
-                                              )}
+                                              {formatRoundStatusPill(process, currentSingleRoundField)}
                                             </Box>
                                           ) : currentSingleRoundField === 'approved_status' ? (
                                             <>

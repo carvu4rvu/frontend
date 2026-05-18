@@ -183,20 +183,50 @@
 .drive-process-page .process-row:hover {
   background: #f8fafc !important;
 }
+/* Category-aware violation row backgrounds */
 .drive-process-page .process-row.malpractice-row {
   background: #fef2f2 !important;
 }
 .drive-process-page .process-row.malpractice-row:hover {
   background: #fee2e2 !important;
 }
-.drive-process-page .process-row.compliance-violation-row {
-  background: #fef2f2 !important;
+.drive-process-page .process-row.disciplinary-row {
+  background: #fff7ed !important;
 }
-.drive-process-page .process-row.compliance-violation-row:hover {
-  background: #fee2e2 !important;
+.drive-process-page .process-row.disciplinary-row:hover {
+  background: #ffedd5 !important;
 }
-.drive-process-page .process-row.compliance-violation-row td {
+.drive-process-page .process-row.placement-policy-row {
+  background: #fefce8 !important;
+}
+.drive-process-page .process-row.placement-policy-row:hover {
+  background: #fef9c3 !important;
+}
+
+.drive-process-page .violation-pill {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: help;
+}
+.drive-process-page .violation-pill-malpractice {
+  background: #fee2e2;
   color: #991b1b !important;
+  border: 1px solid #fecaca;
+}
+.drive-process-page .violation-pill-disciplinary {
+  background: #ffedd5;
+  color: #9a3412 !important;
+  border: 1px solid #fed7aa;
+}
+.drive-process-page .violation-pill-policy {
+  background: #fef9c3;
+  color: #854d0e !important;
+  border: 1px solid #fde047;
 }
 
 /* Status pills */
@@ -226,9 +256,15 @@
   background-color: #fef9c3;
   color: #854d0e !important;
 }
+.drive-process-page .status-not-qualified {
+  background-color: #f1f5f9;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1;
+}
 .drive-process-page .status-malpractice {
-  background-color: #fecaca;
-  color: #991b1b !important;
+  background-color: #7f1d1d;
+  color: #fef2f2 !important;
+  border: 1px solid #450a0a;
 }
 .drive-process-page .status-clean {
   background-color: #e0f2fe;

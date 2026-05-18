@@ -585,6 +585,18 @@ export const PlacementService = {
     }
   },
 
+  /** Full dashboard analytics (PostgreSQL aggregates — no student pagination). */
+  getDashboardAnalytics: async () => {
+    return getOrFetch('placement', 'dashboard-analytics-v2', async () => {
+      try {
+        const response = await apiFetch('/placement/dashboard/analytics');
+        return response.data ?? null;
+      } catch (_error) {
+        return null;
+      }
+    }, 60 * 1000);
+  },
+
   getPlacementReport: async (dateFrom, dateTo) => {
     const params = new URLSearchParams();
     if (dateFrom) params.set('dateFrom', dateFrom);
