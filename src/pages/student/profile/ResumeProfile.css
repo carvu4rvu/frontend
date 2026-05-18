@@ -1,0 +1,25 @@
+/* Resume profile – single row actions (View, Edit, Delete) */
+
+.resume-upload-section .resume-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.resume-upload-section .resume-actions-row .resume-btn-view,
+.resume-upload-section .resume-actions-row .resume-btn-edit,
+.resume-upload-section .resume-actions-row .resume-btn-delete {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .resume-upload-section .resume-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .resume-upload-section .resume-actions-row > *:first-child {
+    min-width: 0;
+  }
+}

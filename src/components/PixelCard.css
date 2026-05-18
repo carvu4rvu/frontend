@@ -1,0 +1,32 @@
+.pixel-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  /* Add cursor pointer by default as it's often used as a button/link */
+  cursor: pointer;
+  /* Transition for transform if we want a scale effect on click */
+  transition: transform 0.1s ease;
+}
+
+.pixel-card:active {
+  transform: scale(0.98);
+}
+
+.pixel-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure children are above canvas */
+.pixel-card > *:not(.pixel-canvas) {
+  position: relative;
+  z-index: 1;
+}

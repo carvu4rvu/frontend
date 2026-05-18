@@ -1,0 +1,147 @@
+/* Add Students modal: column selection (list layout, no table) */
+.add-students-modal-body {
+  padding-right: 2rem;
+}
+
+.add-students-columns-scroll {
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 1.5rem;
+  margin-right: 0.5rem;
+}
+
+.add-students-columns-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.add-students-columns-scroll::-webkit-scrollbar-track {
+  background: var(--chakra-colors-gray-100);
+  border-radius: 4px;
+}
+
+.add-students-columns-scroll::-webkit-scrollbar-thumb {
+  background: var(--chakra-colors-gray-400);
+  border-radius: 4px;
+}
+
+.add-students-columns-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--chakra-colors-gray-500);
+}
+
+/* Cards grid: at least 2 cards per row */
+.add-students-cards-grid {
+  width: 100%;
+}
+
+.add-students-card {
+  border-radius: 10px;
+  overflow: hidden;
+  border-color: var(--chakra-colors-gray-200);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.add-students-card:hover {
+  border-color: var(--chakra-colors-gray-300);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.add-students-card-title {
+  margin: 0;
+}
+
+.add-students-card .chakra-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Row inside card: checkbox + column name + description */
+.add-students-row {
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.add-students-row:hover {
+  background: var(--chakra-colors-gray-50);
+}
+
+.add-students-row-selected {
+  background: #e8f5e9;
+}
+
+.add-students-row-selected:hover {
+  background: #c8e6c9;
+}
+
+.add-students-col-name {
+  flex-shrink: 0;
+  min-width: 100px;
+  color: var(--chakra-colors-gray-800);
+}
+
+.add-students-col-desc {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0.25rem;
+}
+
+/* Import preview — Supabase-like theme */
+.add-students-import-preview {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.add-students-import-table-wrap {
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.add-students-import-table {
+  font-size: 0.8125rem;
+}
+
+.add-students-import-table thead tr {
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.add-students-import-table th {
+  font-weight: 600;
+  color: #475569;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.add-students-import-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+
+.add-students-import-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.add-students-import-table tbody tr:hover td {
+  background: #f8fafc;
+}
+
+/* Phase 2: scrollable table — all columns and rows */
+.add-students-phase2-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+}
+
+.add-students-phase2-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f1f5f9;
+}

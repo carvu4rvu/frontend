@@ -1,0 +1,235 @@
+/* Company Student View – refined layout and cards */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.company-student-view-page {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: 100vh;
+  color: #1e293b;
+  padding-bottom: 3rem;
+}
+
+.company-student-view-page .company-student-view-grid-wrap {
+  margin-top: 0.5rem;
+}
+
+/* Back button */
+.company-student-view-back {
+  color: #64748b !important;
+  font-weight: 500;
+  transition: color 0.2s, background 0.2s;
+}
+.company-student-view-back:hover {
+  color: #172e36 !important;
+  background: rgba(23, 46, 54, 0.06) !important;
+}
+
+/* Profile header card */
+.company-student-view-header-card {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.company-student-view-header-card:hover {
+  box-shadow: 0 8px 28px -4px rgba(0, 0, 0, 0.08);
+}
+
+/* Mandatory details section */
+.company-student-view-mandatory-wrap {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  padding: 1.5rem 1.75rem;
+}
+.company-student-view-mandatory-wrap .company-student-view-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+.company-student-view-mandatory-wrap .company-student-view-section-head .section-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f3e8;
+  color: #d4a960;
+  flex-shrink: 0;
+}
+.company-student-view-mandatory-wrap .company-student-view-section-head .section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #172e36;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.company-student-view-dl {
+  width: 100%;
+  margin: 0;
+}
+.company-student-view-dl .company-student-view-row {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 1rem;
+  transition: background 0.15s;
+}
+.company-student-view-dl .company-student-view-row:last-child {
+  border-bottom: none;
+}
+.company-student-view-dl .company-student-view-row:hover {
+  background: #fafbfc;
+}
+.company-student-view-dl .company-student-view-row dt {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  min-width: 220px;
+  flex-shrink: 0;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.company-student-view-dl .company-student-view-row dd {
+  font-size: 0.875rem;
+  color: #172e36;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.company-student-view-dl .company-student-view-row dd a {
+  color: #2563eb;
+  font-weight: 500;
+}
+.company-student-view-dl .company-student-view-row dd a:hover {
+  text-decoration: underline;
+}
+@media (max-width: 640px) {
+  .company-student-view-dl .company-student-view-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  .company-student-view-dl .company-student-view-row dt {
+    min-width: 0;
+  }
+}
+
+/* Section cards (Profile Summary, Education, Internships, etc.) */
+.company-student-view-section-card {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  padding: 1.5rem 1.75rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s;
+}
+.company-student-view-section-card:hover {
+  box-shadow: 0 8px 28px -4px rgba(0, 0, 0, 0.08);
+}
+.company-student-view-section-card .company-student-view-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+.company-student-view-section-card .company-student-view-section-head .section-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f3e8;
+  color: #d4a960;
+  flex-shrink: 0;
+}
+.company-student-view-section-card .company-student-view-section-head .section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #172e36;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Sub-blocks inside sections (education item, internship card, cert card) */
+.company-student-view-block {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.company-student-view-block:last-child {
+  margin-bottom: 0;
+}
+.company-student-view-block:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.company-student-view-block .block-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #172e36;
+  margin: 0 0 0.35rem 0;
+  letter-spacing: -0.01em;
+}
+.company-student-view-block .block-meta {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0;
+}
+.company-student-view-block .block-highlight {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #d4a960;
+  margin-top: 0.35rem;
+}
+
+/* Profile summary subsections */
+.company-student-view-summary-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+.company-student-view-summary-text {
+  font-size: 0.875rem;
+  color: #172e36;
+  line-height: 1.65;
+  margin: 0 0 1rem 0;
+}
+.company-student-view-summary-text:last-child {
+  margin-bottom: 0;
+}
+
+/* Empty state inside section cards */
+.company-student-view-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+/* Projects section wrapper – keep same card style */
+.company-student-view-projects-section .company-student-view-section-card {
+  padding-bottom: 1.5rem;
+}

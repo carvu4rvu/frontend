@@ -1,0 +1,88 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: #1a202c;
+  background-color: #f0f0f0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Restore usable padding for buttons so Chakra/custom buttons stay visible */
+button {
+  padding: 0.5rem 1rem;
+  min-height: 2.5rem;
+  font-size: inherit;
+  line-height: 1.2;
+  border-radius: 0.375rem;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #f0f0f0;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Global cursor reset - default cursor for all elements */
+html, body, div, span, section, article, aside, header, footer, nav, main,
+h1, h2, h3, h4, h5, h6, p, a, img, ul, ol, li, table, tr, td, th,
+form, label, fieldset, legend, button, figure, figcaption {
+  cursor: default;
+}
+
+/* Pointer cursor for interactive elements */
+a, button, [role="button"], [type="button"], [type="submit"], [type="reset"],
+label[for], summary, [onclick], [tabindex]:not([tabindex="-1"]) {
+  cursor: pointer;
+}
+
+/* Text cursor only for actual text input fields */
+input[type="text"], input[type="email"], input[type="password"], 
+input[type="search"], input[type="tel"], input[type="url"],
+input[type="number"], input[type="date"], input[type="time"],
+input[type="datetime-local"], input[type="month"], input[type="week"],
+textarea, [contenteditable="true"] {
+  cursor: text;
+}
+
+/* Special cursors */
+input[type="range"] {
+  cursor: ew-resize;
+}
+
+[disabled], [aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  color: #1a202c;
+  background-color: #f0f0f0;
+  cursor: default;
+}
+
+#root {
+  min-height: 100vh;
+  color: inherit;
+  background-color: #f0f0f0;
+  cursor: default;
+}
