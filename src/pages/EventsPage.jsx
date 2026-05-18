@@ -21,12 +21,13 @@ import {
   Textarea,
   useDisclosure,
 } from '@chakra-ui/react';
-import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
-import { BellIcon } from '@chakra-ui/icons';
+import { AddIcon, EditIcon, DeleteIcon, BellIcon } from '@chakra-ui/icons';
+import { FiCalendar, FiFileText, FiImage, FiUploadCloud, FiInfo } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { EventsService } from '../services/events.service';
 import { NotificationService } from '../services/notification.service';
+import { getFileUrl } from '../utils/fileUrl';
 import AdminLayout from '../components/AdminLayout';
 import './EventsPage.css';
 
@@ -49,9 +50,24 @@ const defaultForm = {
   type: 'Workshop',
   details: '',
   event_datetime: '',
-  images: '',
   status: 'scheduled',
 };
+
+/** Cover image: DB images[0], API image_url (system-assets), or Supabase public path */
+function getEventImageUrl(event) {
+  if (!event) return null;
+  const first = Array.isArray(event.images) && event.images[0];
+  if (first) {
+    const url = typeof first === 'string' ? first : first?.url;
+    if (url) return getFileUrl(url) || url;
+  }
+  if (event.image_url) return getFileUrl(event.image_url) || event.image_url;
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  if (base && event.id) {
+    return `${base.replace(/\/$/, '')}/storage/v1/object/public/system-assets/events/${event.id}.jpg`;
+  }
+  return null;
+}
 
 function formatDatetime(iso) {
   if (!iso) return '—';
@@ -64,7 +80,8 @@ function formatDatetime(iso) {
 }
 
 function EventCard({ event, isAdmin, onEdit, onDelete, onSendNotification, onGoToNotification, notificationStats, isHighlighted }) {
-  const imgUrl = Array.isArray(event.images) && event.images[0] ? event.images[0] : null;
+  const [imgError, setImgError] = useState(false);
+  const imgUrl = !imgError ? getEventImageUrl(event) : null;
   const stats = notificationStats?.[event.id];
   const hasNotification = stats?.notificationId != null;
 
@@ -72,7 +89,7 @@ function EventCard({ event, isAdmin, onEdit, onDelete, onSendNotification, onGoT
     <div id={`event-${event.id}`} className={`events-card ${isHighlighted ? 'highlighted' : ''}`}>
       <div className="events-card-image-wrap">
         {imgUrl ? (
-          <img src={imgUrl} alt="" className="events-card-image" />
+          <img src={imgUrl} alt="" className="events-card-image" onError={() => setImgError(true)} />
         ) : (
           <div className="events-card-image" style={{ background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 14 }}>
             No image
@@ -152,6 +169,8 @@ export default function EventsPage() {
   const [form, setForm] = useState(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [notificationForm, setNotificationForm] = useState(defaultNotifForm);
   const [notificationSubmitting, setNotificationSubmitting] = useState(false);
 
@@ -192,6 +211,38 @@ export default function EventsPage() {
 
   const byStatus = (status) => (status ? events.filter((e) => (e.status || 'scheduled') === status) : []);
 
+  const clearImageState = () => {
+    if (imagePreview?.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const applyImageFile = (file) => {
+    if (!file || !file.type?.startsWith('image/')) return;
+    if (imagePreview?.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleImageFileChange = (e) => {
+    applyImageFile(e.target.files?.[0] || null);
+    if (!e.target.files?.[0] && editingId) {
+      setImageFile(null);
+      setImagePreview(getEventImageUrl(events.find((ev) => String(ev.id) === String(editingId))) || null);
+    }
+  };
+
+  const handleImageDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    applyImageFile(e.dataTransfer.files?.[0]);
+  };
+
+  const handleImageDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title?.trim() || !form.type?.trim()) {
@@ -200,10 +251,6 @@ export default function EventsPage() {
     }
     setSubmitting(true);
     try {
-      const images = form.images
-        ? form.images.split('\n').map((s) => s.trim()).filter(Boolean)
-        : [];
-      // Ensure event_datetime is sent with IST offset if it doesn't have one
       let formattedEventDatetime = form.event_datetime;
       if (formattedEventDatetime && !formattedEventDatetime.includes('Z') && !formattedEventDatetime.includes('+')) {
         formattedEventDatetime = `${formattedEventDatetime}:00+05:30`;
@@ -214,18 +261,29 @@ export default function EventsPage() {
         type: form.type.trim(),
         details: form.details?.trim() || null,
         event_datetime: formattedEventDatetime || null,
-        images,
         status: form.status || 'scheduled',
       };
+
+      let eventId = editingId;
       if (editingId) {
         await EventsService.update(editingId, payload);
-        toast({ title: 'Event updated', status: 'success' });
       } else {
-        await EventsService.create(payload);
-        toast({ title: 'Event created', status: 'success' });
+        const created = await EventsService.create({ ...payload, images: [] });
+        eventId = created?.id;
       }
+
+      if (imageFile && eventId) {
+        await EventsService.uploadImage(eventId, imageFile);
+      }
+
+      toast({
+        title: editingId ? 'Event updated' : 'Event created',
+        description: imageFile ? 'Cover image saved to storage.' : undefined,
+        status: 'success',
+      });
       setForm(defaultForm);
       setEditingId(null);
+      clearImageState();
       onClose();
       load();
     } catch (err) {
@@ -236,19 +294,20 @@ export default function EventsPage() {
   };
 
   const openAdd = () => {
+    clearImageState();
     setForm(defaultForm);
     setEditingId(null);
     onOpen();
   };
 
   const openEdit = (event) => {
+    clearImageState();
     setForm({
       title: event.title || '',
       type: event.type || 'Workshop',
       details: event.details || '',
       event_datetime: event.event_datetime ? (() => {
         const d = new Date(event.event_datetime);
-        // Convert to IST (UTC+5:30) string for datetime-local input
         const istDate = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
         const year = istDate.getFullYear();
         const month = String(istDate.getMonth() + 1).padStart(2, '0');
@@ -257,9 +316,9 @@ export default function EventsPage() {
         const minutes = String(istDate.getMinutes()).padStart(2, '0');
         return `${year}-${month}-${day}T${hours}:${minutes}`;
       })() : '',
-      images: Array.isArray(event.images) ? event.images.join('\n') : '',
       status: event.status || 'scheduled',
     });
+    setImagePreview(getEventImageUrl(event));
     setEditingId(event.id);
     onOpen();
   };
@@ -326,7 +385,7 @@ export default function EventsPage() {
     <Box bg="#f0f0f0" minH="100vh" py={8}>
       <Container maxW="container.xl">
         <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={4}>
-          <Heading size="lg" color="#172e36">Events</Heading>
+          <Heading size="lg" color="#172e36" className="events-page-header">Events</Heading>
           {isAdmin && (
             <Button leftIcon={<AddIcon />} colorScheme="teal" bg="#172e36" _hover={{ bg: '#1e3a47' }} onClick={openAdd}>
               Add Event
@@ -383,84 +442,232 @@ export default function EventsPage() {
         </div>
       </Container>
 
-      <Modal isOpen={isOpen} onClose={() => { onClose(); setForm(defaultForm); setEditingId(null); }} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>{editingId ? 'Edit Event' : 'Schedule Event'}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
+      <Modal
+        isOpen={isOpen}
+        onClose={() => { onClose(); setForm(defaultForm); setEditingId(null); clearImageState(); }}
+        size="4xl"
+        isCentered
+        scrollBehavior="inside"
+        motionPreset="none"
+        className="event-form-modal"
+      >
+        <ModalOverlay className="event-form-modal-overlay" />
+        <ModalContent className="event-form-modal-content" maxW="960px">
+          <ModalHeader className="event-form-modal-header" padding={0}>
+            <div className="event-form-modal-header-inner">
+              <div className="event-form-modal-brand">
+                <span className="event-form-modal-brand-icon" aria-hidden="true">
+                  <FiCalendar />
+                </span>
+                <div className="event-form-modal-brand-text">
+                  <h2 className="event-form-modal-title">{editingId ? 'Edit Event' : 'Schedule Event'}</h2>
+                  <p className="event-form-modal-subtitle">
+                    {editingId ? 'Refine event details, visibility, and cover artwork' : 'Publish a new event to the placement calendar'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="event-form-modal-close"
+                onClick={() => { onClose(); setForm(defaultForm); setEditingId(null); clearImageState(); }}
+                aria-label="Close dialog"
+              >
+                ×
+              </button>
+            </div>
+          </ModalHeader>
+          <ModalBody className="event-form-modal-body">
             <Box as="form" id="event-form" onSubmit={handleSubmit} className="events-form">
-              <FormControl isRequired mb={4}>
-                <FormLabel>Title</FormLabel>
-                <Input
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  placeholder="Event title"
-                />
-              </FormControl>
-              <FormControl isRequired mb={4}>
-                <FormLabel>Type</FormLabel>
-                <Select
-                  value={form.type}
-                  onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                >
-                  {['Workshop', 'Training', 'Career Fair', 'Hackathon', 'Networking', 'Contest', 'Placement', 'Other'].map((o) => (
-                    <option key={o} value={o}>{o}</option>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl mb={4}>
-                <FormLabel>Date & time</FormLabel>
-                <Input
-                  type="datetime-local"
-                  value={form.event_datetime}
-                  onChange={(e) => setForm((f) => ({ ...f, event_datetime: e.target.value }))}
-                />
-              </FormControl>
-              <FormControl mb={4}>
-                <FormLabel>Details</FormLabel>
-                <Textarea
-                  value={form.details}
-                  onChange={(e) => setForm((f) => ({ ...f, details: e.target.value }))}
-                  placeholder="Description..."
-                />
-              </FormControl>
-              <FormControl mb={4}>
-                <FormLabel>Image URLs (one per line)</FormLabel>
-                <Textarea
-                  value={form.images}
-                  onChange={(e) => setForm((f) => ({ ...f, images: e.target.value }))}
-                  placeholder="https://..."
-                  minH="80px"
-                />
-              </FormControl>
-              {editingId != null && (
-                <FormControl mb={4}>
-                  <FormLabel>Status</FormLabel>
-                  <Select
-                    value={form.status}
-                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                  >
-                    {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </Select>
+              <article className="events-form-card">
+                <header className="events-form-card-head">
+                  <span className="events-form-card-icon events-form-card-icon--calendar"><FiCalendar /></span>
+                  <div>
+                    <h3 className="events-form-card-title">Basic information</h3>
+                    <p className="events-form-card-desc">Title, category, schedule, and lifecycle status</p>
+                  </div>
+                </header>
+                <div className="events-form-card-body">
+                <FormControl isRequired className="events-form-field">
+                  <FormLabel>Event title</FormLabel>
+                  <Input
+                    className="events-form-input events-form-input-lg"
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Placement Orientation 2026"
+                  />
                 </FormControl>
+                <div className={`events-form-row ${editingId != null ? 'events-form-row--three' : 'events-form-row--two'}`}>
+                  <FormControl isRequired className="events-form-field">
+                    <FormLabel>Event type</FormLabel>
+                    <Select
+                      className="events-form-input"
+                      value={form.type}
+                      onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+                    >
+                      {['Workshop', 'Training', 'Career Fair', 'Hackathon', 'Networking', 'Contest', 'Placement', 'Other'].map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl className="events-form-field">
+                    <FormLabel>Date &amp; time</FormLabel>
+                    <Input
+                      className="events-form-input events-form-input-datetime"
+                      type="datetime-local"
+                      value={form.event_datetime}
+                      onChange={(e) => setForm((f) => ({ ...f, event_datetime: e.target.value }))}
+                    />
+                  </FormControl>
+                  {editingId != null && (
+                    <FormControl className="events-form-field">
+                      <FormLabel>Status</FormLabel>
+                      <Select
+                        className="events-form-input"
+                        value={form.status}
+                        onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                      >
+                        {STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                </div>
+                </div>
+              </article>
+
+              <div className="events-form-duo">
+              <article className="events-form-card events-form-card--grow">
+                <header className="events-form-card-head">
+                  <span className="events-form-card-icon events-form-card-icon--doc"><FiFileText /></span>
+                  <div>
+                    <h3 className="events-form-card-title">Description</h3>
+                    <p className="events-form-card-desc">Venue, organizer, audience, and agenda</p>
+                  </div>
+                </header>
+                <div className="events-form-card-body">
+                  <FormControl className="events-form-field">
+                    <FormLabel>Event details</FormLabel>
+                    <Textarea
+                      className="events-form-textarea events-form-textarea-tall"
+                      value={form.details}
+                      onChange={(e) => setForm((f) => ({ ...f, details: e.target.value }))}
+                      placeholder="Venue, organizer, audience, agenda..."
+                      rows={7}
+                    />
+                  </FormControl>
+                </div>
+              </article>
+
+              <article className="events-form-card events-form-card--media">
+                <header className="events-form-card-head">
+                  <span className="events-form-card-icon events-form-card-icon--image"><FiImage /></span>
+                  <div>
+                    <h3 className="events-form-card-title">Cover image</h3>
+                    <p className="events-form-card-desc">Shown on cards and listings</p>
+                  </div>
+                </header>
+                <div className="events-form-card-body">
+                  <div className="events-image-upload">
+                    {imagePreview ? (
+                      <div className="events-image-preview-stage">
+                        <img src={imagePreview} alt="Cover preview" onError={() => setImagePreview(null)} />
+                        <label className="events-image-replace">
+                          <FiUploadCloud />
+                          Replace image
+                          <input
+                            type="file"
+                            className="events-image-upload-input"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            onChange={handleImageFileChange}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <label
+                        className="events-image-upload-zone"
+                        onDragOver={handleImageDragOver}
+                        onDrop={handleImageDrop}
+                      >
+                        <input
+                          type="file"
+                          className="events-image-upload-input"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          onChange={handleImageFileChange}
+                        />
+                        <span className="events-image-upload-icon-wrap">
+                          <FiUploadCloud />
+                        </span>
+                        <span className="events-image-upload-text">
+                          <strong>Drop image here</strong> or browse files
+                        </span>
+                        <span className="events-image-upload-hint">PNG, JPG, WebP · up to 5 MB</span>
+                      </label>
+                    )}
+                    {imageFile && (
+                      <p className="events-image-upload-filename">
+                        <span className="events-image-upload-dot" /> {imageFile.name}
+                      </p>
+                    )}
+                    <p className="events-image-upload-help">
+                      Stored in system assets when you save. Safe to update later.
+                    </p>
+                  </div>
+                </div>
+              </article>
+              </div>
+
+              {editingId != null && (
+                <article className="events-form-card events-form-card--meta">
+                  <header className="events-form-card-head">
+                    <span className="events-form-card-icon events-form-card-icon--info"><FiInfo /></span>
+                    <div>
+                      <h3 className="events-form-card-title">Metadata</h3>
+                      <p className="events-form-card-desc">Read-only identifiers for this record</p>
+                    </div>
+                  </header>
+                  <div className="events-form-card-body">
+                    <div className="events-meta-grid">
+                      <div className="events-meta-item">
+                        <span className="events-meta-label">Event ID</span>
+                        <span className="events-meta-value">#{editingId}</span>
+                      </div>
+                      <div className="events-meta-item">
+                        <span className="events-meta-label">Type</span>
+                        <span className="events-meta-value">{form.type || '—'}</span>
+                      </div>
+                      <div className="events-meta-item">
+                        <span className="events-meta-label">Status</span>
+                        <span className={`events-meta-badge status-${form.status || 'scheduled'}`}>
+                          {STATUS_OPTIONS.find((o) => o.value === form.status)?.label || form.status}
+                        </span>
+                      </div>
+                      <div className="events-meta-item">
+                        <span className="events-meta-label">Scheduled</span>
+                        <span className="events-meta-value">{formatDatetime(form.event_datetime) || '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
               )}
             </Box>
           </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
-            <Button
-              colorScheme="teal"
-              bg="#172e36"
-              _hover={{ bg: '#1e3a47' }}
-              isLoading={submitting}
-              type="submit"
-              form="event-form"
-            >
-              {editingId ? 'Update' : 'Create'} Event
-            </Button>
+          <ModalFooter className="event-form-modal-footer">
+            <p className="event-form-footer-hint">Changes apply after you save</p>
+            <div className="event-form-footer-actions">
+              <Button variant="ghost" className="event-form-btn-cancel" onClick={onClose} isDisabled={submitting}>
+                Cancel
+              </Button>
+              <Button
+                className="event-form-btn-submit"
+                isLoading={submitting}
+                loadingText={editingId ? 'Saving…' : 'Creating…'}
+                type="submit"
+                form="event-form"
+              >
+                {editingId ? 'Save changes' : 'Create event'}
+              </Button>
+            </div>
           </ModalFooter>
         </ModalContent>
       </Modal>

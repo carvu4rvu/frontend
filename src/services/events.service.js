@@ -42,4 +42,32 @@ export const EventsService = {
   remove: async (id) => {
     await apiFetch(`${BASE}/${id}`, { method: 'DELETE' });
   },
+
+  /** Upload cover image to system-assets/events/{id}.jpg */
+  uploadImage: async (eventId, file) => {
+    if (!file || !(file instanceof File)) {
+      throw new Error('Please select an image file');
+    }
+    const formData = new FormData();
+    formData.append('file', file, file.name || 'event.jpg');
+    const token = localStorage.getItem('token');
+    const rawUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').trim();
+    const API_URL = rawUrl.endsWith('/api') ? rawUrl : `${rawUrl.replace(/\/$/, '')}/api`;
+    const response = await fetch(`${API_URL}${BASE}/${eventId}/image`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      let message = 'Image upload failed';
+      try {
+        const errBody = await response.json();
+        message = errBody.message || errBody.error || message;
+      } catch (_) {
+        /* ignore */
+      }
+      throw new Error(message);
+    }
+    return response.json();
+  },
 };
