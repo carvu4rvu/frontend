@@ -13,8 +13,8 @@ import { AdminSectionLockControl } from "../../../components/student/AdminSectio
 import { calculateProfileCompletion } from "../../../utils/profileHelper"
 import { getProfileErrorMessage, parseApiError, mapFieldErrorsToForm } from "../../../utils/profileErrorHelper"
 
-/** Eligibility for opt-in: 95% completion and student must be marked eligible for placement/capstone. */
-const MIN_COMPLETION_TO_OPT_IN = 95
+/** Eligibility for opt-in: No minimum completion required. */
+const MIN_COMPLETION_TO_OPT_IN = 0
 
 export const PersonalProfile = () => {
   const toast = useToast()
@@ -28,11 +28,23 @@ export const PersonalProfile = () => {
   const { policy: batchPolicy, refetch: refetchPlacementPolicy } = usePlacementTrackPolicy()
   const usn = viewUsn || user?.usn
 
-  /** Show opt-in section only when student is individually marked as eligible for placement or capstone.
-   *  This is set when admin saves the batch policy from the eligibility track page. */
-  const canOptInToPlacement = Boolean(batchPolicy && (batchPolicy.is_placement_eligible === true || batchPolicy.is_capstone_eligible === true))
-
   const [data, setData] = useState(() => null)
+
+  /** Show opt-in section when student is eligible. 
+   *  Based on both batch-level policy and individual eligibility set by admin. */
+  const isOptedIn = Boolean(data?.opt_in || data?.optIn)
+  const isEligible = Boolean(
+    data?.is_placement_eligible || 
+    data?.is_capstone_eligible ||
+    (batchPolicy && (
+      batchPolicy.placement === true || 
+      batchPolicy.capstone === true ||
+      batchPolicy.is_placement_eligible === true || 
+      batchPolicy.is_capstone_eligible === true
+    ))
+  )
+
+  const canOptInToPlacement = isOptedIn || isEligible
   const [pageLoading, setPageLoading] = useState(false)
   const [loadError, setLoadError] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -232,7 +244,7 @@ export const PersonalProfile = () => {
     }
   }, [isEditing, hasUnsavedChanges])
 
-  const isOptedIn = data?.opt_in === true || data?.optIn === true
+  // isOptedIn and isEligible are now defined above
 
   /** Get overall profile completion (0–100). Used to enforce minimum completion before opt-in. */
   const getOverallCompletion = useCallback(async () => {
@@ -398,33 +410,46 @@ export const PersonalProfile = () => {
           onProfileImageSelect={handleProfileImageSelect}
         />
 
-        {/* Placement opt-in section: only when batch policy allows placement or capstone (and own profile) */}
-        {canOptInToPlacement && isOwnProfile && (
-          <Box mt={8} p={6} bg="gray.50" borderRadius="lg" borderWidth="1px" borderColor="gray.200">
+        {/* Placement opt-in section: only when batch policy allows placement or capstone */}
+        {canOptInToPlacement && (
+          <Box mt={8} p={6} bg={isOptedIn ? "green.50" : (isEligible ? "gray.50" : "red.50")} borderRadius="lg" borderWidth="1px" borderColor={isOptedIn ? "green.200" : (isEligible ? "gray.200" : "red.200")}>
             <HStack spacing={2} mb={2}>
-              <Icon as={FaClipboardCheck} color="#1a202c" boxSize={5} />
-              <Text fontWeight="semibold" color="#20343c">Placement opt-in</Text>
+              <Icon as={FaClipboardCheck} color={isOptedIn ? "green.600" : (isEligible ? "#1a202c" : "red.600")} boxSize={5} />
+              <Text fontWeight="semibold" color="#20343c">Placement opt-in status</Text>
             </HStack>
             {isOptedIn ? (
-              <HStack>
-                <Badge colorScheme="green" fontSize="sm">Opted in</Badge>
-                <Text fontSize="sm" color="gray.700">You have agreed to the placement policy and are opted in to the placement track. Opt-in cannot be reverted.</Text>
+              <HStack spacing={4}>
+                <Badge colorScheme="green" fontSize="sm" px={3} py={1} borderRadius="md">Opted in</Badge>
+                <Text fontSize="sm" color="gray.700" fontWeight="medium">This student has agreed to the placement policy and is opted in to the placement track.</Text>
               </HStack>
+            ) : isEligible ? (
+              <Box>
+                <HStack spacing={4} mb={isOwnProfile ? 4 : 0}>
+                  <Badge colorScheme="yellow" fontSize="sm" px={3} py={1} borderRadius="md">Not Opted in</Badge>
+                  <Text fontSize="sm" color="gray.700">This student is eligible for placement but has not yet opted in.</Text>
+                </HStack>
+                {isOwnProfile && (
+                  <>
+                    <Text fontSize="sm" color="gray.600" mb={4}>
+                      Opt in to participate in placement drives. You must read and agree to the placement policy before opting in. Once opted in, you cannot revert.
+                    </Text>
+                    <Button
+                      bg="#d4a960"
+                      color="#20343c"
+                      _hover={{ bg: "#c39850" }}
+                      size="md"
+                      onClick={handleOpenOptInModal}
+                    >
+                      Opt in to placement
+                    </Button>
+                  </>
+                )}
+              </Box>
             ) : (
-              <>
-                <Text fontSize="sm" color="gray.600" mb={4}>
-                  Opt in to participate in placement drives. You must read and agree to the placement policy before opting in. Once opted in, you cannot revert.
-                </Text>
-                <Button
-                  bg="#d4a960"
-                  color="#20343c"
-                  _hover={{ bg: "#c39850" }}
-                  size="md"
-                  onClick={handleOpenOptInModal}
-                >
-                  Opt in to placement
-                </Button>
-              </>
+              <HStack spacing={4}>
+                <Badge colorScheme="red" fontSize="sm" px={3} py={1} borderRadius="md">Not Eligible</Badge>
+                <Text fontSize="sm" color="gray.700" fontWeight="medium">This student is not currently eligible for the placement track.</Text>
+              </HStack>
             )}
           </Box>
         )}
@@ -486,12 +511,10 @@ export const PersonalProfile = () => {
             <ModalHeader>Opt in to placement</ModalHeader>
             <ModalCloseButton isDisabled={optInSaving} />
             <ModalBody>
-              {optInModalCompletion != null && (
-                <Text mb={3} fontSize="sm" color="gray.700">
-                  Your profile completion: <strong>{optInModalCompletion}%</strong> (minimum {MIN_COMPLETION_TO_OPT_IN}% required).
-                </Text>
-              )}
-              <Text mb={4}>
+              <Text mb={4} textAlign="justify">
+                Complete your profile to showcase your skills, achievements, and experience more effectively. A well-detailed profile helps create better professional opportunities and visibility.
+              </Text>
+              <Text mb={4} textAlign="justify">
                 To opt in to the placement track, you must read and agree to the Placement Policy.
               </Text>
               <Link
@@ -499,7 +522,8 @@ export const PersonalProfile = () => {
                 to="/student/placements/policy"
                 color="#d4a960"
                 fontWeight="medium"
-                onClick={() => setOptInModalOpen(false)}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 View Placement Policy →
               </Link>

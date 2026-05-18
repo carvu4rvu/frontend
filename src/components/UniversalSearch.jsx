@@ -48,11 +48,11 @@ const UniversalSearch = () => {
     const loadData = async () => {
       if (allData.students.length === 0) {
         try {
-            const [students, companies] = await Promise.all([
-                PlacementService.getAllStudents(),
-                PlacementService.getAllCompanies()
+            const [studentsRes, companies] = await Promise.all([
+                PlacementService.getAllStudents({ page: 1, page_size: 100 }),
+                PlacementService.getAllCompanies(),
             ]);
-            setAllData({ students, companies });
+            setAllData({ students: studentsRes?.students ?? [], companies });
         } catch (e) {
             console.error("Search data load failed", e);
         }

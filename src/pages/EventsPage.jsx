@@ -56,9 +56,10 @@ const defaultForm = {
 function formatDatetime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString('en-IN', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: 'Asia/Kolkata'
   });
 }
 
@@ -202,11 +203,17 @@ export default function EventsPage() {
       const images = form.images
         ? form.images.split('\n').map((s) => s.trim()).filter(Boolean)
         : [];
+      // Ensure event_datetime is sent with IST offset if it doesn't have one
+      let formattedEventDatetime = form.event_datetime;
+      if (formattedEventDatetime && !formattedEventDatetime.includes('Z') && !formattedEventDatetime.includes('+')) {
+        formattedEventDatetime = `${formattedEventDatetime}:00+05:30`;
+      }
+
       const payload = {
         title: form.title.trim(),
         type: form.type.trim(),
         details: form.details?.trim() || null,
-        event_datetime: form.event_datetime || null,
+        event_datetime: formattedEventDatetime || null,
         images,
         status: form.status || 'scheduled',
       };
@@ -239,7 +246,17 @@ export default function EventsPage() {
       title: event.title || '',
       type: event.type || 'Workshop',
       details: event.details || '',
-      event_datetime: event.event_datetime ? event.event_datetime.slice(0, 16) : '',
+      event_datetime: event.event_datetime ? (() => {
+        const d = new Date(event.event_datetime);
+        // Convert to IST (UTC+5:30) string for datetime-local input
+        const istDate = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+        const year = istDate.getFullYear();
+        const month = String(istDate.getMonth() + 1).padStart(2, '0');
+        const day = String(istDate.getDate()).padStart(2, '0');
+        const hours = String(istDate.getHours()).padStart(2, '0');
+        const minutes = String(istDate.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      })() : '',
       images: Array.isArray(event.images) ? event.images.join('\n') : '',
       status: event.status || 'scheduled',
     });

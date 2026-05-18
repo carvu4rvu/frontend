@@ -111,7 +111,7 @@ const CalendarOfEvents = () => {
           title: ev.title || 'Event',
           description: ev.details || ev.type || 'Event',
           event_date: ev.event_datetime,
-          start_time: ev.event_datetime ? new Date(ev.event_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null,
+          start_time: ev.event_datetime ? new Date(ev.event_datetime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : null,
           type: 'Event'
         }));
       setEvents([...placementEvents, ...mappedEvents]);

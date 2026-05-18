@@ -304,8 +304,8 @@ const AdminDashboard = () => {
       try {
         // Fetch data directly from parent tables including all schools
         // We fetch ALL students now to show comprehensive counts
-        const [allStudents, drives, offers, companies, allSchools, dashboardStats] = await Promise.all([
-          PlacementService.getAllStudents({ opt_in_only: false, limit: 10000 }),
+        const [studentsPage, drives, offers, companies, allSchools, dashboardStats] = await Promise.all([
+          PlacementService.getAllStudents({ opt_in_only: false, page: 1, page_size: 100 }),
           PlacementService.getAllDrives(),
           PlacementService.getAllJobOffers(),
           PlacementService.getAllCompanies(),
@@ -313,6 +313,7 @@ const AdminDashboard = () => {
           PlacementService.getDashboardStats()
         ]);
 
+        const allStudents = studentsPage?.students ?? [];
         processData(allStudents, drives, offers, companies, allSchools, dashboardStats);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);

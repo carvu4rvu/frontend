@@ -63,41 +63,52 @@ export const PlacementFeed = () => {
     return finalStatus === true || app?.offer_letter_status === 'Issued';
   };
 
-  const upcomingDrives = drives.filter(d => {
+  const isVisibleDrive = (d) => {
     const process = getProcessByDriveId(d.id);
-    if (!isEligibleProcess(process)) return false;
+    // 1. Explicitly excluded by admin?
+    if (process && process.is_eligible === false) return false;
+    // 2. Matches student's batch (school/program)?
+    const matchesBatch = (
+      (!d.school_id || d.school_id === policy?.school_id) &&
+      (!d.program_id || d.program_id === policy?.program_id)
+    );
+    return matchesBatch;
+  };
+
+  const upcomingDrives = drives.filter(d => {
+    if (!isVisibleDrive(d)) return false;
+    const process = getProcessByDriveId(d.id);
     if (isRegisteredProcess(process)) return false;
     const status = String(d.placement_status || '').toLowerCase();
     return status !== 'closed';
   });
 
   const ongoingDrives = drives.filter(d => {
+    if (!isVisibleDrive(d)) return false;
     const process = getProcessByDriveId(d.id);
-    if (!isEligibleProcess(process)) return false;
     if (!isRegisteredProcess(process)) return false;
     const status = String(d.placement_status || '').toLowerCase();
     return status !== 'closed';
   });
 
   const historyDrives = drives.filter(d => {
+    if (!isVisibleDrive(d)) return false;
     const process = getProcessByDriveId(d.id);
-    if (!isEligibleProcess(process)) return false;
     if (!isRegisteredProcess(process)) return false;
     const status = String(d.placement_status || '').toLowerCase();
     return status === 'closed';
   });
 
   const missedDrives = drives.filter(d => {
+    if (!isVisibleDrive(d)) return false;
     const process = getProcessByDriveId(d.id);
-    if (!isEligibleProcess(process)) return false;
     if (isRegisteredProcess(process)) return false;
     const status = String(d.placement_status || '').toLowerCase();
     return status === 'closed';
   });
 
   const cancelledDrives = drives.filter(d => {
-    const process = getProcessByDriveId(d.id);
-    if (!isEligibleProcess(process)) return false;
+    if (!isVisibleDrive(d)) return false;
     const status = String(d.placement_status || '').toLowerCase();
     return status === 'cancelled' || status === 'postponed';
   });
@@ -126,7 +137,7 @@ export const PlacementFeed = () => {
       if (!val) return "TBD";
       try {
         const d = new Date(val);
-        return isNaN(d.getTime()) ? "TBD" : d.toLocaleDateString();
+        return isNaN(d.getTime()) ? "TBD" : d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
       } catch {
         return "TBD";
       }

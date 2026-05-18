@@ -41,7 +41,11 @@ const CARD_SHADOW = '0 4px 24px rgba(15, 23, 42, 0.08)';
 function formatEventDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return d.toLocaleString('en-IN', { 
+    dateStyle: 'medium', 
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata'
+  });
 }
 
 function isUpcoming(iso) {

@@ -74,8 +74,8 @@ const StatCard = ({ icon, title, value, color = ACCENT, to }) => {
   return content;
 };
 
-const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" }) : "—");
-const formatShortDate = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—");
+const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-IN', { dateStyle: "medium", timeZone: 'Asia/Kolkata' }) : "—");
+const formatShortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-IN', { month: "short", day: "numeric", year: "numeric", timeZone: 'Asia/Kolkata' }) : "—");
 
 export const StudentDashboard = ({ viewData = null, basePath = null, studentName = null }) => {
   const location = useLocation();

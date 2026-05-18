@@ -1,323 +1,479 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
-  Button,
-  Flex,
   Heading,
-  HStack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Spinner,
-  Switch,
   Table,
-  Tbody,
-  Td,
-  Text,
-  Th,
   Thead,
+  Tbody,
   Tr,
+  Th,
+  Td,
+  Switch,
+  Input,
   useToast,
+  HStack,
+  Text,
+  Button,
+  Spinner,
+  Flex,
+  Tooltip,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  FormControl,
+  FormLabel,
+  Select,
+  SimpleGrid,
+  Checkbox,
+  Divider,
+  Icon,
 } from '@chakra-ui/react';
-import { FaSearch, FaSync } from 'react-icons/fa';
+import { FaSync, FaLock, FaUnlock, FaFilter, FaUsers } from 'react-icons/fa';
 import { PlacementService } from '../../services/placement.service';
+import { StudentProfileService } from '../../services/studentProfile.service';
 
 const SECTION_FIELDS = [
   { key: 'is_basic_info_locked', label: 'Basic' },
   { key: 'is_contacts_locked', label: 'Contact' },
   { key: 'is_profile_details_locked', label: 'Profile' },
   { key: 'is_social_links_locked', label: 'Social' },
-  { key: 'is_parent_details_locked', label: 'Parents' },
+  { key: 'is_parent_details_locked', label: 'Family' },
   { key: 'is_education_history_locked', label: 'Edu Hist' },
-  { key: 'is_education_gaps_locked', label: 'Edu Gaps' },
-  { key: 'is_course_academics_locked', label: 'Academics' },
-  { key: 'is_extra_curricular_locked', label: 'Extra Curric' },
+  { key: 'is_education_gaps_locked', label: 'Edu Gap' },
+  { key: 'is_course_academics_locked', label: 'Courses' },
+  { key: 'is_extra_curricular_locked', label: 'Extra' },
   { key: 'is_projects_locked', label: 'Projects' },
   { key: 'is_certifications_locked', label: 'Certs' },
-  { key: 'is_internships_locked', label: 'Interns' },
-  { key: 'is_trainings_locked', label: 'Trainings' },
-  { key: 'is_other_experiences_locked', label: 'Other Exp' },
-  { key: 'is_publications_locked', label: 'Publications' },
-  { key: 'is_placements_locked', label: 'Placements' },
+  { key: 'is_internships_locked', label: 'Intern' },
+  { key: 'is_trainings_locked', label: 'Train' },
+  { key: 'is_other_experiences_locked', label: 'Other' },
+  { key: 'is_publications_locked', label: 'Pubs' },
+  { key: 'is_placements_locked', label: 'Placement' },
 ];
 
-const SEM_FIELDS = [
-  { key: 'is_sem1_locked', label: 'Sem 1' },
-  { key: 'is_sem2_locked', label: 'Sem 2' },
-  { key: 'is_sem3_locked', label: 'Sem 3' },
-  { key: 'is_sem4_locked', label: 'Sem 4' },
-  { key: 'is_sem5_locked', label: 'Sem 5' },
-  { key: 'is_sem6_locked', label: 'Sem 6' },
-  { key: 'is_sem7_locked', label: 'Sem 7' },
-  { key: 'is_sem8_locked', label: 'Sem 8' },
-];
+const SEM_FIELDS = Array.from({ length: 8 }, (_, i) => ({
+  key: `is_sem${i + 1}_locked`,
+  label: `Sem ${i + 1}`,
+}));
 
 export default function ProfileLockPage() {
   const toast = useToast();
-  /** Database copy – only updated on load or when API save succeeds */
+  
+  // Individual Locks State
   const [rows, setRows] = useState([]);
-  /** Display layer – key: `${usn}:${field}`, value: boolean. What user sees; updated on click, cleared on success/revert */
   const [localOverrides, setLocalOverrides] = useState({});
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [savingKey, setSavingKey] = useState(null); // `${usn}:${field}` for Reason input
+  const [savingKey, setSavingKey] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
+  const limit = 25;
 
-  const filteredRows = useMemo(() => {
-    if (!searchQuery.trim()) return rows;
-    const q = searchQuery.trim().toLowerCase();
-    return rows.filter(
-      (r) =>
-        (r.usn || '').toLowerCase().includes(q) ||
-        (r.full_name || '').toLowerCase().includes(q) ||
-        (r.college_email || '').toLowerCase().includes(q)
-    );
-  }, [rows, searchQuery]);
+  // Batch Locks State
+  const [schools, setSchools] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [majors, setMajors] = useState([]);
+  const [specializations, setSpecializations] = useState([]);
+  const [minors, setMinors] = useState([]);
+  
+  const [batchFilters, setBatchFilters] = useState({
+    school_id: '',
+    program_id: '',
+    year_of_joining: '',
+    major_id: '',
+    specialization_id: '',
+    minor_id: ''
+  });
+  
+  const [batchLocks, setBatchLocks] = useState({});
+  const [batchCount, setBatchCount] = useState(0);
+  const [counting, setCounting] = useState(false);
+  const [batchApplying, setBatchApplying] = useState(false);
 
-  const missingControlCount = useMemo(
-    () => rows.filter((r) => r && (r.is_sem1_locked == null)).length,
-    [rows]
-  );
+  // Load Initial Metadata
+  useEffect(() => {
+    const loadMetadata = async () => {
+      try {
+        const [s, p, m, sp, mi] = await Promise.all([
+          StudentProfileService.getSchools(),
+          StudentProfileService.getPrograms(),
+          StudentProfileService.getMajors(),
+          StudentProfileService.getSpecializations(),
+          StudentProfileService.getMinors()
+        ]);
+        setSchools(s);
+        setPrograms(p);
+        setMajors(m);
+        setSpecializations(sp);
+        setMinors(mi);
+      } catch (e) {
+        console.error('Metadata load failed', e);
+      }
+    };
+    loadMetadata();
+  }, []);
 
-  /** Display value for a switch: local override if present, else DB copy */
-  const getDisplayChecked = (usn, field, row) => {
-    const key = `${usn}:${field}`;
-    if (localOverrides[key] !== undefined) return !!localOverrides[key];
-    return !!row[field];
-  };
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const load = async () => {
+  // Load Individual Rows
+  const loadIndividual = async () => {
     setLoading(true);
     try {
-      const data = await PlacementService.getStudentProfileLocks();
-      setRows(Array.isArray(data?.rows) ? data.rows : []);
-      setLocalOverrides({}); // clear overrides when we refresh from server
-    } catch (e) {
-      toast({
-        title: 'Failed to load profile locks',
-        description: e?.message || 'Could not load student edit control table.',
-        status: 'error',
-        duration: 4000,
-        isClosable: true,
+      const data = await PlacementService.getStudentProfileLocks({ 
+        page, 
+        limit, 
+        search: debouncedSearch 
       });
+      setRows(Array.isArray(data?.rows) ? data.rows : []);
+      setTotalPages(data?.totalPages || 0);
+      setTotal(data?.total || 0);
+      setLocalOverrides({});
+    } catch (e) {
+      toast({ title: 'Load failed', status: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadIndividual();
+  }, [page, debouncedSearch]);
 
-  const handleSync = async () => {
-    setSyncing(true);
+  // Batch Count Update
+  useEffect(() => {
+    const fetchBatchCount = async () => {
+      // Fetch count if any filter is set, or if we want to allow counting everyone
+      setCounting(true);
+      try {
+        const count = await PlacementService.getBatchLockCount(batchFilters);
+        setBatchCount(count);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setCounting(false);
+      }
+    };
+    const timer = setTimeout(fetchBatchCount, 400);
+    return () => clearTimeout(timer);
+  }, [batchFilters]);
+
+  const updateLock = async (usn, field, value) => {
+    const key = `${usn}:${field}`;
+    setLocalOverrides((prev) => ({ ...prev, [key]: value }));
+    if (field === 'lock_reason') setSavingKey(key);
+
     try {
-      const result = await PlacementService.syncStudentProfileLocks();
-      await load();
-      toast({
-        title: 'Synced',
-        description: `Inserted ${result?.inserted ?? 0} missing student(s) into edit control.`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      await PlacementService.updateStudentProfileLock(usn, { [field]: value });
+      // Update the actual row in state so the view stays synced after saving
+      setRows((prev) =>
+        prev.map((r) => (r.usn === usn ? { ...r, [field]: value } : r))
+      );
     } catch (e) {
       toast({
-        title: 'Sync failed',
-        description: e?.message || 'Could not sync missing students.',
+        title: 'Update failed',
+        description: e.message,
         status: 'error',
-        duration: 4000,
-        isClosable: true,
+        duration: 3000,
       });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const updateLock = async (usn, field, nextVal) => {
-    const key = `${usn}:${field}`;
-    const isSwitch = field !== 'lock_reason';
-    const payload = field === 'lock_reason' ? { [field]: nextVal } : { [field]: !!nextVal };
-
-    if (isSwitch) {
-      // Layer 1 – display: update immediately so DOM shows new toggle
-      setLocalOverrides((prev) => ({ ...prev, [key]: !!nextVal }));
-    } else {
-      setSavingKey(key);
-    }
-
-    try {
-      await PlacementService.updateStudentProfileLocks(usn, payload);
-      // Success: update DB copy and clear override so display stays in sync
-      setRows((prev) =>
-        prev.map((r) => (r.usn === usn ? { ...r, [field]: isSwitch ? !!nextVal : nextVal } : r))
-      );
+      // Revert on error
       setLocalOverrides((prev) => {
         const next = { ...prev };
         delete next[key];
         return next;
       });
-      if (isSwitch) {
-        toast({ title: 'Saved', status: 'success', duration: 2000, isClosable: true });
-      }
-    } catch (e) {
-      if (isSwitch) {
-        setLocalOverrides((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          return next;
-        });
-      }
-      toast({
-        title: 'Update failed',
-        description: e?.message || 'Could not update lock.',
-        status: 'error',
-        duration: 3500,
-        isClosable: true,
-      });
     } finally {
-      setSavingKey(null);
+      if (field === 'lock_reason') setSavingKey(null);
     }
   };
 
-  return (
-    <Box>
-      <Flex justify="space-between" align="center" mb={4} wrap="wrap" gap={3}>
-        <Box>
-          <Heading size="md" color="gray.800" mb={1}>
-            Profile Lock
-          </Heading>
-          <Text color="gray.600" fontSize="sm">
-            Lock semester-wise editing for individual students. Locked semesters are view-only (no add/edit).
-          </Text>
-        </Box>
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await PlacementService.syncStudentProfileLocks();
+      toast({ title: 'Sync completed', status: 'success' });
+      loadIndividual();
+    } catch (e) {
+      toast({ title: 'Sync failed', status: 'error' });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
-        <HStack spacing={3}>
-          {missingControlCount > 0 && (
-            <Text fontSize="sm" color="orange.600" fontWeight="semibold">
-              {missingControlCount} missing control row(s)
-            </Text>
-          )}
-          <Button
-            leftIcon={<FaSync />}
-            colorScheme="blue"
-            variant="solid"
-            onClick={handleSync}
-            isLoading={syncing}
-            loadingText="Syncing..."
-          >
-            Sync
-          </Button>
-        </HStack>
+  const handleBatchAction = async (isLock) => {
+    if (batchCount === 0) return;
+    
+    const selectedFields = Object.keys(batchLocks).filter(k => k !== 'lock_reason' && batchLocks[k]);
+    if (selectedFields.length === 0) {
+      toast({ title: 'No fields selected', status: 'warning', description: 'Please select at least one field to lock/unlock.' });
+      return;
+    }
+
+    setBatchApplying(true);
+    try {
+      const locksPayload = {};
+      selectedFields.forEach(f => {
+        locksPayload[f] = isLock;
+      });
+      
+      if (isLock && batchLocks.lock_reason) {
+        locksPayload.lock_reason = batchLocks.lock_reason;
+      }
+
+      const res = await PlacementService.batchUpdateProfileLocks(batchFilters, locksPayload);
+      toast({
+        title: `Batch ${isLock ? 'Lock' : 'Unlock'} Successful`,
+        description: `Updated profile locks for ${res.updated} students.`,
+        status: 'success',
+        duration: 5000,
+      });
+      loadIndividual();
+    } catch (e) {
+      toast({ title: 'Batch update failed', status: 'error', description: e.message });
+    } finally {
+      setBatchApplying(false);
+    }
+  };
+
+  const getDisplayChecked = (usn, field, row) => {
+    const key = `${usn}:${field}`;
+    if (localOverrides[key] !== undefined) return !!localOverrides[key];
+    return !!row[field];
+  };
+
+  const filteredPrograms = useMemo(() => {
+    if (!batchFilters.school_id) return programs;
+    return programs.filter(p => String(p.school_id) === String(batchFilters.school_id));
+  }, [programs, batchFilters.school_id]);
+
+  return (
+    <Box p={6}>
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg" color="blue.700">Profile Lock Management</Heading>
+        <Button leftIcon={<FaSync />} colorScheme="blue" onClick={handleSync} isLoading={syncing}>
+          Sync Records
+        </Button>
       </Flex>
 
-      {!loading && rows.length > 0 && (
-        <InputGroup maxW="400px" mb={4}>
-          <InputLeftElement pointerEvents="none" color="gray.400">
-            <FaSearch />
-          </InputLeftElement>
-          <Input
-            placeholder="Search by USN, name, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            bg="white"
-            borderColor="gray.200"
-          />
-        </InputGroup>
-      )}
+      <Tabs variant="enclosed" colorScheme="blue">
+        <TabList>
+          <Tab fontWeight="bold"><Icon as={FaUsers} mr={2}/> Individual Locks</Tab>
+          <Tab fontWeight="bold"><Icon as={FaFilter} mr={2}/> Batch Lock</Tab>
+        </TabList>
 
-      {loading ? (
-        <Flex py={12} justify="center">
-          <Spinner />
-        </Flex>
-      ) : (
-        <Box bg="white" border="1px solid" borderColor="gray.200" borderRadius="xl" overflow="auto">
-          <Table size="sm">
-            <Thead bg="gray.50">
-              <Tr>
-                <Th>USN</Th>
-                <Th>Name</Th>
-                <Th>Email</Th>
-                <Th textAlign="center">Login Active</Th>
-                {SECTION_FIELDS.map((s) => (
-                  <Th key={s.key} textAlign="center">
-                    {s.label}
-                  </Th>
-                ))}
-                {SEM_FIELDS.map((s) => (
-                  <Th key={s.key} textAlign="center">
-                    {s.label}
-                  </Th>
-                ))}
-                <Th>Locked By</Th>
-                <Th minW="220px">Reason</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {filteredRows.length === 0 ? (
-                <Tr>
-                  <Td colSpan={4 + SECTION_FIELDS.length + SEM_FIELDS.length + 2} py={8} textAlign="center" color="gray.500">
-                    {rows.length === 0 ? 'No students found.' : 'No students match your search.'}
-                  </Td>
-                </Tr>
-              ) : (
-                filteredRows.map((r) => {
-                  const hasControl = r.is_sem1_locked != null;
-                  return (
-                    <Tr key={r.usn}>
-                      <Td fontWeight="semibold">{r.usn}</Td>
-                      <Td>{r.full_name || '-'}</Td>
-                      <Td>{r.college_email || '-'}</Td>
-                      <Td textAlign="center">
-                        <Switch
-                          colorScheme="green"
-                          isChecked={getDisplayChecked(r.usn, 'login_is_active', r)}
-                          onChange={(e) => updateLock(r.usn, 'login_is_active', e.target.checked)}
-                        />
-                      </Td>
-                      {SECTION_FIELDS.map((s) => (
-                        <Td key={s.key} textAlign="center">
-                          <Switch
-                            colorScheme="red"
-                            isChecked={getDisplayChecked(r.usn, s.key, r)}
-                            isDisabled={!hasControl}
-                            onChange={(e) => updateLock(r.usn, s.key, e.target.checked)}
-                          />
+        <TabPanels>
+          {/* INDIVIDUAL LOCKS PANEL */}
+          <TabPanel px={0} pt={6}>
+            <Box mb={4}>
+              <Input
+                placeholder="Search by USN, Name or Email..."
+                maxW="400px"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                bg="white"
+              />
+            </Box>
+
+            <Box bg="white" borderRadius="xl" shadow="sm" overflowX="auto" border="1px solid" borderColor="gray.200">
+              <Table size="sm" variant="simple">
+                <Thead bg="gray.50">
+                  <Tr>
+                    <Th>USN</Th>
+                    <Th>Name</Th>
+                    <Th>Email</Th>
+                    <Th textAlign="center">Active</Th>
+                    {SECTION_FIELDS.map((f) => <Th key={f.key} textAlign="center">{f.label}</Th>)}
+                    {SEM_FIELDS.map((f) => <Th key={f.key} textAlign="center">{f.label}</Th>)}
+                    <Th>By</Th>
+                    <Th>Reason</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {loading && rows.length === 0 ? (
+                    <Tr><Td colSpan={30} textAlign="center" py={10}><Spinner color="blue.500" /></Td></Tr>
+                  ) : rows.length === 0 ? (
+                    <Tr><Td colSpan={30} textAlign="center" py={10}>No students found.</Td></Tr>
+                  ) : (
+                    rows.map((r) => (
+                      <Tr key={r.usn} _hover={{ bg: 'gray.50' }}>
+                        <Td fontWeight="bold" color="blue.600">{r.usn}</Td>
+                        <Td whiteSpace="nowrap">{r.full_name}</Td>
+                        <Td fontSize="xs">{r.college_email}</Td>
+                        <Td textAlign="center">
+                          <Switch colorScheme="green" isChecked={getDisplayChecked(r.usn, 'login_is_active', r)} onChange={(e) => updateLock(r.usn, 'login_is_active', e.target.checked)} />
                         </Td>
-                      ))}
-                      {SEM_FIELDS.map((s) => (
-                        <Td key={s.key} textAlign="center">
-                          <Switch
-                            colorScheme="red"
-                            isChecked={getDisplayChecked(r.usn, s.key, r)}
-                            isDisabled={!hasControl}
-                            onChange={(e) => updateLock(r.usn, s.key, e.target.checked)}
-                          />
+                        {SECTION_FIELDS.map((f) => (
+                          <Td key={f.key} textAlign="center">
+                            <Switch colorScheme="red" size="sm" isChecked={getDisplayChecked(r.usn, f.key, r)} onChange={(e) => updateLock(r.usn, f.key, e.target.checked)} />
+                          </Td>
+                        ))}
+                        {SEM_FIELDS.map((f) => (
+                          <Td key={f.key} textAlign="center">
+                            <Switch colorScheme="red" size="sm" isChecked={getDisplayChecked(r.usn, f.key, r)} onChange={(e) => updateLock(r.usn, f.key, e.target.checked)} />
+                          </Td>
+                        ))}
+                        <Td fontSize="xs" whiteSpace="nowrap">{r.locked_by_name || '-'}</Td>
+                        <Td minW="150px">
+                          <Input size="xs" variant="flushed" defaultValue={r.lock_reason || ''} onBlur={(e) => updateLock(r.usn, 'lock_reason', e.target.value)} />
                         </Td>
-                      ))}
-                      <Td>{r.locked_by_name ?? r.locked_by ?? '-'}</Td>
-                      <Td minW="220px">
-                        <Input
-                          size="xs"
-                          defaultValue={r.lock_reason || ''}
-                          isDisabled={savingKey === `${r.usn}:lock_reason`}
-                          onBlur={(e) => {
-                            const val = e.target.value;
-                            if (val !== (r.lock_reason || '')) {
-                              updateLock(r.usn, 'lock_reason', val);
-                            }
-                          }}
-                        />
-                      </Td>
-                    </Tr>
-                  );
-                })
-              )}
-            </Tbody>
-          </Table>
-        </Box>
-      )}
+                      </Tr>
+                    ))
+                  )}
+                </Tbody>
+              </Table>
+            </Box>
+
+            {totalPages > 1 && (
+              <Flex justify="center" mt={6} align="center" gap={4}>
+                <Button size="sm" isDisabled={page === 1} onClick={() => setPage(p => p - 1)}>Prev</Button>
+                <Text fontSize="sm">Page {page} of {totalPages} ({total} total)</Text>
+                <Button size="sm" isDisabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+              </Flex>
+            )}
+          </TabPanel>
+
+          {/* BATCH LOCK PANEL */}
+          <TabPanel px={0} pt={6}>
+            <Box bg="white" p={6} borderRadius="xl" shadow="sm" border="1px solid" borderColor="gray.200">
+              <Heading size="sm" mb={4} display="flex" align="center" gap={2}>
+                <Icon as={FaFilter} color="blue.500" /> 1. Select Target Students
+              </Heading>
+              
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={8}>
+                <FormControl>
+                  <FormLabel fontSize="xs">School</FormLabel>
+                  <Select size="sm" placeholder="All Schools" value={batchFilters.school_id} onChange={(e) => setBatchFilters({...batchFilters, school_id: e.target.value, program_id: ''})}>
+                    {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs">Program</FormLabel>
+                  <Select size="sm" placeholder="All Programs" value={batchFilters.program_id} onChange={(e) => setBatchFilters({...batchFilters, program_id: e.target.value})}>
+                    {filteredPrograms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs">Joining Year</FormLabel>
+                  <Input size="sm" type="number" placeholder="e.g. 2022" value={batchFilters.year_of_joining} onChange={(e) => setBatchFilters({...batchFilters, year_of_joining: e.target.value})} />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs">Major (Optional)</FormLabel>
+                  <Select size="sm" placeholder="All Majors" value={batchFilters.major_id} onChange={(e) => setBatchFilters({...batchFilters, major_id: e.target.value})}>
+                    {majors.filter(m => !batchFilters.program_id || String(m.program_id) === String(batchFilters.program_id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs">Specialization (Optional)</FormLabel>
+                  <Select size="sm" placeholder="All Specializations" value={batchFilters.specialization_id} onChange={(e) => setBatchFilters({...batchFilters, specialization_id: e.target.value})}>
+                    {specializations.filter(s => !batchFilters.program_id || String(s.program_id) === String(batchFilters.program_id)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </Select>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs">Minor (Optional)</FormLabel>
+                  <Select size="sm" placeholder="All Minors" value={batchFilters.minor_id} onChange={(e) => setBatchFilters({...batchFilters, minor_id: e.target.value})}>
+                    {minors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </Select>
+                </FormControl>
+              </SimpleGrid>
+
+              <Flex bg="blue.50" p={4} borderRadius="lg" align="center" justify="space-between" mb={8}>
+                <HStack spacing={4}>
+                  <Icon as={FaUsers} color="blue.600" boxSize={5} />
+                  <Box>
+                    <Text fontWeight="bold" color="blue.800">Target Students Identified</Text>
+                    <Text fontSize="sm" color="blue.600">These locks will apply to all students matching the filters above.</Text>
+                  </Box>
+                </HStack>
+                <Box textAlign="right">
+                  {counting ? <Spinner size="sm" /> : <Heading size="lg" color="blue.700">{batchCount}</Heading>}
+                  <Text fontSize="xs" fontWeight="bold" color="blue.600">STUDENTS</Text>
+                </Box>
+              </Flex>
+
+              <Divider mb={8} />
+
+              <Heading size="sm" mb={4} display="flex" align="center" gap={2}>
+                <Icon as={FaLock} color="red.500" /> 2. Set Lock Fields
+              </Heading>
+
+              <Box mb={8}>
+                <Text fontSize="xs" fontWeight="bold" mb={3} color="gray.500" textTransform="uppercase">Profile Sections</Text>
+                <SimpleGrid columns={{ base: 2, md: 4, lg: 6 }} spacing={4}>
+                  {SECTION_FIELDS.map(f => (
+                    <Checkbox 
+                      key={f.key} 
+                      colorScheme="red" 
+                      isChecked={batchLocks[f.key] === true} 
+                      onChange={(e) => setBatchLocks({...batchLocks, [f.key]: e.target.checked})}
+                    >
+                      <Text fontSize="sm">{f.label}</Text>
+                    </Checkbox>
+                  ))}
+                </SimpleGrid>
+              </Box>
+
+              <Box mb={8}>
+                <Text fontSize="xs" fontWeight="bold" mb={3} color="gray.500" textTransform="uppercase">Semester Records</Text>
+                <SimpleGrid columns={{ base: 4, md: 8 }} spacing={4}>
+                  {SEM_FIELDS.map(f => (
+                    <Checkbox 
+                      key={f.key} 
+                      colorScheme="red" 
+                      isChecked={batchLocks[f.key] === true} 
+                      onChange={(e) => setBatchLocks({...batchLocks, [f.key]: e.target.checked})}
+                    >
+                      <Text fontSize="sm">{f.label}</Text>
+                    </Checkbox>
+                  ))}
+                </SimpleGrid>
+              </Box>
+
+              <Box mb={8} maxW="500px">
+                <FormControl>
+                  <FormLabel fontSize="sm" fontWeight="bold">Lock Reason</FormLabel>
+                  <Input placeholder="Reason for batch lock (optional)" value={batchLocks.lock_reason || ''} onChange={(e) => setBatchLocks({...batchLocks, lock_reason: e.target.value})} />
+                </FormControl>
+              </Box>
+
+              <HStack spacing={4}>
+                <Button 
+                  colorScheme="red" 
+                  size="lg" 
+                  flex={1}
+                  leftIcon={<FaLock />} 
+                  isDisabled={batchCount === 0} 
+                  isLoading={batchApplying}
+                  onClick={() => handleBatchAction(true)}
+                >
+                  Lock Selected Sections ({batchCount})
+                </Button>
+                <Button 
+                  colorScheme="green" 
+                  size="lg" 
+                  flex={1}
+                  leftIcon={<FaUnlock />} 
+                  isDisabled={batchCount === 0} 
+                  isLoading={batchApplying}
+                  onClick={() => handleBatchAction(false)}
+                >
+                  Unlock Selected Sections ({batchCount})
+                </Button>
+              </HStack>
+            </Box>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </Box>
   );
 }

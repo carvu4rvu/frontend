@@ -53,6 +53,12 @@ import {
   AlertDescription,
   Progress,
   Tooltip,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverHeader,
+  PopoverBody,
+  PopoverCloseButton,
 } from '@chakra-ui/react';
 import { SearchIcon, ViewIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, AddIcon, DownloadIcon, AttachmentIcon } from '@chakra-ui/icons';
 import { MdViewColumn } from 'react-icons/md';
@@ -495,18 +501,18 @@ export const StudentEligibilityTab = () => {
         <Flex justify="center" py={8}><Spinner /></Flex>
       ) : (
         <>
-          <TableContainer overflowX="auto" mb={4}>
+          <TableContainer overflowX="auto" mb={4} maxH="600px" overflowY="auto">
             <Table variant="simple" size="sm">
-              <Thead bg="gray.50">
-                <Tr>
-                  <Th>School</Th>
-                  <Th>Program</Th>
-                  <Th>Joining Year</Th>
-                  <Th textAlign="center">Immersion</Th>
-                  <Th textAlign="center">Internship</Th>
-                  <Th textAlign="center">Capstone</Th>
-                  <Th textAlign="center">Placement</Th>
-                  <Th textAlign="center">Alumni conversion %</Th>
+              <Thead bg="gray.50" position="sticky" top={0} zIndex={10} shadow="sm">
+                <Tr bg="gray.50">
+                  <Th bg="gray.50">School</Th>
+                  <Th bg="gray.50">Program</Th>
+                  <Th bg="gray.50">Joining Year</Th>
+                  <Th bg="gray.50" textAlign="center">Immersion</Th>
+                  <Th bg="gray.50" textAlign="center">Internship</Th>
+                  <Th bg="gray.50" textAlign="center">Capstone</Th>
+                  <Th bg="gray.50" textAlign="center">Placement</Th>
+                  <Th bg="gray.50" textAlign="center">Alumni conversion %</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -767,6 +773,23 @@ export const IndividualStudentEligibilityTab = () => {
   const [searchDebounced, setSearchDebounced] = useState('');
   const [selectedUsns, setSelectedUsns] = useState(new Set());
   const [updating, setUpdating] = useState({});
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [total, setTotal] = useState(0);
+
+  const ELIGIBILITY_COLUMNS = [
+    { key: 'name', label: 'Name' },
+    { key: 'usn', label: 'USN' },
+    { key: 'email', label: 'Email' },
+    { key: 'school', label: 'School' },
+    { key: 'program', label: 'Program' },
+    { key: 'immersion', label: 'Immersion' },
+    { key: 'internship', label: 'Internship' },
+    { key: 'capstone', label: 'Capstone' },
+    { key: 'placement', label: 'Placement' },
+  ];
+  const [visibleColumns, setVisibleColumns] = useState(ELIGIBILITY_COLUMNS.map(c => c.key));
+
   const { isOpen: isBulkOpen, onOpen: onBulkOpen, onClose: onBulkClose } = useDisclosure();
   const [bulkEligibility, setBulkEligibility] = useState({
     is_summer_immersion_eligible: false,
@@ -778,7 +801,10 @@ export const IndividualStudentEligibilityTab = () => {
 
   // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => setSearchDebounced(filters.search), 400);
+    const t = setTimeout(() => {
+      setSearchDebounced(filters.search);
+      setPage(1);
+    }, 400);
     return () => clearTimeout(t);
   }, [filters.search]);
 
@@ -806,16 +832,18 @@ export const IndividualStudentEligibilityTab = () => {
         school_id: filters.school_id || undefined,
         program_id: filters.program_id || undefined,
         search: searchDebounced || undefined,
-        limit: 500
+        limit,
+        page
       };
       const data = await PlacementService.getStudentsEligibility(params);
       setStudents(data.students || []);
+      setTotal(data.total || 0);
     } catch (e) {
       toast({ title: 'Error fetching students', status: 'error' });
     } finally {
       setLoading(false);
     }
-  }, [filters.school_id, filters.program_id, searchDebounced, toast]);
+  }, [filters.school_id, filters.program_id, searchDebounced, limit, page, toast]);
 
   useEffect(() => {
     fetchStudents();
@@ -901,6 +929,40 @@ export const IndividualStudentEligibilityTab = () => {
               Update Selected ({selectedUsns.size})
             </Button>
           )}
+          
+          <Popover placement="bottom-end">
+            <PopoverTrigger>
+              <IconButton
+                size="sm"
+                variant="outline"
+                icon={<Icon as={MdViewColumn} />}
+                aria-label="Select Columns"
+              />
+            </PopoverTrigger>
+            <PopoverContent w="200px" p={4}>
+              <PopoverHeader fontWeight="bold" border="none">Select Columns</PopoverHeader>
+              <PopoverCloseButton />
+              <PopoverBody>
+                <VStack align="stretch">
+                  {ELIGIBILITY_COLUMNS.map(col => (
+                    <Checkbox
+                      key={col.key}
+                      isChecked={visibleColumns.includes(col.key)}
+                      onChange={() => {
+                        setVisibleColumns(prev => 
+                          prev.includes(col.key) 
+                            ? prev.filter(k => k !== col.key)
+                            : [...prev, col.key]
+                        );
+                      }}
+                    >
+                      {col.label}
+                    </Checkbox>
+                  ))}
+                </VStack>
+              </PopoverBody>
+            </PopoverContent>
+          </Popover>
         </HStack>
       </HStack>
 
@@ -941,95 +1003,131 @@ export const IndividualStudentEligibilityTab = () => {
       {loading ? (
         <Flex justify="center" py={8}><Spinner /></Flex>
       ) : (
-        <TableContainer overflowX="auto">
-          <Table variant="simple" size="sm">
-            <Thead bg="gray.50">
-              <Tr>
-                <Th w="40px">
-                  <Checkbox 
-                    isChecked={allSelected} 
-                    isIndeterminate={someSelected && !allSelected}
-                    onChange={handleSelectAll}
-                  />
-                </Th>
-                <Th>Name</Th>
-                <Th>USN</Th>
-                <Th>Email</Th>
-                <Th>School</Th>
-                <Th>Program</Th>
-                <Th textAlign="center">Immersion</Th>
-                <Th textAlign="center">Internship</Th>
-                <Th textAlign="center">Capstone</Th>
-                <Th textAlign="center">Placement</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {students.map((student) => (
-                <Tr key={student.usn} bg={selectedUsns.has(student.usn) ? 'blue.50' : undefined}>
-                  <Td>
+        <Box>
+          <TableContainer overflowX="auto" maxH="600px" overflowY="auto" mb={4}>
+            <Table variant="simple" size="sm">
+              <Thead bg="gray.50" position="sticky" top={0} zIndex={10} shadow="sm">
+                <Tr bg="gray.50">
+                  <Th bg="gray.50" w="40px">
                     <Checkbox 
-                      isChecked={selectedUsns.has(student.usn)}
-                      onChange={() => handleSelectStudent(student.usn)}
+                      isChecked={allSelected} 
+                      isIndeterminate={someSelected && !allSelected}
+                      onChange={handleSelectAll}
                     />
-                  </Td>
-                  <Td fontWeight="500">{student.full_name}</Td>
-                  <Td fontSize="sm" color="gray.600">{student.usn}</Td>
-                  <Td fontSize="sm" color="gray.600">{student.college_email}</Td>
-                  <Td fontSize="sm">{student.school_name}</Td>
-                  <Td fontSize="sm">{student.program_name}</Td>
-                  <Td textAlign="center">
-                    <Button
-                      size="xs"
-                      colorScheme={student.is_summer_immersion_eligible ? 'green' : 'red'}
-                      variant="solid"
-                      w="50px"
-                      isLoading={updating[`${student.usn}-is_summer_immersion_eligible`]}
-                      onClick={() => handleToggleEligibility(student.usn, 'is_summer_immersion_eligible', student.is_summer_immersion_eligible)}
-                    >
-                      {student.is_summer_immersion_eligible ? 'Yes' : 'No'}
-                    </Button>
-                  </Td>
-                  <Td textAlign="center">
-                    <Button
-                      size="xs"
-                      colorScheme={student.is_summer_internship_eligible ? 'green' : 'red'}
-                      variant="solid"
-                      w="50px"
-                      isLoading={updating[`${student.usn}-is_summer_internship_eligible`]}
-                      onClick={() => handleToggleEligibility(student.usn, 'is_summer_internship_eligible', student.is_summer_internship_eligible)}
-                    >
-                      {student.is_summer_internship_eligible ? 'Yes' : 'No'}
-                    </Button>
-                  </Td>
-                  <Td textAlign="center">
-                    <Button
-                      size="xs"
-                      colorScheme={student.is_capstone_eligible ? 'green' : 'red'}
-                      variant="solid"
-                      w="50px"
-                      isLoading={updating[`${student.usn}-is_capstone_eligible`]}
-                      onClick={() => handleToggleEligibility(student.usn, 'is_capstone_eligible', student.is_capstone_eligible)}
-                    >
-                      {student.is_capstone_eligible ? 'Yes' : 'No'}
-                    </Button>
-                  </Td>
-                  <Td textAlign="center">
-                    <Button
-                      size="xs"
-                      colorScheme={student.is_placement_eligible ? 'green' : 'red'}
-                      variant="solid"
-                      w="50px"
-                      isLoading={updating[`${student.usn}-is_placement_eligible`]}
-                      onClick={() => handleToggleEligibility(student.usn, 'is_placement_eligible', student.is_placement_eligible)}
-                    >
-                      {student.is_placement_eligible ? 'Yes' : 'No'}
-                    </Button>
-                  </Td>
+                  </Th>
+                  {visibleColumns.includes('name') && <Th bg="gray.50">Name</Th>}
+                  {visibleColumns.includes('usn') && <Th bg="gray.50">USN</Th>}
+                  {visibleColumns.includes('email') && <Th bg="gray.50">Email</Th>}
+                  {visibleColumns.includes('school') && <Th bg="gray.50">School</Th>}
+                  {visibleColumns.includes('program') && <Th bg="gray.50">Program</Th>}
+                  {visibleColumns.includes('immersion') && <Th bg="gray.50" textAlign="center">Immersion</Th>}
+                  {visibleColumns.includes('internship') && <Th bg="gray.50" textAlign="center">Internship</Th>}
+                  {visibleColumns.includes('capstone') && <Th bg="gray.50" textAlign="center">Capstone</Th>}
+                  {visibleColumns.includes('placement') && <Th bg="gray.50" textAlign="center">Placement</Th>}
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
+              </Thead>
+              <Tbody>
+                {students.map((student) => (
+                  <Tr key={student.usn} bg={selectedUsns.has(student.usn) ? 'blue.50' : undefined}>
+                    <Td>
+                      <Checkbox 
+                        isChecked={selectedUsns.has(student.usn)}
+                        onChange={() => handleSelectStudent(student.usn)}
+                      />
+                    </Td>
+                    {visibleColumns.includes('name') && <Td fontWeight="500">{student.full_name}</Td>}
+                    {visibleColumns.includes('usn') && <Td fontSize="sm" color="gray.600">{student.usn}</Td>}
+                    {visibleColumns.includes('email') && <Td fontSize="sm" color="gray.600">{student.college_email}</Td>}
+                    {visibleColumns.includes('school') && <Td fontSize="sm">{student.school_name}</Td>}
+                    {visibleColumns.includes('program') && <Td fontSize="sm">{student.program_name}</Td>}
+                    {visibleColumns.includes('immersion') && (
+                      <Td textAlign="center">
+                        <Button
+                          size="xs"
+                          colorScheme={student.is_summer_immersion_eligible ? 'green' : 'red'}
+                          variant="solid"
+                          w="50px"
+                          isLoading={updating[`${student.usn}-is_summer_immersion_eligible`]}
+                          onClick={() => handleToggleEligibility(student.usn, 'is_summer_immersion_eligible', student.is_summer_immersion_eligible)}
+                        >
+                          {student.is_summer_immersion_eligible ? 'Yes' : 'No'}
+                        </Button>
+                      </Td>
+                    )}
+                    {visibleColumns.includes('internship') && (
+                      <Td textAlign="center">
+                        <Button
+                          size="xs"
+                          colorScheme={student.is_summer_internship_eligible ? 'green' : 'red'}
+                          variant="solid"
+                          w="50px"
+                          isLoading={updating[`${student.usn}-is_summer_internship_eligible`]}
+                          onClick={() => handleToggleEligibility(student.usn, 'is_summer_internship_eligible', student.is_summer_internship_eligible)}
+                        >
+                          {student.is_summer_internship_eligible ? 'Yes' : 'No'}
+                        </Button>
+                      </Td>
+                    )}
+                    {visibleColumns.includes('capstone') && (
+                      <Td textAlign="center">
+                        <Button
+                          size="xs"
+                          colorScheme={student.is_capstone_eligible ? 'green' : 'red'}
+                          variant="solid"
+                          w="50px"
+                          isLoading={updating[`${student.usn}-is_capstone_eligible`]}
+                          onClick={() => handleToggleEligibility(student.usn, 'is_capstone_eligible', student.is_capstone_eligible)}
+                        >
+                          {student.is_capstone_eligible ? 'Yes' : 'No'}
+                        </Button>
+                      </Td>
+                    )}
+                    {visibleColumns.includes('placement') && (
+                      <Td textAlign="center">
+                        <Button
+                          size="xs"
+                          colorScheme={student.is_placement_eligible ? 'green' : 'red'}
+                          variant="solid"
+                          w="50px"
+                          isLoading={updating[`${student.usn}-is_placement_eligible`]}
+                          onClick={() => handleToggleEligibility(student.usn, 'is_placement_eligible', student.is_placement_eligible)}
+                        >
+                          {student.is_placement_eligible ? 'Yes' : 'No'}
+                        </Button>
+                      </Td>
+                    )}
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
+
+          {/* Pagination Controls */}
+          <Flex justify="space-between" align="center" fontSize="sm" color="gray.600">
+            <Text>
+              Showing {Math.min(total, (page - 1) * limit + 1)} to {Math.min(total, page * limit)} of {total} students
+            </Text>
+            <HStack spacing={2}>
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={page <= 1}
+                onClick={() => setPage(p => p - 1)}
+              >
+                Previous
+              </Button>
+              <Text fontWeight="medium">Page {page} of {Math.ceil(total / limit) || 1}</Text>
+              <Button
+                size="sm"
+                variant="outline"
+                isDisabled={page >= Math.ceil(total / limit)}
+                onClick={() => setPage(p => p + 1)}
+              >
+                Next
+              </Button>
+            </HStack>
+          </Flex>
+        </Box>
       )}
 
       {!loading && students.length === 0 && (
@@ -1112,6 +1210,7 @@ const ViewAllStudents = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const limit = 20;
+  const [isFiltering, setIsFiltering] = useState(false);
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
   const [schoolId, setSchoolId] = useState('');
@@ -1229,6 +1328,13 @@ const ViewAllStudents = () => {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  // Loading animation for filters
+  useEffect(() => {
+    setIsFiltering(true);
+    const timer = setTimeout(() => setIsFiltering(false), 300);
+    return () => clearTimeout(timer);
+  }, [search, schoolId, programId, yearOfJoining, isActive]);
 
   useEffect(() => {
     if (!isImportPhase2Open || importRows.length === 0) return;
@@ -1771,19 +1877,19 @@ const ViewAllStudents = () => {
             </CardBody>
           </Card>
 
-          {loading ? (
-            <Flex justify="center" align="center" minH="280px" bg="white" borderRadius="xl" shadow="sm">
-              <Spinner size="xl" color="blue.500" thickness="3px" />
-            </Flex>
-          ) : isMobile ? (
-            <SimpleGrid columns={1} spacing={4}>
-              {students.length === 0 ? (
-                <Box bg="white" p={10} borderRadius="xl" shadow="sm" textAlign="center" border="1px solid" borderColor="gray.100">
-                  <Text color="gray.500" fontSize="md">No students found.</Text>
-                  <Text color="gray.400" fontSize="sm" mt={2}>Try adjusting your filters.</Text>
-                </Box>
-              ) : (
-                students.map((s) => (
+          {isMobile ? (
+            (loading || isFiltering) ? (
+              <Flex justify="center" align="center" minH="280px" bg="white" borderRadius="xl" shadow="sm">
+                <Spinner size="xl" color="blue.500" thickness="3px" />
+              </Flex>
+            ) : students.length === 0 ? (
+              <Box bg="white" p={10} borderRadius="xl" shadow="sm" textAlign="center" border="1px solid" borderColor="gray.100">
+                <Text color="gray.500" fontSize="md">No students found.</Text>
+                <Text color="gray.400" fontSize="sm" mt={2}>Try adjusting your filters.</Text>
+              </Box>
+            ) : (
+              <SimpleGrid columns={1} spacing={4}>
+                {students.map((s) => (
                   <Card
                     key={s.usn}
                     shadow="sm"
@@ -1832,9 +1938,9 @@ const ViewAllStudents = () => {
                       </HStack>
                     </CardBody>
                   </Card>
-                ))
-              )}
-            </SimpleGrid>
+                ))}
+              </SimpleGrid>
+            )
           ) : (
             <TableContainer
               bg="white"
@@ -1856,7 +1962,18 @@ const ViewAllStudents = () => {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {students.length === 0 ? (
+                  {(loading || isFiltering) ? (
+                    <Tr>
+                      <Td colSpan={visibleTableColumns.length + 1} textAlign="center" py={12}>
+                        <VStack spacing={3}>
+                          <Spinner size="lg" color="blue.500" thickness="3px" />
+                          <Text color="gray.500" fontSize="sm" fontWeight="500">
+                            {loading ? 'Fetching students...' : 'Applying filters...'}
+                          </Text>
+                        </VStack>
+                      </Td>
+                    </Tr>
+                  ) : students.length === 0 ? (
                     <Tr>
                       <Td colSpan={visibleTableColumns.length + 1} textAlign="center" py={12} color="gray.500" fontSize="md">
                         No students found. Try adjusting your filters.

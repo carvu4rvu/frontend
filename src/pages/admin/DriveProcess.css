@@ -189,6 +189,15 @@
 .drive-process-page .process-row.malpractice-row:hover {
   background: #fee2e2 !important;
 }
+.drive-process-page .process-row.compliance-violation-row {
+  background: #fef2f2 !important;
+}
+.drive-process-page .process-row.compliance-violation-row:hover {
+  background: #fee2e2 !important;
+}
+.drive-process-page .process-row.compliance-violation-row td {
+  color: #991b1b !important;
+}
 
 /* Status pills */
 .drive-process-page .status-pill {

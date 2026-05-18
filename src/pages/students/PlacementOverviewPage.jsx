@@ -75,6 +75,7 @@ export default function PlacementOverviewPage() {
 
             <Tabs
               index={tabIndex}
+              isLazy
               onChange={(i) => {
                 setTabIndex(i);
                 const next = new URLSearchParams(searchParams);

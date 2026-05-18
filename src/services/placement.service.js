@@ -1,4 +1,13 @@
 import { apiFetch } from './api';
+import { getOrFetch, invalidateCache } from '../utils/placementCache';
+
+/** Dedupe concurrent identical student-list requests (e.g. React Strict Mode double mount). */
+const placementStudentsInflight = new Map();
+
+const DEFAULT_PAGE_SIZE = 50;
+
+let schoolsCache = null;
+let schoolsInflight = null;
 
 export const PlacementService = {
   /**
@@ -19,9 +28,22 @@ export const PlacementService = {
    * Get all active placement drives
    */
   getAllDrives: async () => {
+    return getOrFetch('placement', 'drives-all', async () => {
+      try {
+        const response = await apiFetch('/placement/drives');
+        return response.data || [];
+      } catch (_error) {
+        return [];
+      }
+    });
+  },
+
+  /** Lightweight USN list for students already on a drive (Add Students UI). */
+  getDriveRegistrationUsns: async (driveId) => {
     try {
-      const response = await apiFetch('/placement/drives');
-      return response.data || [];
+      const response = await apiFetch(`/placement/drives/${driveId}/registrations?usns_only=1`);
+      const data = response.data ?? {};
+      return Array.isArray(data.usns) ? data.usns : [];
     } catch (_error) {
       return [];
     }
@@ -48,12 +70,14 @@ export const PlacementService = {
   },
 
   getDriveEligibility: async (driveId) => {
-    try {
-      const response = await apiFetch(`/placement/drives/${driveId}/eligibility`);
-      return response.data ?? null;
-    } catch (_e) {
-      return null;
-    }
+    return getOrFetch('placement', `drive-eligibility-${driveId}`, async () => {
+      try {
+        const response = await apiFetch(`/placement/drives/${driveId}/eligibility`);
+        return response.data ?? null;
+      } catch (_e) {
+        return null;
+      }
+    });
   },
 
   upsertDriveEligibility: async (driveId, data) => {
@@ -61,6 +85,7 @@ export const PlacementService = {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    invalidateCache('placement', `drive-eligibility-${driveId}`);
     return response.data;
   },
 
@@ -138,12 +163,21 @@ export const PlacementService = {
   },
 
   getSchools: async () => {
-    try {
-      const response = await apiFetch('/student/schools');
-      return response.data ?? [];
-    } catch (_error) {
-      return [];
-    }
+    if (schoolsCache) return schoolsCache;
+    if (schoolsInflight) return schoolsInflight;
+    schoolsInflight = (async () => {
+      try {
+        const response = await apiFetch('/student/schools');
+        const data = response.data ?? [];
+        schoolsCache = data;
+        return data;
+      } catch (_error) {
+        return [];
+      } finally {
+        schoolsInflight = null;
+      }
+    })();
+    return schoolsInflight;
   },
 
   getPrograms: async (schoolId) => {
@@ -190,27 +224,83 @@ export const PlacementService = {
   },
 
   /** Get all students (for Add Students to Drive, Eligibility preview). Params: school_ids, program_ids, search, limit, opt_in_only, drive_id (includes academics + eligibility when set) */
-  getAllStudents: async (params = {}) => {
-    try {
-      const q = new URLSearchParams();
-      q.set('t', Date.now());
-      if (params.school_ids) {
-        const sids = Array.isArray(params.school_ids) ? params.school_ids.join(',') : params.school_ids;
-        if (sids) q.set('school_ids', sids);
-      }
-      if (params.program_ids) {
-        const pids = Array.isArray(params.program_ids) ? params.program_ids.join(',') : params.program_ids;
-        if (pids) q.set('program_ids', pids);
-      }
-      if (params.search) q.set('search', params.search);
-      if (params.limit) q.set('limit', params.limit);
-      if (params.opt_in_only) q.set('opt_in_only', '1');
-      if (params.drive_id != null) q.set('drive_id', params.drive_id);
-      const response = await apiFetch(`/placement/students?${q.toString()}`);
-      return response.data ?? [];
-    } catch (_error) {
-      return [];
+  getAllStudents: async (params = {}, options = {}) => {
+    const { _bustCache, ...queryParams } = params;
+    const cacheKey = JSON.stringify(queryParams);
+
+    if (!_bustCache && placementStudentsInflight.has(cacheKey)) {
+      return placementStudentsInflight.get(cacheKey);
     }
+
+    const run = (async () => {
+      try {
+        const q = new URLSearchParams();
+        if (_bustCache) q.set('t', String(Date.now()));
+        if (queryParams.school_ids) {
+          const sids = Array.isArray(queryParams.school_ids) ? queryParams.school_ids.join(',') : queryParams.school_ids;
+          if (sids) q.set('school_ids', sids);
+        }
+        if (queryParams.program_ids) {
+          const pids = Array.isArray(queryParams.program_ids) ? queryParams.program_ids.join(',') : queryParams.program_ids;
+          if (pids) q.set('program_ids', pids);
+        }
+        if (queryParams.search) q.set('search', queryParams.search);
+        q.set('page', String(queryParams.page != null ? queryParams.page : 1));
+        q.set('page_size', String(queryParams.page_size != null ? queryParams.page_size : DEFAULT_PAGE_SIZE));
+        if (queryParams.specialization_ids) {
+          const sp = Array.isArray(queryParams.specialization_ids) ? queryParams.specialization_ids.join(',') : queryParams.specialization_ids;
+          if (sp) q.set('specialization_ids', sp);
+        }
+        if (queryParams.major_ids) {
+          const mids = Array.isArray(queryParams.major_ids) ? queryParams.major_ids.join(',') : queryParams.major_ids;
+          if (mids) q.set('major_ids', mids);
+        }
+        if (queryParams.min_cgpa != null && queryParams.min_cgpa !== '') q.set('min_cgpa', queryParams.min_cgpa);
+        if (queryParams.max_cgpa != null && queryParams.max_cgpa !== '') q.set('max_cgpa', queryParams.max_cgpa);
+        if (queryParams.max_backlogs != null && queryParams.max_backlogs !== '') q.set('max_backlogs', queryParams.max_backlogs);
+        if (queryParams.max_backlog_history != null && queryParams.max_backlog_history !== '') q.set('max_backlog_history', queryParams.max_backlog_history);
+        if (queryParams.joining_years) q.set('joining_years', queryParams.joining_years);
+        if (queryParams.graduation_years) q.set('graduation_years', queryParams.graduation_years);
+        if (queryParams.opt_in_only) q.set('opt_in_only', '1');
+        if (queryParams.drive_id != null) q.set('drive_id', queryParams.drive_id);
+        if (queryParams.include_inactive) q.set('include_inactive', '1');
+        if (queryParams.exclude_admin_hold) q.set('exclude_admin_hold', '1');
+        if (queryParams.exclude_placement_violations) q.set('exclude_placement_violations', '1');
+        if (queryParams.exclude_disciplinary_records) q.set('exclude_disciplinary_records', '1');
+        if (queryParams.exclude_admin_override_hold) q.set('exclude_admin_override_hold', '1');
+        if (queryParams.exclude_already_added) q.set('exclude_already_added', '1');
+
+        const response = await apiFetch(`/placement/students?${q.toString()}`, { signal: options.signal });
+        const payload = response.data;
+        if (payload && Array.isArray(payload.students)) {
+          return {
+            students: payload.students,
+            total: payload.total ?? payload.students.length,
+            page: payload.page ?? 1,
+            pageSize: payload.pageSize ?? DEFAULT_PAGE_SIZE,
+            totalPages: payload.totalPages ?? 1,
+          };
+        }
+        if (Array.isArray(payload)) {
+          return {
+            students: payload,
+            total: payload.length,
+            page: 1,
+            pageSize: payload.length,
+            totalPages: 1,
+          };
+        }
+        return { students: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 1 };
+      } catch (error) {
+        if (error?.name === 'AbortError' || error?.code === 'ABORT_ERR') return null;
+        return { students: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 1 };
+      } finally {
+        placementStudentsInflight.delete(cacheKey);
+      }
+    })();
+
+    if (!_bustCache) placementStudentsInflight.set(cacheKey, run);
+    return run;
   },
 
   /** Search students by USN, email, or name (for Add Violation) */
@@ -231,10 +321,11 @@ export const PlacementService = {
     const q = new URLSearchParams();
     if (params.search) q.set('search', params.search);
     if (params.limit) q.set('limit', params.limit);
+    if (params.page) q.set('page', params.page);
     if (params.school) q.set('school', params.school);
     if (params.program) q.set('program', params.program);
     const response = await apiFetch(`/placement/students/overview-table${q.toString() ? `?${q}` : ''}`);
-    return response.data ?? { rows: [], roundColumns: [] };
+    return response.data ?? { rows: [], roundColumns: [], total: 0 };
   },
 
   /** Get student process list for a student (their applications) */
@@ -320,16 +411,18 @@ export const PlacementService = {
    * Use getCompaniesWithSchools() for Companies page to get { companies, schoolsList }.
    */
   getAllCompanies: async (opts) => {
-    try {
-      const schoolId = opts?.schoolId ?? opts?.school_id;
-      const params = schoolId != null ? `?school_id=${schoolId}` : '';
-      const response = await apiFetch('/placement/companies' + params);
-      const data = response.data ?? {};
-      // Backward compat: return companies array for existing callers
-      return (data.companies && Array.isArray(data.companies)) ? data.companies : (Array.isArray(data) ? data : []);
-    } catch (_error) {
-      return [];
-    }
+    const schoolId = opts?.schoolId ?? opts?.school_id;
+    const cacheKey = `companies-${schoolId ?? 'all'}`;
+    return getOrFetch('placement', cacheKey, async () => {
+      try {
+        const params = schoolId != null ? `?school_id=${schoolId}` : '';
+        const response = await apiFetch('/placement/companies' + params);
+        const data = response.data ?? {};
+        return (data.companies && Array.isArray(data.companies)) ? data.companies : (Array.isArray(data) ? data : []);
+      } catch (_error) {
+        return [];
+      }
+    });
   },
 
   /**
@@ -1046,6 +1139,7 @@ export const PlacementService = {
     if (params.program_id) qs.set('program_id', params.program_id);
     if (params.search) qs.set('search', params.search);
     if (params.limit) qs.set('limit', params.limit);
+    if (params.page) qs.set('page', params.page);
     const response = await apiFetch(`/placement/students/eligibility${qs.toString() ? `?${qs}` : ''}`);
     return response.data;
   },
@@ -1070,10 +1164,31 @@ export const PlacementService = {
 
   // ========== Student Edit Control (Profile Locks) ==========
 
-  /** Get all students with student_edit_control flags (admin). */
-  getStudentProfileLocks: async () => {
-    const response = await apiFetch('/placement/students/profile-locks');
-    return response.data ?? { rows: [] };
+  /** Get students with student_edit_control flags (admin). Params: page, limit, search */
+  getStudentProfileLocks: async (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', params.page);
+    if (params.limit) qs.set('limit', params.limit);
+    if (params.search) qs.set('search', params.search);
+    const response = await apiFetch(`/placement/students/profile-locks${qs.toString() ? `?${qs}` : ''}`);
+    return response.data ?? { rows: [], total: 0, page: 1, totalPages: 0 };
+  },
+
+  /** Get count of students matching batch lock filters */
+  getBatchLockCount: async (filters = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v) qs.set(k, v); });
+    const response = await apiFetch(`/placement/students/profile-locks/batch-count${qs.toString() ? `?${qs}` : ''}`);
+    return response.data?.count ?? 0;
+  },
+
+  /** Update lock flags for a batch of students */
+  batchUpdateProfileLocks: async (filters, locks) => {
+    const response = await apiFetch('/placement/students/profile-locks/batch-update', {
+      method: 'POST',
+      body: JSON.stringify({ filters, locks }),
+    });
+    return response.data;
   },
 
   /** Sync missing student_edit_control rows (admin). */

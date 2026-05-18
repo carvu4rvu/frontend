@@ -538,7 +538,7 @@ const Violations = () => {
                 _hover={{ bg: 'whiteAlpha.700' }}
                 color="gray.600"
               >
-                Eligibility Decision Logs
+                Eligibility Decision Logs (admin override)
               </Tab>
               <Tab
                 borderRadius="md"

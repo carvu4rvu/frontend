@@ -58,6 +58,9 @@ export const apiFetch = async (endpoint, options = {}) => {
     console.log('[apiFetch] SUCCESS', { url, status: response.status });
     return { ok: true, json: async () => data, data };
   } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'ABORT_ERR') {
+      throw error;
+    }
     // Network unreachable (e.g. backend not running) → friendlier message, log once per session
     if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message === 'Load failed')) {
       if (!networkErrorWarnedOnce) {

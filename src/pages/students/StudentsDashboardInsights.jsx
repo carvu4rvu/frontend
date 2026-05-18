@@ -59,6 +59,8 @@ export default function StudentsDashboardInsights() {
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [schoolsList, setSchoolsList] = useState([]);
+  /** Exact opted-in count from API (rows may be capped by limit). */
+  const [totalOptedIn, setTotalOptedIn] = useState(0);
   const [loading, setLoading] = useState(true);
   const chartRefs = useRef({});
 
@@ -68,8 +70,14 @@ export default function StudentsDashboardInsights() {
     PlacementService.getStudentsOverviewTable({ limit: 5000 })
       .then((data) => {
         if (!cancelled) {
-          setRows(data.rows || []);
+          // data contains { rows, roundColumns, total, schoolsList } — use total for headline count (same as Placement overview table)
+          const list = data.rows || [];
+          setRows(list);
           setSchoolsList(data.schoolsList || []);
+          const apiTotal = data.total;
+          setTotalOptedIn(
+            typeof apiTotal === 'number' && !Number.isNaN(apiTotal) ? apiTotal : list.length
+          );
         }
       })
       .catch((err) => {
@@ -77,6 +85,7 @@ export default function StudentsDashboardInsights() {
           toast({ title: 'Failed to load insights', description: err?.message, status: 'error', isClosable: true });
           setRows([]);
           setSchoolsList([]);
+          setTotalOptedIn(0);
         }
       })
       .finally(() => {
@@ -86,7 +95,7 @@ export default function StudentsDashboardInsights() {
   }, [toast]);
 
   const stats = useMemo(() => {
-    const total = rows.length;
+    const total = totalOptedIn > 0 ? totalOptedIn : rows.length;
     const totalOffers = rows.reduce((acc, r) => acc + (r.offers_count ?? 0), 0);
     const totalInternshipOffers = rows.reduce((acc, r) => acc + (r.internship_offers ?? 0), 0);
     const placedStudents = rows.filter((r) => (r.offers_count ?? 0) > 0).length;
@@ -104,7 +113,7 @@ export default function StudentsDashboardInsights() {
       total, totalOffers, totalInternshipOffers, placedStudents, maxCTC, placementRate,
       totalDrivesAbsent, placementViolations, disciplinary, adminHold, malpractice,
     };
-  }, [rows]);
+  }, [rows, totalOptedIn]);
 
   const schoolOfferData = useMemo(() => {
     const names = (schoolsList || []).map((s) => s.name);
@@ -131,7 +140,7 @@ export default function StudentsDashboardInsights() {
   }, [rows]);
 
   const funnelData = useMemo(() => {
-    const total = rows.length;
+    const total = totalOptedIn > 0 ? totalOptedIn : rows.length;
     const applied = rows.filter((r) => (r.drives_applied ?? 0) > 0).length;
     const oaPassed = rows.filter((r) => (r.oas_passed ?? 0) > 0).length;
     const interviewed = rows.filter((r) => (r.interview_passed ?? 0) > 0).length;
@@ -140,7 +149,7 @@ export default function StudentsDashboardInsights() {
       labels: ['Total', 'Applied', 'OA Passed', 'Interviewed', 'Placed'],
       data: [total, applied, oaPassed, interviewed, placed],
     };
-  }, [rows]);
+  }, [rows, totalOptedIn]);
 
   const topPrograms = useMemo(() => {
     const map = {};

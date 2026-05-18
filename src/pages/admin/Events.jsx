@@ -58,6 +58,7 @@ const TABLE_COLUMNS = [
   { id: 'compensation', label: 'Compensation Details' },
   { id: 'important_dates', label: 'Important Dates' },
   { id: 'openings_reg', label: 'Openings/Reg' },
+  { id: 'placement_status', label: 'Status' },
   { id: 'actions', label: 'Actions' },
 ];
 
@@ -131,6 +132,16 @@ const Events = () => {
   const isManualPlacementStatus = (status) => {
     const s = String(status || '').toLowerCase();
     return s === 'cancelled' || s === 'postponed';
+  };
+
+  const getStatusColor = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'scheduled' || s === 'upcoming' || s === 'open') return 'blue';
+    if (s === 'ongoing') return 'yellow';
+    if (s === 'completed' || s === 'closed') return 'green';
+    if (s === 'cancelled' || s === 'failed') return 'red';
+    if (s === 'postponed') return 'orange';
+    return 'gray';
   };
 
   // Value to show for CTC (calculated or stored) for use in strings/cards
@@ -403,7 +414,16 @@ const Events = () => {
       job_description: drive.job_description || '',
       job_type: drive.job_type || '',
       job_location: drive.job_location || '',
-      event_datetime: drive.event_datetime ? new Date(drive.event_datetime).toISOString().slice(0, 16) : '',
+      event_datetime: drive.event_datetime ? (() => {
+        const d = new Date(drive.event_datetime);
+        // Adjust for IST (UTC+5:30) specifically if needed, or just use browser local
+        // Since the user wants "Indian time both side", we can force IST if we want, 
+        // but browser local is usually what's expected for datetime-local.
+        // To get YYYY-MM-DDTHH:mm in local time:
+        const offset = d.getTimezoneOffset();
+        const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+        return localDate.toISOString().slice(0, 16);
+      })() : '',
       last_date_to_registration: drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toISOString().slice(0, 10) : '',
       type_of_hiring: drive.type_of_hiring || '',
       process_rounds: Array.isArray(drive.process_rounds) ? drive.process_rounds : [],
@@ -457,8 +477,16 @@ const Events = () => {
     }
 
     const num = (v) => { const n = parseInt(v, 10); return Number.isNaN(n) ? null : n; };
+    
+    // Ensure event_datetime is sent with IST offset if it doesn't have one
+    let formattedEventDatetime = newEvent.event_datetime;
+    if (formattedEventDatetime && !formattedEventDatetime.includes('Z') && !formattedEventDatetime.includes('+')) {
+      formattedEventDatetime = `${formattedEventDatetime}:00+05:30`;
+    }
+
     const payload = {
       ...newEvent,
+      event_datetime: formattedEventDatetime,
       company_id: num(newEvent.company_id),
       number_of_openings: newEvent.number_of_openings === '' ? null : num(newEvent.number_of_openings),
       year: num(newEvent.year),
@@ -533,7 +561,9 @@ const Events = () => {
               <Box className="company-logo">{(drive.company_name || ' ')[0]}</Box>
               <Flex flexDirection="column">
                 <Box className="company-name">{drive.company_name || '—'}</Box>
-                <Box className="company-remarks line-clamp-2">"{drive.company_remarks || ''}"</Box>
+                {drive.company_remarks && (
+                  <Box className="company-remarks line-clamp-2">"{drive.company_remarks}"</Box>
+                )}
                 <Box className="company-tpo">TPO: {(drive.tpo || '').toUpperCase()}</Box>
               </Flex>
             </Flex>
@@ -588,10 +618,10 @@ const Events = () => {
         return (
           <Box fontSize="11px">
             <Flex as="p" alignItems="center" gap={1} color="gray.600" fontWeight="bold" textTransform="uppercase" letterSpacing="tighter">
-              <Box as={MdCalendarToday} boxSize={3} /> Drive: {drive.event_datetime ? new Date(drive.event_datetime).toLocaleDateString() : '—'}
+              <Box as={MdCalendarToday} boxSize={3} /> Drive: {drive.event_datetime ? new Date(drive.event_datetime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
             </Flex>
             <Flex as="p" alignItems="center" gap={1} color="red.400" fontWeight="bold" mt={1} letterSpacing="tighter" textTransform="uppercase">
-              <Box as={MdHourglassEmpty} boxSize={3} /> Reg: {drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString() : '—'}
+              <Box as={MdHourglassEmpty} boxSize={3} /> Reg: {drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
             </Flex>
           </Box>
         );
@@ -608,6 +638,14 @@ const Events = () => {
               <Text fontSize="10px" color="gray.500" textTransform="uppercase" fontWeight="bold">Seats</Text>
             </Box>
           </Flex>
+        );
+      case 'placement_status':
+        const status = drive.placement_status || 'Scheduled';
+        const color = getStatusColor(status);
+        return (
+          <Badge colorScheme={color} variant="subtle" px={2} py={1} borderRadius="md" textTransform="uppercase" fontSize="10px" fontWeight="bold">
+            {status}
+          </Badge>
         );
       case 'actions':
         const driveStatus = (drive.placement_status || 'Scheduled').toLowerCase();
@@ -651,6 +689,7 @@ const Events = () => {
   useEffect(() => {
     const tabDrives = drives.filter(d => {
       const s = (d.placement_status || 'Scheduled').toLowerCase();
+      if (statusTab === 'all') return true;
       if (statusTab === 'upcoming') return s === 'scheduled' || s === 'open';
       if (statusTab === 'ongoing') return s === 'ongoing';
       if (statusTab === 'completed') return s === 'completed' || s === 'closed';
@@ -715,6 +754,7 @@ const Events = () => {
   // Derive filter options from current tab drives (match HTML)
   const drivesByStatus = drives.filter(drive => {
     const s = (drive.placement_status || 'Scheduled').toLowerCase();
+    if (statusTab === 'all') return true;
     if (statusTab === 'upcoming') return s === 'scheduled' || s === 'open';
     if (statusTab === 'ongoing') return s === 'ongoing';
     if (statusTab === 'completed') return s === 'completed' || s === 'closed';
@@ -834,8 +874,8 @@ const Events = () => {
       case 'variable_pct': return ctc.variable ?? '';
       case 'stock': return ctc.stock ?? '';
       case 'stipend': return (stipend.avg || stipend.min || stipend.max) != null ? `₹${parseInt(stipend.avg || stipend.min || stipend.max || 0, 10).toLocaleString()}` : '';
-      case 'drive_date': return drive.event_datetime ? new Date(drive.event_datetime).toLocaleDateString() : '';
-      case 'registration_deadline': return drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString() : '';
+      case 'drive_date': return drive.event_datetime ? new Date(drive.event_datetime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
+      case 'registration_deadline': return drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
       case 'registrations_count': return registeredCount(drive) ?? '';
       case 'number_of_openings': return drive.number_of_openings ?? '';
       case 'job_type': return drive.job_type || '';
@@ -914,8 +954,9 @@ const Events = () => {
         </Box>
 
         <Box as="main" className="placement-events-main">
-          {/* Tabs: Upcoming, Ongoing, Completed, Failed/Cancelled, Postponed */}
+          {/* Tabs: All Drives, Upcoming, Ongoing, Completed, Failed/Cancelled, Postponed */}
           <div className="placement-events-tabs">
+            <button type="button" className={statusTab === 'all' ? 'tab-active' : ''} onClick={() => setStatusTab('all')}>All Drives</button>
             <button type="button" className={statusTab === 'upcoming' ? 'tab-active' : ''} onClick={() => setStatusTab('upcoming')}>Upcoming Drives</button>
             <button type="button" className={statusTab === 'ongoing' ? 'tab-active' : ''} onClick={() => setStatusTab('ongoing')}>Ongoing Drives</button>
             <button type="button" className={statusTab === 'completed' ? 'tab-active' : ''} onClick={() => setStatusTab('completed')}>Completed</button>
@@ -979,12 +1020,19 @@ const Events = () => {
                   ) : (
                     filteredDrives.map((drive) => {
                       const isHighlighted = new URLSearchParams(location.search).get('highlight') === String(drive.id);
+                      const statusColor = getStatusColor(drive.placement_status);
+                      const rowBg = isHighlighted ? `${statusColor}.100` : `${statusColor}.50`;
+                      const hoverBg = isHighlighted ? `${statusColor}.200` : `${statusColor}.100`;
+
                       return (
                         <Tr
                           key={drive.id}
                           id={`drive-${drive.id}`}
-                          bg={isHighlighted ? 'blue.50' : 'white'}
-                          _hover={{ bg: isHighlighted ? 'blue.100' : '#f8fafc', cursor: 'pointer' }}
+                          bg={statusTab === 'all' ? rowBg : (isHighlighted ? 'blue.50' : 'white')}
+                          _hover={{ 
+                            bg: statusTab === 'all' ? hoverBg : (isHighlighted ? 'blue.100' : '#f8fafc'), 
+                            cursor: 'pointer' 
+                          }}
                           transition="background 0.15s ease"
                           onClick={() => navigate(`/placement/events/${drive.id}/process`)}
                         >
@@ -1051,9 +1099,13 @@ const Events = () => {
                         </Box>
                       </Flex>
                       <Box pt={4} borderTop="1px solid" borderColor="gray.100">
-                        <Text fontSize="10px" fontWeight="bold" color="gray.400" textTransform="uppercase" mb={1}>Company Remarks</Text>
-                        <Text fontSize="xs" color="gray.500" className="line-clamp-2" fontStyle="italic">"{drive.company_remarks || '—'}"</Text>
-                        <Text fontSize="9px" fontWeight="bold" color="blue.500" textTransform="uppercase" letterSpacing="wider" mt={2}>Lead TPO: {drive.tpo || '—'}</Text>
+                        {drive.company_remarks && (
+                          <>
+                            <Text fontSize="10px" fontWeight="bold" color="gray.400" textTransform="uppercase" mb={1}>Company Remarks</Text>
+                            <Text fontSize="xs" color="gray.500" className="line-clamp-2" fontStyle="italic" mb={2}>"{drive.company_remarks}"</Text>
+                          </>
+                        )}
+                        <Text fontSize="9px" fontWeight="bold" color="blue.500" textTransform="uppercase" letterSpacing="wider">Lead TPO: {drive.tpo || '—'}</Text>
                       </Box>
                     </Box>
                     <Flex justify="space-between" align="center" pt={4} mt={6} borderTop="1px solid" borderColor="gray.100">

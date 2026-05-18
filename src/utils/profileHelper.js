@@ -1,6 +1,6 @@
 /**
  * Profile completion: average of all section percentages (0–100).
- * Eligibility for opt-in placement: 95% completion and batch/academy allows placement for that batch.
+ * Eligibility for opt-in placement: Batch/academy allows placement for that batch.
  */
 
 /** Check if a string has meaningful content (not empty, not placeholder) */
@@ -97,8 +97,9 @@ export const getMissingSections = (profile) => {
 };
 
 /**
- * Overall profile completion = average of all section percentages (no extra formula).
- * Rounded and clamped to 0–100.
+ * Overall profile completion = weighted average of all sections.
+ * Mandatory sections carry more weight. Growth sections (projects, internships, etc.)
+ * carry less weight so they don't block 95% completion for students who don't have them.
  */
 export const calculateProfileCompletion = (profile) => {
   if (!profile) return 0;
@@ -109,16 +110,36 @@ export const calculateProfileCompletion = (profile) => {
     parents: profile.parents ?? profile.family ?? []
   };
 
-  const sectionPcts = [];
+  // Define weights for each section (Total weight = 100)
+  // ONLY the 5 core sections contribute to the 100% completion.
+  // Growth sections (Projects, Internships, etc.) do NOT add weight as per user request.
+  const weights = {
+    personal: 20,
+    communication: 20,
+    career: 20,
+    education: 20,
+    academics: 20,
+    // All others are 0 weight
+    parents: 0,
+    projects: 0,
+    internships: 0,
+    trainings: 0,
+    certifications: 0,
+    extraCurricular: 0,
+    publications: 0,
+    otherExperiences: 0
+  };
+
+  let weightedSum = 0;
   for (const sectionId of PROFILE_SECTION_IDS) {
     const pct = calculateSectionCompletion(sectionId, normalized);
-    sectionPcts.push(pct);
+    const weight = weights[sectionId] || 0;
+    weightedSum += (pct / 100) * weight;
   }
 
-  const n = sectionPcts.length;
-  if (n === 0) return 0;
-  const average = sectionPcts.reduce((a, b) => a + b, 0) / n;
-  return Math.round(Math.max(0, Math.min(100, average)));
+  // With these weights, total possible is > 100, which is fine, we clamp it.
+  // This allows students to reach 95% without having every single optional section.
+  return Math.round(Math.max(0, Math.min(100, weightedSum)));
 };
 
   /**
@@ -138,7 +159,7 @@ export const calculateProfileCompletion = (profile) => {
     if (sectionData == null && (sectionName === 'otherExperiences' || sectionName === 'other')) sectionData = data.otherExperiences ?? data.other;
     if (sectionData == null) sectionData = data;
 
-    // Career: weighted by the 5 form fields only (resume has its own section)
+    // Career: weighted by the 5 form fields + resume_file
     if (sectionName === 'career') {
       const d = sectionData || {};
       const fields = [
@@ -153,7 +174,12 @@ export const calculateProfileCompletion = (profile) => {
         const val = (d[key] ?? d[snake] ?? '').toString().trim();
         if (val.length >= min) passed++;
       });
-      const total = fields.length; // 5 fields only
+      
+      // Also check for resume_file (can be in career object or top level)
+      const resume = (d.resume_file ?? data.resume_file ?? '').toString().trim();
+      if (hasRealResume(resume)) passed++;
+
+      const total = fields.length + 1; // 5 fields + resume
       return total > 0 ? Math.round((passed / total) * 100) : 0;
     }
 
@@ -185,76 +211,74 @@ export const calculateProfileCompletion = (profile) => {
       personal: [
         { key: 'fullName', check: (d) => !!(d.fullName || d.full_name) },
         { key: 'usn', check: (d) => !!d.usn },
-        { key: 'email', check: (d) => !!(d.college_email || d.personal_email || d.personalEmail || d.collegeEmail || d.email) },
-        { key: 'phone', check: (d) => !!(d.phone_number || d.phoneNumber || d.mobile) }
+        { key: 'gender', check: (d) => !!d.gender },
+        { key: 'dob', check: (d) => !!(d.dateOfBirth || d.date_of_birth) },
+        { key: 'blood', check: (d) => !!(d.bloodGroup || d.blood_group) }
       ],
       communication: [
-        // API contact has collegeEmail, personalEmail, phoneNumber (no address/city)
-        { key: 'email', check: (d) => !!(d.collegeEmail || d.personal_email || d.personalEmail || d.college_email) },
+        // API contact has collegeEmail, personalEmail, phoneNumber
+        { key: 'pEmail', check: (d) => !!(d.personal_email || d.personalEmail) },
         { key: 'phone', check: (d) => !!(d.phoneNumber || d.phone_number) }
       ],
       contact: [
-        // Same as communication - contact section uses email and phone
-        { key: 'email', check: (d) => !!(d.collegeEmail || d.personal_email || d.personalEmail || d.college_email) },
+        // Same as communication
+        { key: 'pEmail', check: (d) => !!(d.personal_email || d.personalEmail) },
         { key: 'phone', check: (d) => !!(d.phoneNumber || d.phone_number) }
       ],
-      education: null, // Handled by custom weighted logic below
+      education: null, // Handled by custom weighted logic
       parents: [
-        { key: 'hasEntry', check: (d) => (Array.isArray(d) ? d : []).length > 0 },
-        { key: 'hasName', check: (d) => (Array.isArray(d) ? d : []).some((p) => !!(p?.name || p?.full_name)) },
-        { key: 'hasContact', check: (d) => (Array.isArray(d) ? d : []).some((p) => !!(p?.email || p?.phone_number || p?.phoneNumber)) }
-      ],
-      family: [
-        // Alias for parents - family section uses parents data
-        { key: 'hasEntry', check: (d) => (Array.isArray(d) ? d : (d?.parents || [])).length > 0 },
         { key: 'hasName', check: (d) => {
           const arr = Array.isArray(d) ? d : (d?.parents || []);
           return arr.some((p) => !!(p?.name || p?.full_name));
-        }},
-        { key: 'hasContact', check: (d) => {
+        }}
+      ],
+      family: [
+        { key: 'hasName', check: (d) => {
           const arr = Array.isArray(d) ? d : (d?.parents || []);
-          return arr.some((p) => !!(p?.email || p?.phone_number || p?.phoneNumber));
+          return arr.some((p) => !!(p?.name || p?.full_name));
         }}
       ]
     };
 
     // Education: at least 2 complete entries required (e.g. 10th + 12th, or 10th + diploma, or any 2).
-    // 80% weight for marksheet, 20% for key fields; 100% only when ≥2 entries have both.
+    // 50% weight for marksheet, 50% for key fields.
     const MIN_EDUCATION_ENTRIES = 2;
     if (sectionName === 'education') {
-      const arr = Array.isArray(sectionData) ? sectionData : [];
+      // Handle both flat array and nested object { education_history: [] }
+      const arr = Array.isArray(sectionData) 
+        ? sectionData 
+        : (Array.isArray(sectionData?.education_history) ? sectionData.education_history : []);
+        
       if (arr.length === 0) return 0;
-      const withMarksheet = (e) => !!(e?.marksheet_file || e?.proofFile);
+      const withMarksheet = (e) => !!(e?.marksheet_file || e?.proofFile || e?.marksheetFile || e?.proof_file);
       const withKeyFields = (e) =>
         !!(e?.education_level || e?.educationLevel) &&
         !!(e?.institute_name || e?.instituteName) &&
         (e?.year_of_passing != null || e?.yearOfPassing != null) &&
         String(e?.result ?? '').trim() !== '';
-      const completeEntries = arr.filter((e) => withMarksheet(e) && withKeyFields(e));
-      const completeCount = completeEntries.length;
-      if (completeCount >= MIN_EDUCATION_ENTRIES) {
-        const imageScore = (arr.filter(withMarksheet).length / arr.length) * 80;
-        const fieldsScore = (arr.filter(withKeyFields).length / arr.length) * 20;
-        return Math.round(imageScore + fieldsScore);
-      }
-      if (completeCount === 0) {
-        const imageScore = (arr.filter(withMarksheet).length / arr.length) * 80;
-        const fieldsScore = (arr.filter(withKeyFields).length / arr.length) * 20;
-        return Math.round((imageScore + fieldsScore) * (completeCount / MIN_EDUCATION_ENTRIES));
-      }
-      // 1 complete entry: cap at 50% (1 of 2 required)
-      return 50;
+
+      const imageScore = (arr.filter(withMarksheet).length / arr.length) * 50;
+      const fieldsScore = (arr.filter(withKeyFields).length / arr.length) * 50;
+      const baseScore = Math.round(imageScore + fieldsScore);
+
+      const completeCount = arr.filter((e) => withKeyFields(e)).length;
+      if (completeCount >= MIN_EDUCATION_ENTRIES) return baseScore;
+      
+      // If they have 1 complete entry (common for some direct entry students), they get a high score
+      if (completeCount === 1) return Math.round(baseScore * 0.9);
+      
+      return Math.round(baseScore * 0.5);
     }
 
-    // Academics: 80% marksheets, 20% other fields. Based on current semester - count expected vs uploaded.
+    // Academics: 50% marksheets, 50% other fields. Based on current semester - count expected vs uploaded.
     if (sectionName === 'academics') {
       const arr = Array.isArray(sectionData) ? sectionData : [];
       const personal = data?.personal || {};
-      const rawCurrent = personal?.currentSemester ?? personal?.current_semester ?? data?.currentSemester;
+      const rawCurrent = personal?.currentSemester ?? personal?.current_semester ?? data?.currentSemester ?? data?.current_semester;
       const currentSemester = rawCurrent != null && rawCurrent !== '' ? parseInt(rawCurrent, 10) : NaN;
 
       const hasMarksheet = (e) => {
-        const links = e?.provisional_result_upload_links ?? e?.resultUploadLink;
+        const links = e?.provisional_result_upload_links ?? e?.resultUploadLink ?? e?.marksheet_file;
         if (Array.isArray(links) && links.length > 0) return true;
         if (typeof links === 'string' && links.trim()) return true;
         return false;
@@ -280,8 +304,8 @@ export const calculateProfileCompletion = (profile) => {
           if (item && hasMarksheet(item)) uploadedCount++;
           if (item && hasKeyFields(item)) fieldsCompleteCount++;
         }
-        const imageScore = (uploadedCount / expectedCount) * 80;
-        const fieldsScore = (fieldsCompleteCount / expectedCount) * 20;
+        const imageScore = (uploadedCount / expectedCount) * 50;
+        const fieldsScore = (fieldsCompleteCount / expectedCount) * 50;
         return Math.round(imageScore + fieldsScore);
       }
 
@@ -289,8 +313,8 @@ export const calculateProfileCompletion = (profile) => {
       if (arr.length === 0) return 0;
       const withMarksheet = arr.filter(hasMarksheet);
       const withKeyFields = arr.filter(hasKeyFields);
-      const imageScore = (withMarksheet.length / arr.length) * 80;
-      const fieldsScore = (withKeyFields.length / arr.length) * 20;
+      const imageScore = (withMarksheet.length / arr.length) * 50;
+      const fieldsScore = (withKeyFields.length / arr.length) * 50;
       return Math.round(imageScore + fieldsScore);
     }
 

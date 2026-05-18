@@ -703,13 +703,13 @@ const DriveDetails = () => {
                       <DetailRow 
                         icon={MdEvent} 
                         label="Drive Date" 
-                        value={drive.event_datetime ? new Date(drive.event_datetime).toLocaleString() : 'TBD'} 
+                        value={drive.event_datetime ? new Date(drive.event_datetime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'TBD'} 
                         highlight
                       />
                       <DetailRow 
                         icon={MdAccessTime} 
                         label="Reg. Deadline" 
-                        value={drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString() : 'TBD'} 
+                        value={drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'TBD'} 
                         color="red.300"
                       />
                     </VStack>
@@ -791,11 +791,11 @@ const DriveDetails = () => {
                       <DetailRow icon={MdBook} label="TPO" value={drive.tpo} />
                       <DetailRow icon={MdDateRange} label="Year" value={drive.year} />
                       <DetailRow icon={MdPeople} label="Registrations" value={drive.number_of_registrations} />
-                      <DetailRow icon={MdDateRange} label="Onboarded Date" value={drive.onboarded_date ? new Date(drive.onboarded_date).toLocaleDateString() : 'TBD'} />
+                      <DetailRow icon={MdDateRange} label="Onboarded Date" value={drive.onboarded_date ? new Date(drive.onboarded_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'TBD'} />
                       <DetailRow icon={MdCheckCircle} label="Offer Letter Status" value={drive.offer_letter_status || '-'} />
                       <DetailRow icon={MdPeople} label="No Shortlisted" value={drive.no_shortlisted} />
-                      <DetailRow icon={MdInfo} label="Created At" value={drive.created_at ? new Date(drive.created_at).toLocaleString() : '-'} />
-                      <DetailRow icon={MdInfo} label="Updated At" value={drive.updated_at ? new Date(drive.updated_at).toLocaleString() : '-'} />
+                      <DetailRow icon={MdInfo} label="Created At" value={drive.created_at ? new Date(drive.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'} />
+                      <DetailRow icon={MdInfo} label="Updated At" value={drive.updated_at ? new Date(drive.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '-'} />
                     </VStack>
                   </Box>
                 </VStack>

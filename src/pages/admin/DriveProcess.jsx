@@ -70,6 +70,21 @@ function getRoundField(roundName) {
   return ROUND_TO_FIELD[key] || null;
 }
 
+/** Student has active placement violation or disciplinary record (already in drive — show in red). */
+function hasComplianceIssue(process) {
+  if (!process) return false;
+  if (process.has_compliance_issue === true) return true;
+  return (Number(process.placement_violations) || 0) > 0 || (Number(process.disciplinary) || 0) > 0;
+}
+
+function getProcessRowClassName(process, extraClasses = '') {
+  const classes = ['process-row'];
+  if (process?.malpractice) classes.push('malpractice-row');
+  if (hasComplianceIssue(process)) classes.push('compliance-violation-row');
+  if (extraClasses) classes.push(extraClasses);
+  return classes.join(' ');
+}
+
 /** Check if a student passed a round based on field value */
 function isRoundPassed(process, field) {
   if (!field) return true;
@@ -201,15 +216,22 @@ const DriveProcess = () => {
   const [exportColumns, setExportColumns] = useState(Object.keys(EXPORT_COLUMN_LABELS));
   const [includeResumes, setIncludeResumes] = useState(true);
   const [downloading, setDownloading] = useState(false);
-  const fetchDriveAndProcesses = async () => {
+
+  const fetchDriveAndProcesses = async (options = {}) => {
+    const inAddStudentsMode = options.addStudentsMode ?? showAddStudents;
     try {
       if (!drive) setLoading(true);
       const driveData = await PlacementService.getDriveById(driveId);
       setDrive(driveData);
       if (driveData) {
         setLoadingProcesses(true);
-        const processData = await PlacementService.getDriveProcesses(driveId);
-        setProcesses(processData);
+        if (inAddStudentsMode) {
+          const usns = await PlacementService.getDriveRegistrationUsns(driveId);
+          setProcesses(usns.map((usn) => ({ usn })));
+        } else {
+          const processData = await PlacementService.getDriveProcesses(driveId);
+          setProcesses(processData);
+        }
       }
     } catch (error) {
       const message = error?.message || 'Failed to load drive process.';
@@ -229,8 +251,8 @@ const DriveProcess = () => {
   };
 
   useEffect(() => {
-    if (driveId) fetchDriveAndProcesses();
-  }, [driveId]);
+    if (driveId) fetchDriveAndProcesses({ addStudentsMode: showAddStudents });
+  }, [driveId, showAddStudents]);
 
   const processRounds = Array.isArray(drive?.process_rounds)
     ? drive.process_rounds
@@ -630,6 +652,7 @@ const DriveProcess = () => {
     isRegisteredTab ? 'registration_status' :
     isApprovedTab ? 'approved_status' :
     isRoundTab && roundFields[currentActiveRoundIndex] ? roundFields[currentActiveRoundIndex] : null;
+
   const currentRoundName =
     currentActiveRoundIndex >= 0 && processRounds[currentActiveRoundIndex]
       ? processRounds[currentActiveRoundIndex]
@@ -815,7 +838,7 @@ const DriveProcess = () => {
                   existingUsns={processes.map((p) => p.usn)}
                   onCancel={() => navigate(location.pathname)}
                   onSuccess={() => {
-                    fetchDriveAndProcesses();
+                    fetchDriveAndProcesses({ addStudentsMode: false });
                     navigate(location.pathname);
                   }}
                 />
@@ -1043,9 +1066,9 @@ const DriveProcess = () => {
                       <Spinner size="xl" thickness="4px" color="blue.500" />
                     </Flex>
                   ) : (
-                    <TableContainer overflowX="auto" maxH="calc(100vh - 380px)" className="custom-scrollbar">
+                    <TableContainer overflowX="auto" overflowY="auto" maxH="calc(100vh - 380px)" className="custom-scrollbar">
                       <Table variant="unstyled" size="sm">
-                        <Thead bg="gray.50" borderBottomWidth="2px" borderColor="gray.200" position="sticky" top={0} zIndex={5}>
+                        <Thead bg="gray.50" borderBottomWidth="2px" borderColor="gray.200" position="sticky" top={0} zIndex={5} shadow="sm">
                           <Tr>
                             {isJobOffersTab ? (
                               <>
@@ -1145,11 +1168,25 @@ const DriveProcess = () => {
                             filteredProcesses.map((process) => (
                               <Tr
                                 key={process.id}
-                                className={`process-row ${process.malpractice ? 'malpractice-row' : ''} ${isJobOffersTab && selectedForOffers.includes(process.usn) ? 'selected-row' : ''}`}
-                                _hover={{ bg: isJobOffersTab ? 'green.50' : 'gray.50' }}
+                                className={getProcessRowClassName(
+                                  process,
+                                  isJobOffersTab && selectedForOffers.includes(process.usn) ? 'selected-row' : ''
+                                )}
+                                _hover={{ bg: hasComplianceIssue(process) ? 'red.100' : isJobOffersTab ? 'green.50' : 'gray.50' }}
                                 borderBottomWidth="1px"
-                                borderColor="gray.100"
-                                bg={isJobOffersTab && selectedForOffers.includes(process.usn) ? 'green.50' : 'transparent'}
+                                borderColor={hasComplianceIssue(process) ? 'red.200' : 'gray.100'}
+                                bg={
+                                  hasComplianceIssue(process)
+                                    ? 'red.50'
+                                    : isJobOffersTab && selectedForOffers.includes(process.usn)
+                                      ? 'green.50'
+                                      : 'transparent'
+                                }
+                                title={
+                                  hasComplianceIssue(process)
+                                    ? 'This student has an active placement violation or disciplinary record'
+                                    : undefined
+                                }
                               >
                                 {isJobOffersTab ? (
                                   <>

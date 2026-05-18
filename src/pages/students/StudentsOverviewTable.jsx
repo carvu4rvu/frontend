@@ -91,41 +91,50 @@ export default function StudentsOverviewTable() {
   const [rawRows, setRawRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [total, setTotal] = useState(0);
   const [visibleColumns, setVisibleColumns] = useState(ALL_COLUMNS.map((c) => c.key));
   const [activeFilters, setActiveFilters] = useState({});
   const [sorting, setSorting] = useState({ column: 'usn', direction: 'asc' });
   const [columnsOpen, setColumnsOpen] = useState(false);
   const filterPopoverRef = useRef({});
 
+  // Debounce search to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset to page 1 on search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await PlacementService.getStudentsOverviewTable({ limit: 5000 });
+      const data = await PlacementService.getStudentsOverviewTable({ 
+        limit, 
+        page, 
+        search: debouncedSearch 
+      });
       setRawRows(data.rows || []);
+      setTotal(data.total || 0);
     } catch (err) {
       toast({ title: 'Failed to load data', description: err?.message, status: 'error', isClosable: true });
       setRawRows([]);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, limit, page, debouncedSearch]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const filteredRows = useMemo(() => {
+    // Note: Search is now handled server-side, so we only apply column filters and sorting here
     let list = rawRows.filter((row) => {
-      const searchLower = search.toLowerCase().trim();
-      if (searchLower) {
-        const match =
-          (row.full_name || '').toLowerCase().includes(searchLower) ||
-          (row.usn || '').toLowerCase().includes(searchLower) ||
-          (row.college_email || '').toLowerCase().includes(searchLower) ||
-          (row.school || '').toLowerCase().includes(searchLower) ||
-          (row.program || '').toLowerCase().includes(searchLower);
-        if (!match) return false;
-      }
       for (const key of Object.keys(activeFilters)) {
         if (!activeFilters[key] || activeFilters[key].length === 0) continue;
         const col = ALL_COLUMNS.find((c) => c.key === key);
@@ -270,8 +279,8 @@ export default function StudentsOverviewTable() {
               _focus={{ ring: 2, ringColor: 'blue.500', borderColor: 'blue.500' }}
             />
           </InputGroup>
-          <Text fontSize="xs" bg={slate[100]} px={2} py={1} borderRadius="md" color={slate[600]} fontWeight="medium">
-            {rawRows.length} Records Loaded
+          <Text fontSize="xs" bg={slate[100]} px={2} py={1} borderRadius="md" color={slate[600]} fontWeight="medium" whiteSpace="nowrap">
+            {total} Total Records
           </Text>
           </HStack>
           <HStack spacing={2}>
@@ -519,12 +528,36 @@ export default function StudentsOverviewTable() {
             fontSize="xs"
             color={slate[500]}
           >
-            <Text>Showing {filteredRows.length} of {rawRows.length} entries</Text>
-            {appliedFilterCount > 0 && (
-              <Badge colorScheme="blue" variant="subtle" px={2} py={1} borderRadius="md">
-                Applied Filters: {appliedFilterCount}
-              </Badge>
-            )}
+            <HStack spacing={4}>
+              <Text>
+                Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, total)} of {total} entries
+              </Text>
+              {appliedFilterCount > 0 && (
+                <Badge colorScheme="blue" variant="subtle" px={2} py={1} borderRadius="md">
+                  Applied Filters: {appliedFilterCount}
+                </Badge>
+              )}
+            </HStack>
+            
+            <HStack spacing={2}>
+              <Button
+                size="xs"
+                variant="outline"
+                isDisabled={page <= 1 || loading}
+                onClick={() => setPage(p => p - 1)}
+              >
+                Previous
+              </Button>
+              <Text fontWeight="medium" color={slate[700]}>Page {page} of {Math.ceil(total / limit) || 1}</Text>
+              <Button
+                size="xs"
+                variant="outline"
+                isDisabled={page >= Math.ceil(total / limit) || loading}
+                onClick={() => setPage(p => p + 1)}
+              >
+                Next
+              </Button>
+            </HStack>
           </Flex>
         </Box>
 

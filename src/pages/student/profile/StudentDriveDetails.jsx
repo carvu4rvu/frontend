@@ -36,7 +36,7 @@ const formatDate = (val) => {
   if (val == null || val === "") return "—";
   try {
     const d = new Date(val);
-    return isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { dateStyle: "medium" });
+    return isNaN(d.getTime()) ? "—" : d.toLocaleDateString('en-IN', { dateStyle: "medium", timeZone: 'Asia/Kolkata' });
   } catch {
     return "—";
   }
@@ -46,7 +46,7 @@ const formatDateTime = (val) => {
   if (val == null || val === "") return "—";
   try {
     const d = new Date(val);
-    return isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    return isNaN(d.getTime()) ? "—" : d.toLocaleString('en-IN', { dateStyle: "medium", timeStyle: "short", timeZone: 'Asia/Kolkata' });
   } catch {
     return "—";
   }
@@ -134,9 +134,13 @@ export const StudentDriveDetails = () => {
     }
   }, [id, studentUSN, loadData]);
 
-  // Drive is open if status is Open OR registration deadline has not yet passed
+  // Drive is open if status is Open OR registration deadline has not yet passed (inclusive of the deadline date)
   const registrationDeadline = drive?.last_date_to_registration ? new Date(drive.last_date_to_registration) : null;
-  const deadlineNotPassed = registrationDeadline && !isNaN(registrationDeadline.getTime()) && registrationDeadline > new Date();
+  if (registrationDeadline) {
+    // Set to end of the day (23:59:59.999) to be inclusive of the last date
+    registrationDeadline.setHours(23, 59, 59, 999);
+  }
+  const deadlineNotPassed = registrationDeadline && !isNaN(registrationDeadline.getTime()) && registrationDeadline >= new Date();
   const statusOpen = String(drive?.placement_status || "").toLowerCase() === "open";
   const driveOpen = statusOpen || !!deadlineNotPassed;
   const showApplyButton = studentUSN && drive && !isRegistered(application);

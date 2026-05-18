@@ -461,12 +461,12 @@ const JobOffers = () => {
   const fetchFormMeta = async () => {
     setFormMetaLoading(true);
     try {
-      const [studentsData, companiesData, drivesData] = await Promise.all([
-        PlacementService.getAllStudents(),
+      const [studentsRes, companiesData, drivesData] = await Promise.all([
+        PlacementService.getAllStudents({ page: 1, page_size: 100 }),
         PlacementService.getAllCompanies(),
-        PlacementService.getAllDrives()
+        PlacementService.getAllDrives(),
       ]);
-      setStudents(studentsData || []);
+      setStudents(studentsRes?.students ?? []);
       setAllCompanies(companiesData || []);
       setFormDrives(drivesData || []);
     } catch (error) {
