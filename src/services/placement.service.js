@@ -992,6 +992,15 @@ export const PlacementService = {
     return response.data;
   },
 
+  /** Violations: update eligibility decision log */
+  updateEligibilityDecisionLog: async (id, data) => {
+    const response = await apiFetch(`/placement/violations/eligibility-logs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data;
+  },
+
   /** Violations: create placement violation */
   createPlacementViolation: async (data) => {
     const response = await apiFetch('/placement/violations/placement-violations', {
@@ -1001,10 +1010,28 @@ export const PlacementService = {
     return response.data;
   },
 
+  /** Violations: update placement violation */
+  updatePlacementViolation: async (id, data) => {
+    const response = await apiFetch(`/placement/violations/placement-violations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data;
+  },
+
   /** Violations: create disciplinary record */
   createDisciplinaryRecord: async (data) => {
     const response = await apiFetch('/placement/violations/disciplinary-records', {
       method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data;
+  },
+
+  /** Violations: update disciplinary record */
+  updateDisciplinaryRecord: async (id, data) => {
+    const response = await apiFetch(`/placement/violations/disciplinary-records/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     });
     return response.data;

@@ -45,7 +45,7 @@ import {
   Stack,
   VStack,
 } from '@chakra-ui/react';
-import { AddIcon, SearchIcon } from '@chakra-ui/icons';
+import { AddIcon, SearchIcon, EditIcon } from '@chakra-ui/icons';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 
@@ -87,12 +87,14 @@ const Violations = () => {
   const [loadingViolations, setLoadingViolations] = useState(true);
   const [loadingDisciplinary, setLoadingDisciplinary] = useState(true);
 
-  // Add Violation modal state
+  // Add/Edit Violation modal state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [modalType, setModalType] = useState(''); // 'eligibility', 'placement', 'disciplinary'
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [drives, setDrives] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [mainTabIndex, setMainTabIndex] = useState(0);
@@ -107,6 +109,7 @@ const Violations = () => {
     penalty_type: 'WARNING',
     penalty_days: '',
     remarks: '',
+    is_active: true,
   });
   const [disciplinaryForm, setDisciplinaryForm] = useState({
     violation_type: 'CHEATING',
@@ -114,6 +117,7 @@ const Violations = () => {
     description: '',
     start_date: new Date().toISOString().slice(0, 10),
     end_date: '',
+    is_active: true,
   });
 
   const fetchEligibilityLogs = useCallback(async () => {
@@ -181,9 +185,47 @@ const Violations = () => {
     setSearchResults([]);
     setSelectedStudent(null);
     setModalType(type);
+    setIsEditMode(false);
+    setEditingRecord(null);
     setEligibilityForm({ placement_drive_id: '', is_eligible: true, rejection_reasons: [] });
-    setPlacementForm({ placement_drive_id: '', violation_type: 'OFFER_REJECTED', penalty_type: 'WARNING', penalty_days: '', remarks: '' });
-    setDisciplinaryForm({ violation_type: 'CHEATING', severity: 'MINOR', description: '', start_date: new Date().toISOString().slice(0, 10), end_date: '' });
+    setPlacementForm({ placement_drive_id: '', violation_type: 'OFFER_REJECTED', penalty_type: 'WARNING', penalty_days: '', remarks: '', is_active: true });
+    setDisciplinaryForm({ violation_type: 'CHEATING', severity: 'MINOR', description: '', start_date: new Date().toISOString().slice(0, 10), end_date: '', is_active: true });
+    PlacementService.getAllDrives().then((d) => setDrives(Array.isArray(d) ? d : []));
+    onOpen();
+  };
+
+  const handleEditRecord = (type, record) => {
+    setModalType(type);
+    setIsEditMode(true);
+    setEditingRecord(record);
+    setSelectedStudent({ usn: record.usn, full_name: record.full_name || record.name, college_email: record.college_email });
+    
+    if (type === 'eligibility') {
+      setEligibilityForm({
+        placement_drive_id: record.placement_drive_id,
+        is_eligible: record.is_eligible,
+        rejection_reasons: record.rejection_reasons || [],
+      });
+    } else if (type === 'placement') {
+      setPlacementForm({
+        placement_drive_id: record.placement_drive_id || '',
+        violation_type: record.violation_type,
+        penalty_type: record.penalty_type,
+        penalty_days: record.penalty_days || '',
+        remarks: record.remarks || '',
+        is_active: record.is_active,
+      });
+    } else if (type === 'disciplinary') {
+      setDisciplinaryForm({
+        violation_type: record.violation_type,
+        severity: record.severity,
+        description: record.description || '',
+        start_date: record.start_date ? new Date(record.start_date).toISOString().slice(0, 10) : '',
+        end_date: record.end_date ? new Date(record.end_date).toISOString().slice(0, 10) : '',
+        is_active: record.is_active,
+      });
+    }
+    
     PlacementService.getAllDrives().then((d) => setDrives(Array.isArray(d) ? d : []));
     onOpen();
   };
@@ -203,11 +245,11 @@ const Violations = () => {
 
   // Load all students when modal opens; filter as you type (debounced when typing)
   useEffect(() => {
-    if (!isOpen || selectedStudent) return;
+    if (!isOpen || selectedStudent || isEditMode) return;
     const delay = searchQuery.trim() ? 300 : 0;
     const timer = setTimeout(() => handleSearchStudents(searchQuery), delay);
     return () => clearTimeout(timer);
-  }, [isOpen, searchQuery, selectedStudent, handleSearchStudents]);
+  }, [isOpen, searchQuery, selectedStudent, handleSearchStudents, isEditMode]);
 
   const handleSelectStudent = (student) => {
     setSelectedStudent(student);
@@ -223,40 +265,60 @@ const Violations = () => {
           setSubmitting(false);
           return;
         }
-        await PlacementService.createEligibilityDecisionLog({
+        const payload = {
           usn: selectedStudent.usn,
           placement_drive_id: eligibilityForm.placement_drive_id,
           is_eligible: eligibilityForm.is_eligible,
           rejection_reasons: eligibilityForm.is_eligible ? null : eligibilityForm.rejection_reasons,
-        });
-        toast({ title: 'Eligibility decision log added', status: 'success' });
+        };
+        if (isEditMode) {
+          await PlacementService.updateEligibilityDecisionLog(editingRecord.id, payload);
+          toast({ title: 'Eligibility decision log updated', status: 'success' });
+        } else {
+          await PlacementService.createEligibilityDecisionLog(payload);
+          toast({ title: 'Eligibility decision log added', status: 'success' });
+        }
         fetchEligibilityLogs();
       } else if (modalType === 'placement') {
-        await PlacementService.createPlacementViolation({
+        const payload = {
           usn: selectedStudent.usn,
           placement_drive_id: placementForm.placement_drive_id || null,
           violation_type: placementForm.violation_type,
           penalty_type: placementForm.penalty_type,
           penalty_days: placementForm.penalty_type === 'TEMP_BAN' ? placementForm.penalty_days || null : null,
           remarks: placementForm.remarks || null,
-        });
-        toast({ title: 'Placement violation added', status: 'success' });
+          is_active: placementForm.is_active,
+        };
+        if (isEditMode) {
+          await PlacementService.updatePlacementViolation(editingRecord.id, payload);
+          toast({ title: 'Placement violation updated', status: 'success' });
+        } else {
+          await PlacementService.createPlacementViolation(payload);
+          toast({ title: 'Placement violation added', status: 'success' });
+        }
         fetchPlacementViolations();
       } else if (modalType === 'disciplinary') {
-        await PlacementService.createDisciplinaryRecord({
+        const payload = {
           usn: selectedStudent.usn,
           violation_type: disciplinaryForm.violation_type,
           severity: disciplinaryForm.severity,
           description: disciplinaryForm.description || null,
           start_date: disciplinaryForm.start_date,
           end_date: disciplinaryForm.end_date || null,
-        });
-        toast({ title: 'Disciplinary record added', status: 'success' });
+          is_active: disciplinaryForm.is_active,
+        };
+        if (isEditMode) {
+          await PlacementService.updateDisciplinaryRecord(editingRecord.id, payload);
+          toast({ title: 'Disciplinary record updated', status: 'success' });
+        } else {
+          await PlacementService.createDisciplinaryRecord(payload);
+          toast({ title: 'Disciplinary record added', status: 'success' });
+        }
         fetchDisciplinaryRecords();
       }
       onClose();
     } catch (err) {
-      toast({ title: err?.message || 'Failed to add record', status: 'error' });
+      toast({ title: err?.message || 'Failed to save record', status: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -279,9 +341,10 @@ const Violations = () => {
             <ModalOverlay />
             <ModalContent maxH="90vh">
               <ModalHeader>
-                {modalType === 'eligibility' && 'Add Eligibility Decision Log'}
-                {modalType === 'placement' && 'Add Placement Violation'}
-                {modalType === 'disciplinary' && 'Add Disciplinary Record'}
+                {isEditMode ? 'Edit ' : 'Add '}
+                {modalType === 'eligibility' && 'Eligibility Decision Log'}
+                {modalType === 'placement' && 'Placement Violation'}
+                {modalType === 'disciplinary' && 'Disciplinary Record'}
               </ModalHeader>
               <ModalCloseButton />
               <ModalBody pb={6}>
@@ -334,16 +397,18 @@ const Violations = () => {
                   <>
                     <Box mb={4} p={3} bg="blue.50" borderRadius="md">
                       <Text fontSize="sm" fontWeight="medium">{selectedStudent.full_name || selectedStudent.name}</Text>
-                      <Text fontSize="sm" color="gray.600">{selectedStudent.usn} · {selectedStudent.college_email}</Text>
-                      <Button size="xs" variant="link" mt={1} onClick={() => setSelectedStudent(null)}>
-                        Change student
-                      </Button>
+                      <Text fontSize="sm" color="gray.600">{selectedStudent.usn} {selectedStudent.college_email ? `· ${selectedStudent.college_email}` : ''}</Text>
+                      {!isEditMode && (
+                        <Button size="xs" variant="link" mt={1} onClick={() => setSelectedStudent(null)}>
+                          Change student
+                        </Button>
+                      )}
                     </Box>
 
                     {/* Eligibility Decision Log Form */}
                     {modalType === 'eligibility' && (
                       <VStack align="stretch" spacing={4}>
-                        <FormControl isRequired>
+                        <FormControl isRequired isReadOnly={isEditMode}>
                           <FormLabel>Placement Drive</FormLabel>
                           <Select
                             value={eligibilityForm.placement_drive_id}
@@ -390,7 +455,7 @@ const Violations = () => {
                     {/* Placement Violation Form */}
                     {modalType === 'placement' && (
                       <VStack align="stretch" spacing={4}>
-                        <FormControl>
+                        <FormControl isReadOnly={isEditMode}>
                           <FormLabel>Drive (optional)</FormLabel>
                           <Select
                             value={placementForm.placement_drive_id}
@@ -435,6 +500,15 @@ const Violations = () => {
                               value={placementForm.penalty_days}
                               onChange={(e) => setPlacementForm((f) => ({ ...f, penalty_days: e.target.value }))}
                               placeholder="e.g. 30"
+                            />
+                          </FormControl>
+                        )}
+                        {isEditMode && (
+                          <FormControl display="flex" alignItems="center">
+                            <FormLabel mb="0">Is Active?</FormLabel>
+                            <Checkbox
+                              isChecked={placementForm.is_active}
+                              onChange={(e) => setPlacementForm((f) => ({ ...f, is_active: e.target.checked }))}
                             />
                           </FormControl>
                         )}
@@ -500,6 +574,15 @@ const Violations = () => {
                             onChange={(e) => setDisciplinaryForm((f) => ({ ...f, end_date: e.target.value }))}
                           />
                         </FormControl>
+                        {isEditMode && (
+                          <FormControl display="flex" alignItems="center">
+                            <FormLabel mb="0">Is Active?</FormLabel>
+                            <Checkbox
+                              isChecked={disciplinaryForm.is_active}
+                              onChange={(e) => setDisciplinaryForm((f) => ({ ...f, is_active: e.target.checked }))}
+                            />
+                          </FormControl>
+                        )}
                       </VStack>
                     )}
                   </>
@@ -509,9 +592,10 @@ const Violations = () => {
                 <ModalFooter>
                   <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
                   <Button colorScheme="blue" onClick={handleAddViolationSubmit} isLoading={submitting}>
-                    {modalType === 'eligibility' && 'Add Log'}
-                    {modalType === 'placement' && 'Add Violation'}
-                    {modalType === 'disciplinary' && 'Add Record'}
+                    {isEditMode ? 'Update ' : 'Add '}
+                    {modalType === 'eligibility' && 'Log'}
+                    {modalType === 'placement' && 'Violation'}
+                    {modalType === 'disciplinary' && 'Record'}
                   </Button>
                 </ModalFooter>
               )}
@@ -595,6 +679,7 @@ const Violations = () => {
                             <Th color={headerColor} borderColor={borderColor} minW="240px">Rejection Reasons</Th>
                             <Th color={headerColor} borderColor={borderColor}>Evaluated At</Th>
                             <Th color={headerColor} borderColor={borderColor}>Evaluated By</Th>
+                            <Th color={headerColor} borderColor={borderColor}>Actions</Th>
                           </Tr>
                         </Thead>
                         <Tbody>
@@ -619,6 +704,18 @@ const Violations = () => {
                               </Td>
                               <Td borderColor={borderColor}>{formatDate(row.evaluated_at)}</Td>
                               <Td borderColor={borderColor}>{row.evaluated_by || '—'}</Td>
+                              <Td borderColor={borderColor}>
+                                <Button
+                                  size="xs"
+                                  leftIcon={<EditIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditRecord('eligibility', row);
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                              </Td>
                             </Tr>
                           ))}
                         </Tbody>
@@ -660,6 +757,7 @@ const Violations = () => {
                             <Th color={headerColor} borderColor={borderColor}>Active</Th>
                             <Th color={headerColor} borderColor={borderColor}>Remarks</Th>
                             <Th color={headerColor} borderColor={borderColor}>Created At</Th>
+                            <Th color={headerColor} borderColor={borderColor}>Actions</Th>
                           </Tr>
                         </Thead>
                         <Tbody>
@@ -695,6 +793,18 @@ const Violations = () => {
                                 {row.remarks || '—'}
                               </Td>
                               <Td borderColor={borderColor}>{formatDate(row.created_at)}</Td>
+                              <Td borderColor={borderColor}>
+                                <Button
+                                  size="xs"
+                                  leftIcon={<EditIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditRecord('placement', row);
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                              </Td>
                             </Tr>
                           ))}
                         </Tbody>
@@ -737,6 +847,7 @@ const Violations = () => {
                             <Th color={headerColor} borderColor={borderColor}>Start</Th>
                             <Th color={headerColor} borderColor={borderColor}>End</Th>
                             <Th color={headerColor} borderColor={borderColor}>Created At</Th>
+                            <Th color={headerColor} borderColor={borderColor}>Actions</Th>
                           </Tr>
                         </Thead>
                         <Tbody>
@@ -770,6 +881,18 @@ const Violations = () => {
                               <Td borderColor={borderColor}>{formatDateOnly(row.start_date)}</Td>
                               <Td borderColor={borderColor}>{formatDateOnly(row.end_date)}</Td>
                               <Td borderColor={borderColor}>{formatDate(row.created_at)}</Td>
+                              <Td borderColor={borderColor}>
+                                <Button
+                                  size="xs"
+                                  leftIcon={<EditIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditRecord('disciplinary', row);
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                              </Td>
                             </Tr>
                           ))}
                         </Tbody>
