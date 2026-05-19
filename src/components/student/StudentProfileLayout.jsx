@@ -5,6 +5,7 @@ import { CarvuBrand } from "../CarvuBrand"
 /** Context so modals (e.g. project detail) can render inside the main content area and not overlap the sidebar */
 export const StudentProfileContentRefContext = createContext(null)
 import { useLocation, useNavigate } from "react-router-dom"
+import { resolveAdminStudentBack } from "../../utils/placementNavigationHistory"
 import StudentUniversalSearch from "./StudentUniversalSearch"
 import { useAuth } from "../../context/AuthContext"
 import { usePlacementTrackPolicy } from "../../context/PlacementTrackPolicyContext"
@@ -74,6 +75,15 @@ export const StudentProfileLayout = ({ children, basePath = null, isAdminView = 
   const [open, setOpen] = useState(false)
   const { policy: trackPolicy, loading: trackPolicyLoading } = usePlacementTrackPolicy()
   const onPlacementTrackPath = isPlacementTrackPath(location.pathname)
+
+  const adminBack = isAdminView
+    ? resolveAdminStudentBack(location, "/placement/students")
+    : null
+
+  const handleAdminBack = () => {
+    if (!adminBack?.path) return
+    navigate(adminBack.path)
+  }
 
   const getItemPath = (item) => {
     if (basePath) {
@@ -210,10 +220,19 @@ export const StudentProfileLayout = ({ children, basePath = null, isAdminView = 
       >
         {/* Left: Logo / Back + Admin nav (Dashboard insights | Profile) */}
         <HStack spacing={4}>
-          <HStack spacing={3} minW="fit-content" cursor="pointer" onClick={() => navigate(isAdminView ? "/placement/students" : "/student-dashboard")} _hover={{ opacity: 0.9 }}>
+          <HStack spacing={3} minW="fit-content" cursor={isAdminView ? "default" : "pointer"} onClick={isAdminView ? undefined : () => navigate("/student-dashboard")} _hover={{ opacity: isAdminView ? 1 : 0.9 }}>
             {isAdminView ? (
-              <Button leftIcon={<ChevronLeftIcon />} variant="ghost" color="white" size="sm" _hover={{ bg: "whiteAlpha.200" }} _focus={{ outline: "none", boxShadow: "none" }} _focusVisible={{ outline: "2px solid #FDE74C", outlineOffset: "2px" }}>
-                Back to Students
+              <Button
+                leftIcon={<ChevronLeftIcon />}
+                variant="ghost"
+                color="white"
+                size="sm"
+                onClick={handleAdminBack}
+                _hover={{ bg: "whiteAlpha.200" }}
+                _focus={{ outline: "none", boxShadow: "none" }}
+                _focusVisible={{ outline: "2px solid #FDE74C", outlineOffset: "2px" }}
+              >
+                {adminBack?.label ?? "Back"}
               </Button>
             ) : (
               <CarvuBrand fontSize={{ base: 'xl', md: '2xl' }} pointerEvents="none" />

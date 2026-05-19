@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, useParams, Link } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import PlacementNavigationTracker from './components/PlacementNavigationTracker';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import Contact from './pages/Contact';
@@ -140,6 +141,7 @@ const Layout = () => {
 
   return (
     <Flex direction="column" minH="100vh">
+      {isPlacementRoute && <PlacementNavigationTracker />}
       {!hideNavbar && <Navbar />}
       <Box flex="1">
         <StudentDataCacheProvider>
