@@ -595,14 +595,9 @@
   color-scheme: light;
 }
 
-/* Upload */
+/* Upload — never use z-index: -1 (breaks clicks inside overflow:hidden preview stage) */
 .events-image-upload-input {
-  position: absolute;
-  width: 0.1px;
-  height: 0.1px;
-  opacity: 0;
-  overflow: hidden;
-  z-index: -1;
+  display: none;
 }
 
 .events-image-upload-zone {
@@ -717,6 +712,7 @@
   position: absolute;
   bottom: 0.75rem;
   right: 0.75rem;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -726,6 +722,7 @@
   color: #fff;
   background: rgba(15, 23, 42, 0.82);
   backdrop-filter: blur(8px);
+  border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s, transform 0.15s;

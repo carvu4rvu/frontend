@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -55,7 +55,18 @@ import VcLayout from '../../components/VcLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import { StyledFileInput } from '../../components/ui/StyledFileInput';
 import { PlacementService } from '../../services/placement.service';
+import { NotificationService } from '../../services/notification.service';
 import { useAuth } from '../../context/AuthContext';
+import PlacementDrivesTable from '../../components/placement/PlacementDrivesTable';
+import JobOffersDataTable, { COMPANY_PAGE_OFFER_COLUMNS } from '../../components/placement/JobOffersDataTable';
+import JobOfferEditModal from '../../components/placement/JobOfferEditModal';
+import { buildCompanyLogoById } from '../../utils/companyLogo';
+import {
+  buildDriveNotificationContent,
+  navigateToPlacementNotificationSend,
+} from '../../utils/placementNotificationNav';
+import './PlacementEvents.css';
+import './CompanyDetails.css';
 
 const emptyContact = () => ({ id: null, contact_name: '', email: '', phone_number: '', role_title: '', remarks: '' });
 const toContactRow = (c) => ({ id: c.id || null, contact_name: c.contact_name || '', email: c.email || '', phone_number: c.phone_number || '', role_title: c.role_title || '', remarks: c.remarks || '' });
@@ -84,6 +95,8 @@ const CompanyDetails = () => {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isContactModalOpen, onOpen: onContactModalOpen, onClose: onContactModalClose } = useDisclosure();
   const { isOpen: isContactDeleteOpen, onOpen: onContactDeleteOpen, onClose: onContactDeleteClose } = useDisclosure();
+  const { isOpen: isOfferEditOpen, onOpen: onOfferEditOpen, onClose: onOfferEditClose } = useDisclosure();
+  const [editingOffer, setEditingOffer] = useState(null);
   const cancelRef = useRef();
   const [company, setCompany] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -103,6 +116,7 @@ const CompanyDetails = () => {
   const [contactToDelete, setContactToDelete] = useState(null);
   const [allCompanyTypes, setAllCompanyTypes] = useState([]);
   const [companyTypeDropdownOpen, setCompanyTypeDropdownOpen] = useState(false);
+  const [notifyingDriveId, setNotifyingDriveId] = useState(null);
 
   const CARDS_PER_PAGE = 4;
   const totalPages = Math.ceil(contacts.length / CARDS_PER_PAGE);
@@ -125,13 +139,16 @@ const CompanyDetails = () => {
   const fetchDetails = async () => {
     setLoading(true);
     try {
-      const [companyData, contactsData, drivesData, offersData, allCosData] = await Promise.all([
+      const [companyData, contactsData, allDrives, offersData, allCosData] = await Promise.all([
         PlacementService.getCompanyById(id),
         PlacementService.getCompanyContacts(id),
-        PlacementService.getCompanyDrives(id),
+        PlacementService.getAllDrives(),
         PlacementService.getCompanyOffers(id),
         PlacementService.getCompaniesWithSchools(),
       ]);
+      const drivesData = (Array.isArray(allDrives) ? allDrives : []).filter(
+        (d) => String(d.company_id) === String(id)
+      );
       if (!companyData) {
         toast({ title: 'Company not found', status: 'error' });
         navigate('/placement/companies');
@@ -334,6 +351,86 @@ const CompanyDetails = () => {
     }
   };
 
+  const companyLogoById = useMemo(
+    () =>
+      company
+        ? buildCompanyLogoById([
+            {
+              id: company.id,
+              company_logo_link: company.company_logo_link || company.logo,
+            },
+          ])
+        : {},
+    [company]
+  );
+
+  const handleSendDriveNotification = useCallback(
+    async (drive, e) => {
+      if (e) e.stopPropagation();
+      setNotifyingDriveId(drive.id);
+      try {
+        const { title, message, link, notification_type } = buildDriveNotificationContent(
+          drive,
+          company?.company_name
+        );
+        const created = await NotificationService.create({
+          title,
+          message,
+          notification_type,
+          link,
+        });
+        toast({
+          title: 'Notification created',
+          description: 'Redirecting to send to students.',
+          status: 'success',
+          duration: 2000,
+        });
+        navigateToPlacementNotificationSend(navigate, {
+          title,
+          message,
+          link,
+          notification_type,
+          openNotificationId: created?.id,
+        });
+      } catch (err) {
+        toast({ title: 'Failed to create notification', status: 'error', description: err?.message, isClosable: true });
+      } finally {
+        setNotifyingDriveId(null);
+      }
+    },
+    [company, navigate, toast]
+  );
+
+  const handleEditDrive = useCallback(
+    (drive, e) => {
+      e?.stopPropagation();
+      navigate('/placement/events', { state: { editDriveId: drive.id } });
+    },
+    [navigate]
+  );
+
+  const refreshOffers = useCallback(async () => {
+    try {
+      const offersData = await PlacementService.getCompanyOffers(id);
+      setOffers(offersData || []);
+    } catch (err) {
+      console.error('Refresh offers:', err);
+    }
+  }, [id]);
+
+  const handleEditOffer = useCallback(
+    (offer) => {
+      setEditingOffer(offer);
+      onOfferEditOpen();
+    },
+    [onOfferEditOpen]
+  );
+
+  const handleOfferEditClose = useCallback(() => {
+    onOfferEditClose();
+    setEditingOffer(null);
+  }, [onOfferEditClose]);
+
   const Layout = isVc ? VcLayout : AdminLayout;
   if (loading) {
     return (
@@ -349,27 +446,27 @@ const CompanyDetails = () => {
 
   return (
     <Layout>
-      <Box bg="#f0f0f0" minH="100vh" pb={10}>
-        <Container maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }} pt={8}>
-          <Flex mb={6} justify="space-between" align="center">
+      <Box className="company-details-page">
+        <Container className="company-details-container" maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }} pt={8}>
+          <Flex className="company-details-topbar" justify="space-between" align="center" flexWrap="wrap" gap={3}>
             <Box>
-              <Heading size="lg" color="gray.800">Company Details</Heading>
-              <Text color="gray.500" fontSize="sm">Full company info with placements and offers</Text>
+              <Heading as="h1" size="lg">Company Details</Heading>
+              <Text>Profile, contacts, placement drives, and offers</Text>
             </Box>
-            <HStack spacing={3}>
-              <Button
-                leftIcon={<ArrowBackIcon />}
-                size="sm"
-                variant="outline"
-                onClick={() => navigate('/placement/companies')}
-                bg="white"
-              >
-                Back
-              </Button>
-            </HStack>
+            <Button
+              leftIcon={<ArrowBackIcon />}
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/placement/companies')}
+              bg="white"
+              borderColor="gray.200"
+              _hover={{ bg: 'gray.50', borderColor: 'gray.300' }}
+            >
+              Back to companies
+            </Button>
           </Flex>
 
-          <Card mb={8} borderRadius="xl" shadow="sm" overflow="hidden">
+          <Card className="company-details-hero" shadow="none" border="none">
             <CardBody p={6} position="relative">
               <Flex direction={{ base: 'column', md: 'row' }} gap={6} align="start">
                 <Box 
@@ -467,27 +564,31 @@ const CompanyDetails = () => {
             </CardBody>
           </Card>
 
-          <Card mb={8} borderRadius="2xl" shadow="sm" overflow="hidden" border="1px" borderColor="gray.100">
-            <CardBody p={0}>
-              <Flex justify="space-between" align="center" px={6} py={4} bg="gray.50" borderBottom="1px" borderColor="gray.100">
-                <HStack spacing={2}>
-                  <Heading size="md" color="gray.700">Company Contacts</Heading>
-                  <Badge colorScheme="blue" borderRadius="full" px={2}>{contacts.length}</Badge>
-                </HStack>
+          <Box className="company-details-section">
+            <Flex className="company-details-section-head">
+              <Box>
+                <Heading as="h2" size="md">Company Contacts</Heading>
+                <Text className="section-sub">People at this organization</Text>
+              </Box>
+              <HStack spacing={2}>
+                <span className="company-details-drives-count">{contacts.length}</span>
                 {!isVc && (
                   <Button
                     leftIcon={<AddIcon />}
                     size="sm"
-                    colorScheme="blue"
+                    colorScheme="teal"
+                    bg="#172e36"
+                    _hover={{ bg: '#1e3a47' }}
                     onClick={openAddContact}
-                    borderRadius="full"
+                    borderRadius="lg"
                   >
                     Add Contact
                   </Button>
                 )}
-              </Flex>
+              </HStack>
+            </Flex>
 
-              <Box p={6}>
+              <Box className="company-details-contacts-body">
                 {contacts.length > 0 ? (
                   <VStack spacing={6}>
                     <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} w="full">
@@ -624,110 +725,79 @@ const CompanyDetails = () => {
                   </Flex>
                 )}
               </Box>
-            </CardBody>
-          </Card>
-
-          <Box mb={8}>
-            <Heading size="md" mb={4} color="gray.700">Placements</Heading>
-            {drives.length > 0 ? (
-              <Card borderRadius="xl" shadow="sm" overflow="hidden">
-                <Box overflowX="auto">
-                  <Table variant="simple" size="sm">
-                    <Thead bg="#172e36">
-                      <Tr>
-                        <Th color="white">TPO</Th>
-                        <Th color="white">Year</Th>
-                        <Th color="white">School</Th>
-                        <Th color="white">Course</Th>
-                        <Th color="white">Job Profile</Th>
-                        <Th color="white">Job Type</Th>
-                        <Th color="white">Avg Internship Stipend</Th>
-                        <Th color="white">CTC</Th>
-                        <Th color="white">Final Selects</Th>
-                        <Th color="white">Company Remarks</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {drives.map((drive) => (
-                        <Tr key={drive.id} _hover={{ bg: 'gray.50' }}>
-                          <Td>{drive.tpo}</Td>
-                          <Td>{drive.year}</Td>
-                          <Td>{drive.school}</Td>
-                          <Td>{drive.course}</Td>
-                          <Td fontWeight="medium">{drive.job_profile}</Td>
-                          <Td>{drive.job_type}</Td>
-                          <Td>{drive.internship_stipend}</Td>
-                          <Td>{drive.ctc}</Td>
-                          <Td>
-                            <Badge colorScheme="green" variant="solid" borderRadius="full" px={2}>
-                              {drive.no_shortlisted}
-                            </Badge>
-                          </Td>
-                          <Td color="gray.500" fontSize="xs" maxW="200px" isTruncated>
-                            {drive.company_remarks || '-'}
-                          </Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                </Box>
-              </Card>
-            ) : (
-              <Card borderRadius="xl" shadow="sm" p={8} textAlign="center" bg="white">
-                <Text color="gray.500">No placement drives found for this company.</Text>
-              </Card>
-            )}
           </Box>
 
-          <Box>
-            <Heading size="md" mb={4} color="gray.700">Students & Job Offers</Heading>
-            {offers.length > 0 ? (
-              <Card borderRadius="xl" shadow="sm" overflow="hidden">
-                <Box overflowX="auto">
-                  <Table variant="simple" size="sm">
-                    <Thead bg="#172e36">
-                      <Tr>
-                        <Th color="white">USN</Th>
-                        <Th color="white">Student Name</Th>
-                        <Th color="white">School</Th>
-                        <Th color="white">CTC</Th>
-                        <Th color="white">Job Type</Th>
-                        <Th color="white">Designation</Th>
-                        <Th color="white">Offer Letter Status</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {offers.map((offer) => (
-                        <Tr
-                          key={offer.id}
-                          _hover={{ bg: 'gray.50', cursor: 'pointer' }}
-                          onClick={() => offer.usn && navigate(`/placement/students/${offer.usn}`)}
-                        >
-                          <Td>
-                            <Badge variant="subtle" colorScheme="blue">{offer.usn}</Badge>
-                          </Td>
-                          <Td fontWeight="medium">{offer.student_name || '-'}</Td>
-                          <Td>{offer.school || '-'}</Td>
-                          <Td>{offer.ctc}</Td>
-                          <Td>{offer.job_type}</Td>
-                          <Td>{offer.designation}</Td>
-                          <Td>
-                            <Badge colorScheme={offer.offer_letter_status === 'Issued' ? 'green' : 'orange'}>
-                              {offer.offer_letter_status}
-                            </Badge>
-                          </Td>
-                        </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                </Box>
-              </Card>
-            ) : (
-              <Card borderRadius="xl" shadow="sm" p={8} textAlign="center" bg="white">
-                <Text color="gray.500">No student offers recorded yet for this company.</Text>
-              </Card>
-            )}
+          <Box className="company-details-drives-block company-details-section">
+            <Flex className="company-details-section-head">
+              <Box>
+                <Heading as="h2" size="md">Placement Drives</Heading>
+              </Box>
+              <HStack spacing={2}>
+                <span className="company-details-drives-count">{drives.length}</span>
+                {!isVc && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    borderColor="gray.200"
+                    onClick={() => navigate('/placement/events')}
+                  >
+                    All drives
+                  </Button>
+                )}
+              </HStack>
+            </Flex>
+            <PlacementDrivesTable
+              drives={drives}
+              loading={loading}
+              readOnly={isVc}
+              companyLogoById={companyLogoById}
+              onSendNotification={isVc ? undefined : handleSendDriveNotification}
+              notifyingDriveId={notifyingDriveId}
+              onEditDrive={isVc ? undefined : handleEditDrive}
+              emptyMessage="No placement drives found for this company."
+              actionsAsMenu
+            />
           </Box>
+
+          <Box className="company-details-section company-details-offers-section">
+            <Flex className="company-details-section-head">
+              <Box>
+                <Heading as="h2" size="md">Students & Job Offers</Heading>
+              </Box>
+              <HStack spacing={2}>
+                <span className="company-details-drives-count">{offers.length}</span>
+                {!isVc && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    borderColor="gray.200"
+                    onClick={() => navigate('/placement/job-offers')}
+                  >
+                    All offers
+                  </Button>
+                )}
+              </HStack>
+            </Flex>
+            <Box className="company-details-offers-table-inner" pb={4}>
+              <JobOffersDataTable
+                offers={offers}
+                loading={loading}
+                visibleColumns={COMPANY_PAGE_OFFER_COLUMNS}
+                readOnly={isVc}
+                onEditOffer={isVc ? undefined : handleEditOffer}
+                emptyMessage="No student offers recorded yet for this company."
+              />
+            </Box>
+          </Box>
+
+          <JobOfferEditModal
+            isOpen={isOfferEditOpen}
+            onClose={handleOfferEditClose}
+            offer={editingOffer}
+            companies={company ? [{ id: company.id, company_name: company.company_name }] : []}
+            lockCompany
+            onSaved={refreshOffers}
+          />
 
           <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl">
             <ModalOverlay />

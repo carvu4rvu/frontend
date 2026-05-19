@@ -377,7 +377,12 @@ export const PlacementService = {
   submitOfferDecision: async (placementId, isAccepted, remarks = '') => {
     const response = await apiFetch('/placement/offers/decision', {
       method: 'PATCH',
-      body: JSON.stringify({ placement_id: placementId, is_accepted: isAccepted, remarks: remarks || undefined }),
+      body: JSON.stringify({
+        placement_id: placementId,
+        offer_id: placementId,
+        is_accepted: isAccepted,
+        remarks: remarks || undefined,
+      }),
     });
     return response;
   },

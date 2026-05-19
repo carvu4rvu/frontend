@@ -32,7 +32,7 @@ import AlumniDetails from './pages/admin/AlumniDetails';
 import AlumniConnect from './pages/admin/AlumniConnect';
 import AdminCompanies from './pages/admin/Companies';
 import CompanyDetails from './pages/admin/CompanyDetails';
-import NotificationsComingSoon from './pages/NotificationsComingSoon';
+import NotificationIdRedirect from './pages/admin/NotificationIdRedirect';
 import StudentNotificationsPage from './pages/student/StudentNotificationsPage';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminNotificationLayout from './pages/admin/AdminNotificationLayout';
@@ -320,9 +320,7 @@ const router = createBrowserRouter([
         path: "/placement/notifications/:id",
         element: (
           <PlacementProtectedRoute requiredRole="admin">
-            <AdminLayout>
-              <NotificationsComingSoon />
-            </AdminLayout>
+            <NotificationIdRedirect />
           </PlacementProtectedRoute>
         )
       },

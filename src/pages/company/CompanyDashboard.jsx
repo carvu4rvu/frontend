@@ -33,6 +33,7 @@ import {
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import CompanyLayout from '../../components/CompanyLayout';
+import { CompanyLogo } from '../../components/CompanyLogo';
 import { CompanyService } from '../../services/company.service';
 import { resolveCompanyLogoUrl } from '../../utils/companyLogo';
 import './CompanyDashboard.css';
@@ -217,13 +218,11 @@ const CompanyDashboard = () => {
           <Box className="company-dashboard-welcome" mb={8}>
             <Flex justify="space-between" align="center" flexWrap="wrap" gap={4}>
               <HStack spacing={5}>
-                <Avatar
-                  size="xl"
+                <CompanyLogo
+                  boxSize="80px"
                   name={company?.company_name}
                   src={logoUrl}
-                  bg="whiteAlpha.200"
-                  color="white"
-                  icon={<Icon as={FaBuilding} boxSize={8} />}
+                  variant="circle"
                   border="3px solid"
                   borderColor={colors.accent}
                 />

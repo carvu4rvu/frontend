@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Container,
@@ -27,6 +27,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { EventsService } from '../services/events.service';
 import { NotificationService } from '../services/notification.service';
+import { navigateToPlacementNotificationSend } from '../utils/placementNotificationNav';
 import { getFileUrl } from '../utils/fileUrl';
 import AdminLayout from '../components/AdminLayout';
 import './EventsPage.css';
@@ -53,18 +54,28 @@ const defaultForm = {
   status: 'scheduled',
 };
 
+/** Append cache-buster so replaced covers refresh in the browser */
+function withImageCacheBust(url, event) {
+  if (!url) return null;
+  const v = event?.updated_at ? new Date(event.updated_at).getTime() : null;
+  if (!v) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}v=${v}`;
+}
+
 /** Cover image: DB images[0], API image_url (system-assets), or Supabase public path */
 function getEventImageUrl(event) {
   if (!event) return null;
   const first = Array.isArray(event.images) && event.images[0];
   if (first) {
     const url = typeof first === 'string' ? first : first?.url;
-    if (url) return getFileUrl(url) || url;
+    if (url) return withImageCacheBust(getFileUrl(url) || url, event);
   }
-  if (event.image_url) return getFileUrl(event.image_url) || event.image_url;
+  if (event.image_url) return withImageCacheBust(getFileUrl(event.image_url) || event.image_url, event);
   const base = import.meta.env.VITE_SUPABASE_URL;
   if (base && event.id) {
-    return `${base.replace(/\/$/, '')}/storage/v1/object/public/system-assets/events/${event.id}.jpg`;
+    const url = `${base.replace(/\/$/, '')}/storage/v1/object/public/system-assets/events/${event.id}.jpg`;
+    return withImageCacheBust(url, event);
   }
   return null;
 }
@@ -82,6 +93,10 @@ function formatDatetime(iso) {
 function EventCard({ event, isAdmin, onEdit, onDelete, onSendNotification, onGoToNotification, notificationStats, isHighlighted }) {
   const [imgError, setImgError] = useState(false);
   const imgUrl = !imgError ? getEventImageUrl(event) : null;
+
+  useEffect(() => {
+    setImgError(false);
+  }, [event.id, event.updated_at, event.images, event.image_url]);
   const stats = notificationStats?.[event.id];
   const hasNotification = stats?.notificationId != null;
 
@@ -171,6 +186,7 @@ export default function EventsPage() {
   const [editingId, setEditingId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const imageInputRef = useRef(null);
   const [notificationForm, setNotificationForm] = useState(defaultNotifForm);
   const [notificationSubmitting, setNotificationSubmitting] = useState(false);
 
@@ -218,18 +234,36 @@ export default function EventsPage() {
   };
 
   const applyImageFile = (file) => {
-    if (!file || !file.type?.startsWith('image/')) return;
+    if (!file) return;
+    const isImage =
+      file.type?.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(file.name || '');
+    if (!isImage) {
+      toast({ title: 'Please choose an image file (JPG, PNG, WebP, or GIF)', status: 'warning' });
+      return;
+    }
     if (imagePreview?.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
 
+  const openImagePicker = () => {
+    imageInputRef.current?.click();
+  };
+
   const handleImageFileChange = (e) => {
-    applyImageFile(e.target.files?.[0] || null);
-    if (!e.target.files?.[0] && editingId) {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      applyImageFile(file);
+      return;
+    }
+    if (editingId) {
       setImageFile(null);
       setImagePreview(getEventImageUrl(events.find((ev) => String(ev.id) === String(editingId))) || null);
     }
+  };
+
+  const handleImageInputClick = (e) => {
+    e.target.value = '';
   };
 
   const handleImageDrop = (e) => {
@@ -361,17 +395,26 @@ export default function EventsPage() {
     }
     setNotificationSubmitting(true);
     try {
+      const title = notificationForm.title.trim();
+      const message = notificationForm.message.trim();
+      const link = notificationForm.link?.trim() || '';
+      const notification_type = notificationForm.type || 'EVENT';
       const created = await NotificationService.create({
-        title: notificationForm.title.trim(),
-        message: notificationForm.message.trim(),
-        type: notificationForm.type,
-        link: notificationForm.link?.trim() || undefined,
-        event_id: notificationForm.eventId || undefined,
+        title,
+        message,
+        notification_type,
+        link: link || undefined,
       });
       toast({ title: 'Notification created', description: 'Redirecting to send to students.', status: 'success', duration: 2000 });
       onNotifClose();
       setNotificationForm(defaultNotifForm);
-      navigate(`/placement/notifications/${created.id}`);
+      navigateToPlacementNotificationSend(navigate, {
+        title,
+        message,
+        link,
+        notification_type,
+        openNotificationId: created?.id,
+      });
     } catch (err) {
       toast({ title: 'Failed to create notification', status: 'error', description: err?.message, isClosable: true });
     } finally {
@@ -569,32 +612,36 @@ export default function EventsPage() {
                 </header>
                 <div className="events-form-card-body">
                   <div className="events-image-upload">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      className="events-image-upload-input"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleImageFileChange}
+                      onClick={handleImageInputClick}
+                    />
                     {imagePreview ? (
                       <div className="events-image-preview-stage">
                         <img src={imagePreview} alt="Cover preview" onError={() => setImagePreview(null)} />
-                        <label className="events-image-replace">
+                        <button
+                          type="button"
+                          className="events-image-replace"
+                          onClick={openImagePicker}
+                        >
                           <FiUploadCloud />
                           Replace image
-                          <input
-                            type="file"
-                            className="events-image-upload-input"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            onChange={handleImageFileChange}
-                          />
-                        </label>
+                        </button>
                       </div>
                     ) : (
                       <label
                         className="events-image-upload-zone"
                         onDragOver={handleImageDragOver}
                         onDrop={handleImageDrop}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openImagePicker();
+                        }}
                       >
-                        <input
-                          type="file"
-                          className="events-image-upload-input"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
-                          onChange={handleImageFileChange}
-                        />
                         <span className="events-image-upload-icon-wrap">
                           <FiUploadCloud />
                         </span>

@@ -13,11 +13,13 @@ export function CompanyLogo({ src, name, boxSize = '80px', variant = 'circle', .
   const fallbackBox = (
     <Box
       boxSize={boxSize}
-      bg="gray.100"
+      bg="white"
       borderRadius={isCircle ? 'full' : 'lg'}
       display="flex"
       alignItems="center"
       justifyContent="center"
+      border="1px solid"
+      borderColor="gray.200"
       {...props}
     >
       <Text fontWeight="bold" fontSize="2xl" color="gray.500" fontFamily="serif">

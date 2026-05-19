@@ -98,7 +98,7 @@ export const CompanyService = {
   /** Get student profile (company-safe view) */
   getStudentProfile: async (usn) => {
     const response = await apiFetch(`/company/students/${encodeURIComponent(usn)}`);
-    return response.data?.data;
+    return response?.data?.data ?? response?.data ?? null;
   },
 
   // ============== OFFERS ==============

@@ -56,6 +56,10 @@ import {
 import { PlacementService } from '../../services/placement.service';
 import { NotificationService } from '../../services/notification.service';
 import { buildCompanyLogoById, getCompanyLogoRaw } from '../../utils/companyLogo';
+import {
+  buildDriveNotificationContent,
+  navigateToPlacementNotificationSend,
+} from '../../utils/placementNotificationNav';
 
 /* Fixed columns matching placement_drive.html: Company/Remarks/TPO, Eligibility, Location & Description, Compensation, Important Dates, Openings/Reg, Actions */
 const TABLE_COLUMNS = [
@@ -314,24 +318,16 @@ const Events = () => {
     if (e) e.stopPropagation();
     setNotifyingDriveId(drive.id);
     try {
-      const eventDate = drive.event_datetime ? new Date(drive.event_datetime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-      const regDate = drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString() : '—';
-      const ctcVal = getDisplayCTCValue(drive.ctc_structure);
-      const ctc = ctcVal != null ? `${ctcVal} LPA` : (drive.ctc || 'TBD');
-      const title = `Placement drive: ${drive.company_name || 'Drive'}`;
-      const message = [
-        `${drive.company_name || 'Company'} – ${drive.job_type || drive.job_profile || '—'}`,
-        drive.job_location ? `Location: ${drive.job_location}` : null,
-        drive.type_of_hiring ? `Hiring: ${drive.type_of_hiring}` : null,
-        `CTC: ${ctc}`,
-        `Event date: ${eventDate}`,
-        `Last date to register: ${regDate}`,
-        drive.job_description ? drive.job_description.slice(0, 200) + (drive.job_description.length > 200 ? '…' : '') : ''
-      ].filter(Boolean).join('\n');
-      const link = `/placement/events/${drive.id}/process`;
-      const created = await NotificationService.create({ title, message, type: 'PLACEMENT', link, drive_id: drive.id });
+      const { title, message, link, notification_type } = buildDriveNotificationContent(drive);
+      const created = await NotificationService.create({ title, message, notification_type, link });
       toast({ title: 'Notification created', description: 'Redirecting to send to students.', status: 'success', duration: 2000 });
-      navigate(`/placement/notifications/${created.id}`);
+      navigateToPlacementNotificationSend(navigate, {
+        title,
+        message,
+        link,
+        notification_type,
+        openNotificationId: created?.id,
+      });
     } catch (err) {
       toast({ title: 'Failed to create notification', status: 'error', isClosable: true });
     } finally {
@@ -462,6 +458,18 @@ const Events = () => {
     });
     onOpen();
   };
+
+  // Open edit modal when navigated from company page (Edit Drive action)
+  useEffect(() => {
+    const editId = location.state?.editDriveId;
+    if (!editId || loading || !drives.length) return;
+    const drive = drives.find((d) => String(d.id) === String(editId));
+    if (drive) {
+      handleEditClick(drive);
+      navigate(location.pathname + location.search, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when editDriveId arrives after drives load
+  }, [location.state?.editDriveId, loading, drives]);
 
   const openEligibilityModal = (driveId) => {
     setEligibilityDriveId(driveId);

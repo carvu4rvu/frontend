@@ -130,8 +130,10 @@ const CompanyDriveDetail = () => {
 
   const getFilteredProcesses = () => {
     let result = processes;
-    if (currentActiveRoundIndex === -3) {
+    if (currentActiveRoundIndex === -2) {
       result = result.filter(isRegistered);
+    } else if (currentActiveRoundIndex === -3) {
+      result = result.filter((p) => isRegistered(p) && p.approved_status === 'Qualified');
     } else if (currentActiveRoundIndex === -4) {
       result = result.filter((p) => {
         if (!isRegistered(p)) return false;
@@ -357,7 +359,8 @@ const CompanyDriveDetail = () => {
     : `${currentRoundName} (Round ${currentActiveRoundIndex + 1})`;
 
   const totalStudents = processes.length;
-  const approvedCount = processes.filter((p) => p.approved_status === 'Qualified').length;
+  const registeredCount = processes.filter(isRegistered).length;
+  const approvedCount = processes.filter((p) => isRegistered(p) && p.approved_status === 'Qualified').length;
   const malpracticeCount = processes.filter((p) => p.malpractice === true).length;
   const selectedCount = processes.filter((p) => p.final_select_status === true).length;
 
@@ -456,7 +459,7 @@ const CompanyDriveDetail = () => {
                   </Box>
                   <Box className="stat-card" bg="blue.50" px={4} py={2} borderRadius="lg" textAlign="center" minW="72px">
                     <Text fontSize="10px" color="blue.600" fontWeight="bold" textTransform="uppercase">Reg</Text>
-                    <Text fontSize="sm" fontWeight="bold" color="blue.700">{totalStudents}</Text>
+                    <Text fontSize="sm" fontWeight="bold" color="blue.700">{registeredCount}</Text>
                   </Box>
                   <Box className="stat-card" bg="green.50" px={4} py={2} borderRadius="lg" textAlign="center" minW="72px">
                     <Text fontSize="10px" color="green.600" fontWeight="bold" textTransform="uppercase">Approved</Text>

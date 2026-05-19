@@ -32,7 +32,6 @@ import {
   ModalFooter,
   ModalCloseButton,
   useDisclosure,
-  Tooltip,
 } from '@chakra-ui/react';
 import {
   EditIcon,
@@ -43,6 +42,8 @@ import {
   EmailIcon,
   PhoneIcon,
   ExternalLinkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@chakra-ui/icons';
 import {
   FaBuilding,
@@ -50,13 +51,27 @@ import {
   FaLinkedin,
   FaMapMarkerAlt,
   FaInfoCircle,
-  FaUsers,
   FaUserTie,
   FaBriefcase,
 } from 'react-icons/fa';
 import CompanyLayout from '../../components/CompanyLayout';
+import { CompanyLogo } from '../../components/CompanyLogo';
 import { CompanyService } from '../../services/company.service';
 import { resolveCompanyLogoUrl } from '../../utils/companyLogo';
+import '../admin/CompanyDetails.css';
+
+const CARDS_PER_PAGE = 4;
+
+const avatarColors = [
+  'blue.500', 'red.500', 'green.600', 'orange.500', 'purple.600',
+  'teal.500', 'pink.600', 'cyan.600', 'yellow.600', 'blackAlpha.800',
+];
+
+const getAvatarColor = (name, index) => {
+  if (!name) return avatarColors[0];
+  const charCode = name.charCodeAt(0) + (index || 0);
+  return avatarColors[charCode % avatarColors.length];
+};
 
 const colors = {
   accent: '#d4a960',
@@ -96,6 +111,10 @@ const CompanyProfile = () => {
   const [isSavingContact, setIsSavingContact] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentContactIndex, setCurrentContactIndex] = useState(0);
+
+  const totalContactPages = Math.ceil(contacts.length / CARDS_PER_PAGE);
+  const currentContactPage = Math.floor(currentContactIndex / CARDS_PER_PAGE);
 
   const { isOpen: isContactModalOpen, onOpen: onContactModalOpen, onClose: onContactModalClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
@@ -231,6 +250,18 @@ const CompanyProfile = () => {
     }
   };
 
+  const nextContactPage = () => {
+    if (contacts.length <= CARDS_PER_PAGE) return;
+    setCurrentContactIndex((prev) => (prev + CARDS_PER_PAGE) % (totalContactPages * CARDS_PER_PAGE));
+  };
+
+  const prevContactPage = () => {
+    if (contacts.length <= CARDS_PER_PAGE) return;
+    setCurrentContactIndex(
+      (prev) => (prev - CARDS_PER_PAGE + totalContactPages * CARDS_PER_PAGE) % (totalContactPages * CARDS_PER_PAGE),
+    );
+  };
+
   const openDeleteContact = (contact) => {
     setDeleteTarget(contact);
     onDeleteOpen();
@@ -242,6 +273,13 @@ const CompanyProfile = () => {
     try {
       await CompanyService.deleteContact(deleteTarget.id);
       setContacts((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      if (
+        contacts.length % CARDS_PER_PAGE === 1 &&
+        currentContactPage === totalContactPages - 1 &&
+        currentContactPage > 0
+      ) {
+        setCurrentContactIndex((currentContactPage - 1) * CARDS_PER_PAGE);
+      }
       toast({ title: 'Contact deleted', status: 'success', duration: 3000, isClosable: true });
       onDeleteClose();
       setDeleteTarget(null);
@@ -277,13 +315,11 @@ const CompanyProfile = () => {
           {/* Header */}
           <Flex justify="space-between" align="start" mb={8} flexWrap="wrap" gap={4}>
             <HStack spacing={5} align="start">
-              <Avatar
-                size="2xl"
+              <CompanyLogo
+                boxSize="96px"
                 name={profile?.company_name}
                 src={logoUrl}
-                bg={colors.dark}
-                color="white"
-                icon={<Icon as={FaBuilding} boxSize={12} />}
+                variant="circle"
                 border="4px solid white"
                 boxShadow="lg"
               />
@@ -573,135 +609,162 @@ const CompanyProfile = () => {
             </CardBody>
           </Card>
 
-          {/* Contacts */}
-          <Card bg="white" borderRadius="2xl" boxShadow="sm" border="1px solid" borderColor={colors.border}>
-            <CardBody p={6}>
-              <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={4}>
-                <HStack spacing={3}>
-                  <Flex w="40px" h="40px" bg={colors.accentLight} borderRadius="xl" align="center" justify="center">
-                    <Icon as={FaUsers} color={colors.accent} boxSize={5} />
-                  </Flex>
-                  <Box>
-                    <Text fontWeight="700" color={colors.dark} fontSize="lg">Contacts</Text>
-                    <Text fontSize="xs" color={colors.secondary}>
-                      {contacts.length} contact{contacts.length !== 1 ? 's' : ''} — add or edit, save directly
-                    </Text>
-                  </Box>
-                </HStack>
+          {/* Contacts — matches placement company details */}
+          <Box className="company-details-section">
+            <Flex className="company-details-section-head">
+              <Box>
+                <Heading as="h2" size="md">Company Contacts</Heading>
+                <Text className="section-sub">People at this organization</Text>
+              </Box>
+              <HStack spacing={2}>
+                <span className="company-details-drives-count">{contacts.length}</span>
                 <Button
                   leftIcon={<AddIcon />}
-                  bg={colors.accent}
-                  color="white"
-                  _hover={{ bg: colors.accentHover }}
+                  size="sm"
+                  colorScheme="teal"
+                  bg="#172e36"
+                  _hover={{ bg: '#1e3a47' }}
                   onClick={openAddContact}
-                  size="md"
                   borderRadius="lg"
                 >
                   Add Contact
                 </Button>
-              </Flex>
+              </HStack>
+            </Flex>
 
-              {contacts.length === 0 ? (
-                <VStack py={10} spacing={4}>
-                  <Flex w="80px" h="80px" borderRadius="full" bg={colors.accentLight} align="center" justify="center">
-                    <Icon as={FaUserTie} boxSize={8} color={colors.accent} opacity={0.6} />
-                  </Flex>
-                  <Text color={colors.secondary} textAlign="center">
-                    No contacts yet. Use the &quot;Add Contact&quot; button above to add contact persons for the placement team.
-                  </Text>
-                </VStack>
-              ) : (
-                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={5}>
-                  {contacts.map((contact, index) => (
-                    <Card
-                      key={contact.id}
-                      bg="white"
-                      borderRadius="xl"
-                      border="1px solid"
-                      borderColor={colors.border}
-                      _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
-                      transition="all 0.2s"
-                    >
-                      <CardBody p={5}>
-                        <Flex justify="space-between" align="start" mb={3}>
-                          <HStack spacing={3}>
+            <Box className="company-details-contacts-body">
+              {contacts.length > 0 ? (
+                <VStack spacing={6}>
+                  <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} w="full">
+                    {contacts
+                      .slice(
+                        currentContactPage * CARDS_PER_PAGE,
+                        (currentContactPage + 1) * CARDS_PER_PAGE,
+                      )
+                      .map((contact, idx) => (
+                        <Card
+                          key={contact.id}
+                          borderRadius="xl"
+                          shadow="md"
+                          p={4}
+                          border="1px"
+                          borderColor="gray.100"
+                          bg="white"
+                          _hover={{ transform: 'translateY(-4px)', shadow: 'lg' }}
+                          transition="all 0.3s"
+                        >
+                          <HStack spacing={3} align="center" mb={4}>
                             <Avatar
-                              size="md"
                               name={contact.contact_name}
-                              bg={`hsl(${(index * 47) % 360}, 55%, 50%)`}
+                              bg={getAvatarColor(contact.contact_name, currentContactPage * CARDS_PER_PAGE + idx)}
                               color="white"
+                              size="md"
+                              fontWeight="bold"
                             />
-                            <Box>
-                              <Text fontWeight="700" color={colors.dark} fontSize="md">
+                            <VStack align="start" spacing={0} overflow="hidden">
+                              <Text fontSize="md" fontWeight="bold" color="gray.800" noOfLines={1}>
                                 {contact.contact_name}
                               </Text>
-                              {contact.role_title && (
-                                <Badge
-                                  bg={colors.accentLight}
-                                  color={colors.accent}
-                                  fontSize="xs"
-                                  borderRadius="full"
-                                  px={2}
-                                  mt={1}
-                                >
-                                  {contact.role_title}
-                                </Badge>
-                              )}
-                            </Box>
-                          </HStack>
-                          <HStack spacing={1}>
-                            <Tooltip label="Edit">
-                              <IconButton
-                                aria-label="Edit"
-                                icon={<EditIcon />}
-                                size="sm"
-                                variant="ghost"
-                                colorScheme="blue"
-                                onClick={() => openEditContact(contact)}
-                              />
-                            </Tooltip>
-                            <Tooltip label="Delete">
-                              <IconButton
-                                aria-label="Delete"
-                                icon={<DeleteIcon />}
-                                size="sm"
-                                variant="ghost"
-                                colorScheme="red"
-                                onClick={() => openDeleteContact(contact)}
-                              />
-                            </Tooltip>
-                          </HStack>
-                        </Flex>
-                        <VStack spacing={2} align="stretch">
-                          {contact.email && (
-                            <HStack spacing={3} p={2} bg={colors.pageBg} borderRadius="lg">
-                              <EmailIcon color={colors.accent} boxSize={4} />
-                              <Text fontSize="sm" color={colors.dark} isTruncated>
-                                {contact.email}
+                              <Text fontSize="xs" color="gray.500" fontWeight="medium" noOfLines={1}>
+                                {contact.role_title || 'No Title'}
                               </Text>
-                            </HStack>
-                          )}
-                          {contact.phone_number && (
-                            <HStack spacing={3} p={2} bg={colors.pageBg} borderRadius="lg">
-                              <PhoneIcon color={colors.accent} boxSize={4} />
-                              <Text fontSize="sm" color={colors.dark}>
-                                {contact.phone_number}
-                              </Text>
-                            </HStack>
-                          )}
-                          {contact.remarks && (
-                            <Text fontSize="xs" color={colors.secondary} fontStyle="italic" noOfLines={2} px={2}>
-                              {contact.remarks}
-                            </Text>
-                          )}
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  ))}
-                </SimpleGrid>
+                            </VStack>
+                          </HStack>
+
+                          <VStack spacing={2} align="start" mb={4} px={1}>
+                            {contact.email && (
+                              <HStack spacing={2}>
+                                <EmailIcon color="blue.400" fontSize="sm" />
+                                <Text fontSize="xs" color="gray.600" noOfLines={1}>
+                                  {contact.email}
+                                </Text>
+                              </HStack>
+                            )}
+                            {contact.phone_number && (
+                              <HStack spacing={2}>
+                                <PhoneIcon color="blue.400" fontSize="sm" />
+                                <Text fontSize="xs" color="gray.600">
+                                  {contact.phone_number}
+                                </Text>
+                              </HStack>
+                            )}
+                          </VStack>
+
+                          <Divider mb={3} />
+
+                          <Flex justify="space-between">
+                            <Button
+                              leftIcon={<EditIcon />}
+                              variant="ghost"
+                              size="sm"
+                              color="gray.500"
+                              _hover={{ color: 'blue.500', bg: 'blue.50' }}
+                              onClick={() => openEditContact(contact)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              leftIcon={<DeleteIcon />}
+                              variant="ghost"
+                              size="sm"
+                              color="gray.500"
+                              _hover={{ color: 'red.500', bg: 'red.50' }}
+                              onClick={() => openDeleteContact(contact)}
+                            >
+                              Delete
+                            </Button>
+                          </Flex>
+                        </Card>
+                      ))}
+                  </SimpleGrid>
+
+                  {contacts.length > CARDS_PER_PAGE && (
+                    <HStack spacing={4} justify="flex-end" w="full">
+                      <IconButton
+                        icon={<ChevronLeftIcon />}
+                        onClick={prevContactPage}
+                        variant="outline"
+                        colorScheme="blue"
+                        size="sm"
+                        aria-label="Previous page"
+                        borderRadius="full"
+                      />
+                      <HStack spacing={2}>
+                        {Array.from({ length: totalContactPages }).map((_, idx) => (
+                          <Box
+                            key={idx}
+                            w={idx === currentContactPage ? '12px' : '6px'}
+                            h="6px"
+                            bg={idx === currentContactPage ? 'blue.500' : 'gray.300'}
+                            borderRadius="full"
+                            transition="all 0.3s"
+                            cursor="pointer"
+                            onClick={() => setCurrentContactIndex(idx * CARDS_PER_PAGE)}
+                          />
+                        ))}
+                      </HStack>
+                      <IconButton
+                        icon={<ChevronRightIcon />}
+                        onClick={nextContactPage}
+                        variant="outline"
+                        colorScheme="blue"
+                        size="sm"
+                        aria-label="Next page"
+                        borderRadius="full"
+                      />
+                    </HStack>
+                  )}
+                </VStack>
+              ) : (
+                <Flex direction="column" align="center" justify="center" py={10}>
+                  <Text color="gray.500" mb={4}>No contacts found for this company.</Text>
+                  <Button leftIcon={<AddIcon />} colorScheme="blue" variant="outline" size="sm" onClick={openAddContact}>
+                    Add First Contact
+                  </Button>
+                </Flex>
               )}
-            </CardBody>
-          </Card>
+            </Box>
+          </Box>
         </Container>
       </Box>
 

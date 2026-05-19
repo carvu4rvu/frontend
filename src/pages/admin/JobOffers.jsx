@@ -403,6 +403,26 @@ const JobOffers = () => {
     setIsEditModalOpen(true);
   };
 
+  const findOfferForEditId = (editId) =>
+    offers.find(
+      (o) =>
+        (o.offer_row_id != null && String(o.offer_row_id) === String(editId)) ||
+        String(o.id) === String(editId) ||
+        (o.placement_id != null && String(o.placement_id) === String(editId))
+    );
+
+  // Open edit modal when navigated from company page
+  useEffect(() => {
+    const editId = location.state?.editOfferId;
+    if (!editId || loading || !offers.length) return;
+    const offer = findOfferForEditId(editId);
+    if (offer) {
+      handleEditOffer(offer);
+      navigate(location.pathname + location.search, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open once when offer list is ready
+  }, [location.state?.editOfferId, loading, offers]);
+
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     if (name === 'company_name') {
@@ -418,11 +438,12 @@ const JobOffers = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingOffer?.id) return;
+    const updateId = editingOffer?.offer_row_id ?? editingOffer?.id ?? editingOffer?.placement_id;
+    if (updateId == null || updateId === '') return;
 
     try {
       setEditSaving(true);
-      await PlacementService.updateJobOffer(editingOffer.id, editForm);
+      await PlacementService.updateJobOffer(updateId, editForm);
       toast({ title: "Job offer updated successfully", status: "success" });
       setIsEditModalOpen(false);
       setEditingOffer(null);
@@ -449,6 +470,21 @@ const JobOffers = () => {
   useEffect(() => {
     fetchOffers();
   }, []);
+
+  useEffect(() => {
+    const usn = location.state?.highlightUsn;
+    const companyId = location.state?.filterCompanyId;
+    if (usn) {
+      setSearchQuery(String(usn));
+    }
+    if (companyId != null && companyId !== '' && offers.length > 0) {
+      const match = offers.find((o) => String(o.company_id) === String(companyId));
+      if (match?.company_name) setSelectedCompany(match.company_name);
+    }
+    if (usn || companyId != null) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.highlightUsn, location.state?.filterCompanyId, navigate, location.pathname, offers]);
 
   const fetchFormMeta = async () => {
     setFormMetaLoading(true);

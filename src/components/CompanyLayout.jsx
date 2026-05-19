@@ -6,8 +6,6 @@ import {
   Button,
   Text,
   Flex,
-  Avatar,
-  Image,
   Menu,
   MenuButton,
   MenuList,
@@ -21,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { CompanyService } from '../services/company.service';
 import { resolveCompanyLogoUrl } from '../utils/companyLogo';
 import { CarvuBrand } from './CarvuBrand';
+import { CompanyLogo } from './CompanyLogo';
 
 // Same theme as AlumniLayout
 const NAV_ACCENT = '#FDE74C';
@@ -203,14 +202,13 @@ const CompanyLayout = ({ children }) => {
               size="sm"
             >
               <HStack spacing={3}>
-                <Avatar
-                  size="sm"
+                <CompanyLogo
+                  boxSize="32px"
                   name={displayName}
                   src={logoUrl}
+                  variant="circle"
                   border="2px solid"
                   borderColor={NAV_ACCENT}
-                  bg="#475569"
-                  color="white"
                 />
                 <Text
                   color="white"
@@ -234,14 +232,13 @@ const CompanyLayout = ({ children }) => {
             >
               <Box px={4} py={3} borderBottom="1px solid" borderColor="#334155">
                 <HStack spacing={3}>
-                  <Avatar
-                    size="md"
+                  <CompanyLogo
+                    boxSize="48px"
                     name={displayName}
                     src={logoUrl}
+                    variant="circle"
                     border="2px solid"
                     borderColor={NAV_ACCENT}
-                    bg="#475569"
-                    color="white"
                   />
                   <Box minW={0}>
                     <Text color="white" fontWeight="600" fontSize="sm" noOfLines={1}>

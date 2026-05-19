@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiCheck, FiBell, FiX, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { FiBell, FiX, FiSearch, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import { NotificationService } from '../../services/notification.service';
 import { PlacementService } from '../../services/placement.service';
 import './AdminNotificationPortal.css';
@@ -16,38 +16,45 @@ const formatRecipientLine = (o) => {
 const limit = 20;
 
 const NOTIFICATION_TYPES = [
-  {
-    value: 'CUSTOM',
-    label: 'General',
-    headerBg: 'linear-gradient(135deg, #475569 0%, #64748b 100%)',
-    buttonBg: '#475569',
-    buttonHoverBg: '#334155',
-  },
-  {
-    value: 'PLACEMENT',
-    label: 'Placement',
-    headerBg: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
-    buttonBg: '#1d4ed8',
-    buttonHoverBg: '#1e40af',
-  },
-  {
-    value: 'EVENT',
-    label: 'Event',
-    headerBg: 'linear-gradient(135deg, #c2410c 0%, #ea580c 100%)',
-    buttonBg: '#c2410c',
-    buttonHoverBg: '#9a3412',
-  },
-  {
-    value: 'URGENT',
-    label: 'Urgent',
-    headerBg: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)',
-    buttonBg: '#b91c1c',
-    buttonHoverBg: '#991b1b',
-  },
+  { value: 'CUSTOM', label: 'General' },
+  { value: 'PLACEMENT', label: 'Placement' },
+  { value: 'EVENT', label: 'Event' },
+  { value: 'URGENT', label: 'Urgent' },
 ];
 
 const defaultTypeTheme = NOTIFICATION_TYPES[0];
 const getTypeTheme = (type) => NOTIFICATION_TYPES.find((t) => t.value === type) || defaultTypeTheme;
+
+function getNotificationIds(n) {
+  if (Array.isArray(n.notification_ids) && n.notification_ids.length > 0) {
+    return n.notification_ids.map((id) => Number(id));
+  }
+  return n.id != null ? [Number(n.id)] : [];
+}
+
+function formatStatusDisplay(n) {
+  const reach = Number(n.recipient_count) || 0;
+  if (reach === 0) {
+    return { isDraft: true, label: 'Draft', segments: [] };
+  }
+  const delivered = Number(n.delivered_count) || 0;
+  const read = Number(n.read_count) || 0;
+  const deliveredPct = Math.min(100, Math.round((delivered / reach) * 100));
+  const readPct = Math.min(100, Math.round((read / reach) * 100));
+  const pendingPct = Math.max(0, 100 - deliveredPct);
+  const segments = [
+    { key: 'delivered', label: `Delivered ${deliveredPct}%` },
+    { key: 'read', label: `Read ${readPct}%` },
+  ];
+  if (pendingPct > 0) {
+    segments.push({ key: 'pending', label: `Pending ${pendingPct}%` });
+  }
+  return {
+    isDraft: false,
+    label: segments.map((s) => s.label).join(' · '),
+    segments,
+  };
+}
 
 export default function AdminNotificationPage() {
   const location = useLocation();
@@ -94,6 +101,8 @@ export default function AdminNotificationPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -119,29 +128,57 @@ export default function AdminNotificationPage() {
 
   useEffect(() => {
     const state = location.state;
-    if (state?.fromEvent && state?.event && typeof state.event === 'object') {
-      const { title = '', message = '', link = '' } = state.event;
-      setEditId(null);
-      setAddOpen(true);
-      setStep(1);
-      setForm({
-        notification_type: 'EVENT',
-        title: String(title),
-        message: String(message),
-        link: String(link || ''),
-      });
-      setSelectedUserIds(new Set());
-      setSelectedRecipientDetails([]);
-      setSelectedRoleNames(new Set());
-      setRoleUserIdsByRole({});
-      setUniversalSearch('');
-      setUniversalResults([]);
-      setSendError(null);
-      PlacementService.getSchools().then((s) => setSchools(s || []));
-      PlacementService.getPrograms().then((p) => setPrograms(p || []));
-      NotificationService.getRoles().then((r) => setRoleOpts(r.roles || []));
-      navigate(location.pathname, { replace: true, state: {} });
+    const shouldPrefill =
+      (state?.prefillNotification || state?.fromEvent) &&
+      state?.event &&
+      typeof state.event === 'object';
+    if (!shouldPrefill) return;
+
+    const {
+      title = '',
+      message = '',
+      link = '',
+      notification_type: eventType,
+    } = state.event;
+    const openId = state.openNotificationId;
+    const defaultType = state.fromEvent ? 'EVENT' : 'PLACEMENT';
+    const notifType = eventType || defaultType;
+
+    setEditId(openId != null && openId !== '' ? Number(openId) : null);
+    setAddOpen(true);
+    setStep(openId != null && openId !== '' ? 2 : 1);
+    setForm({
+      notification_type: notifType,
+      title: String(title),
+      message: String(message),
+      link: String(link || ''),
+    });
+    setSelectedUserIds(new Set());
+    setSelectedRecipientDetails([]);
+    setSelectedRoleNames(new Set());
+    setRoleUserIdsByRole({});
+    setUniversalSearch('');
+    setUniversalResults([]);
+    setSendError(null);
+    PlacementService.getSchools().then((s) => setSchools(s || []));
+    PlacementService.getPrograms().then((p) => setPrograms(p || []));
+    NotificationService.getRoles().then((r) => setRoleOpts(r.roles || []));
+
+    if (openId != null && openId !== '' && (!title || !message)) {
+      NotificationService.getById(openId)
+        .then((n) => {
+          if (!n) return;
+          setForm({
+            notification_type: n.notification_type || notifType,
+            title: n.title || '',
+            message: n.message || '',
+            link: n.link || '',
+          });
+        })
+        .catch((e) => console.error('Load notification for send:', e));
     }
+
+    navigate(location.pathname, { replace: true, state: {} });
   }, [location.state, location.pathname, navigate]);
 
   const openAddModal = useCallback(() => {
@@ -175,19 +212,46 @@ export default function AdminNotificationPage() {
     setEditId(null);
   }, []);
 
-  const handleDelete = useCallback(async (n) => {
-    if (!window.confirm(`Delete "${n.title || 'this notification'}"? This cannot be undone.`)) return;
+  const openDeleteConfirm = useCallback((n) => {
+    setDeleteError(null);
+    setDeleteTarget(n);
+  }, []);
+
+  const closeDeleteConfirm = useCallback(() => {
+    if (deletingId != null) return;
+    setDeleteTarget(null);
+    setDeleteError(null);
+  }, [deletingId]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const n = deleteTarget;
+    const ids = getNotificationIds(n);
     setDeletingId(n.id);
+    setDeleteError(null);
     try {
-      await NotificationService.delete(n.id);
+      await Promise.all(ids.map((id) => NotificationService.delete(id)));
+      setDeleteTarget(null);
       loadHistory();
     } catch (e) {
       console.error('Delete notification:', e);
-      window.alert(e.message || 'Failed to delete notification');
+      setDeleteError(e.message || 'Failed to delete notification');
     } finally {
       setDeletingId(null);
     }
-  }, [loadHistory]);
+  }, [deleteTarget, loadHistory]);
+
+  useEffect(() => {
+    if (!deleteTarget) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape' && deletingId == null) {
+        setDeleteTarget(null);
+        setDeleteError(null);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [deleteTarget, deletingId]);
 
   const openEditModal = useCallback((n) => {
     setEditId(n.id);
@@ -515,15 +579,20 @@ export default function AdminNotificationPage() {
     }
   }, [form, recipientCount, editId, allRecipientIds, closeAddModal, loadHistory]);
 
-  const typeTheme = getTypeTheme(form.notification_type);
-
   return (
     <div className="notification-portal__view active view-history">
       <div className="notification-portal__history-inner">
-        <header className="notification-portal__history-header">
-          <div>
-            <h1 className="notification-portal__history-title">Notification History</h1>
-            <p className="notification-portal__history-subtitle">View and track all previously broadcasted messages.</p>
+        <header className="notification-portal__hero">
+          <div className="notification-portal__hero-inner">
+            <div className="notification-portal__hero-icon" aria-hidden>
+              <FiBell size={22} />
+            </div>
+            <div className="notification-portal__hero-text">
+              <h1 className="notification-portal__hero-title">Notifications</h1>
+              <p className="notification-portal__hero-subtitle">
+                View and track all previously broadcasted messages.
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -532,9 +601,22 @@ export default function AdminNotificationPage() {
             aria-label="Add notification"
           >
             <FiBell size={18} aria-hidden />
-            <span>Add</span>
+            <span>New notification</span>
           </button>
         </header>
+
+        {!historyLoading && (
+          <div className="notification-portal__stats" aria-label="Summary">
+            <span className="notification-portal__stat-pill">
+              <strong>{total.toLocaleString()}</strong> total
+            </span>
+            <span className="notification-portal__stat-pill notification-portal__stat-pill--muted">
+              Page {page} of {Math.max(totalPages, 1)}
+            </span>
+          </div>
+        )}
+
+        <div className="notification-portal__toolbar-card">
         <div className="notification-portal__toolbar">
           <div className="notification-portal__search-wrap">
             <FiSearch className="notification-portal__search-icon" aria-hidden />
@@ -558,6 +640,7 @@ export default function AdminNotificationPage() {
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
+        </div>
         </div>
         <div className="notification-portal__history-table-wrap">
           {historyLoading ? (
@@ -584,10 +667,11 @@ export default function AdminNotificationPage() {
                   </tr>
                 ) : (
                   notifications.map((n) => {
-                    const isDraft = (n.recipient_count ?? 0) === 0;
+                    const status = formatStatusDisplay(n);
+                    const mergeCount = Number(n.merge_count) || 1;
                     return (
-                      <tr key={n.id}>
-                        <td style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      <tr key={`${n.id}-${mergeCount}-${n.title}`}>
+                        <td className="notification-portal__cell-timestamp">
                           {n.created_at
                             ? new Date(n.created_at).toLocaleString(undefined, {
                                 dateStyle: 'short',
@@ -595,7 +679,14 @@ export default function AdminNotificationPage() {
                               })
                             : '—'}
                         </td>
-                        <td className="cell-title">{n.title}</td>
+                        <td className="cell-title">
+                          {n.title}
+                          {mergeCount > 1 && (
+                            <span className="notification-portal__merge-badge" title={`${mergeCount} sends merged`}>
+                              {mergeCount} merged
+                            </span>
+                          )}
+                        </td>
                         <td className="cell-message" title={n.message || ''}>
                           {n.message || '—'}
                         </td>
@@ -614,11 +705,24 @@ export default function AdminNotificationPage() {
                             {n.notification_type || 'CUSTOM'}
                           </span>
                         </td>
-                        <td>{(n.recipient_count ?? 0).toLocaleString()}</td>
+                        <td className="notification-portal__cell-reach">
+                          <strong>{(n.recipient_count ?? 0).toLocaleString()}</strong>
+                        </td>
                         <td>
-                          <span className={`notification-portal__history-status ${isDraft ? 'draft' : ''}`}>
-                            {isDraft ? 'Draft' : <><FiCheck size={12} /> DELIVERED</>}
-                          </span>
+                          {status.isDraft ? (
+                            <span className="notification-portal__history-status draft">Draft</span>
+                          ) : (
+                            <div className="notification-portal__status-breakdown" title={status.label}>
+                              {status.segments.map((seg) => (
+                                <span
+                                  key={seg.key}
+                                  className={`notification-portal__status-chip notification-portal__status-chip--${seg.key}`}
+                                >
+                                  {seg.label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <div className="notification-portal__history-actions">
@@ -626,7 +730,7 @@ export default function AdminNotificationPage() {
                             <button
                               type="button"
                               className="notification-portal__history-action-icon"
-                              onClick={() => handleDelete(n)}
+                              onClick={() => openDeleteConfirm(n)}
                               disabled={deletingId === n.id}
                               aria-label="Delete notification"
                               title="Delete"
@@ -644,7 +748,7 @@ export default function AdminNotificationPage() {
           )}
         </div>
         {totalPages > 1 && (
-          <div className="notification-portal__actions" style={{ marginTop: '1rem', justifyContent: 'center' }}>
+          <div className="notification-portal__pagination">
             <button
               type="button"
               className="notification-portal__btn notification-portal__btn-secondary"
@@ -653,7 +757,7 @@ export default function AdminNotificationPage() {
             >
               Previous
             </button>
-            <span style={{ alignSelf: 'center', fontSize: '0.875rem' }}>
+            <span className="notification-portal__pagination-label">
               Page {page} of {totalPages}
             </span>
             <button
@@ -668,10 +772,69 @@ export default function AdminNotificationPage() {
         )}
       </div>
 
+      {deleteTarget && (
+        <div
+          className="notification-portal__confirm-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-notification-title"
+          onClick={closeDeleteConfirm}
+        >
+          <div
+            className="notification-portal__confirm-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="notification-portal__confirm-icon-wrap" aria-hidden="true">
+              <FiAlertTriangle size={28} />
+            </div>
+            <h2 id="delete-notification-title" className="notification-portal__confirm-title">
+              Delete notification?
+            </h2>
+            <p className="notification-portal__confirm-lead">
+              You are about to permanently remove{' '}
+              <strong className="notification-portal__confirm-highlight">
+                {deleteTarget.title || 'this notification'}
+              </strong>
+              . This action cannot be undone.
+            </p>
+            {getNotificationIds(deleteTarget).length > 1 && (
+              <p className="notification-portal__confirm-merge-note">
+                This grouped entry includes{' '}
+                <strong>{getNotificationIds(deleteTarget).length} merged sends</strong> with the same
+                subject, message, and type. All of them will be deleted.
+              </p>
+            )}
+            {deleteError && (
+              <p className="notification-portal__confirm-error" role="alert">
+                {deleteError}
+              </p>
+            )}
+            <div className="notification-portal__confirm-actions">
+              <button
+                type="button"
+                className="notification-portal__btn notification-portal__btn-secondary notification-portal__confirm-btn-cancel"
+                onClick={closeDeleteConfirm}
+                disabled={deletingId != null}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="notification-portal__btn notification-portal__confirm-btn-delete"
+                onClick={confirmDelete}
+                disabled={deletingId != null}
+              >
+                {deletingId != null ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {addOpen && (
         <div className="notification-portal__add-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-notification-title">
           <div className="notification-portal__add-modal" data-type={form.notification_type}>
-            <header className="notification-portal__add-modal-header" style={{ background: typeTheme.headerBg }}>
+            <header className="notification-portal__add-modal-header">
               <h2 id="add-notification-title">
                 {editId ? 'Edit Notification' : 'Add Notification'}
               </h2>
@@ -1024,7 +1187,7 @@ export default function AdminNotificationPage() {
                   <h3>Preview &amp; Send</h3>
                   <p className="notification-portal__preview-intro">How it will look to recipients</p>
                   <div className="notification-portal__preview-card" data-type={form.notification_type}>
-                    <div className="notification-portal__preview-card-header" style={{ background: typeTheme.headerBg }}>
+                    <div className="notification-portal__preview-card-header">
                       <span className="notification-portal__preview-card-type">{getTypeTheme(form.notification_type).label}</span>
                     </div>
                     <div className="notification-portal__preview-card-body">
@@ -1061,7 +1224,6 @@ export default function AdminNotificationPage() {
                       className="notification-portal__btn notification-portal__btn-primary"
                       disabled={sending || recipientCount === 0}
                       onClick={handleSend}
-                      style={{ background: typeTheme.buttonBg }}
                     >
                       {sending ? 'Sending…' : 'Send'}
                     </button>
@@ -1075,3 +1237,5 @@ export default function AdminNotificationPage() {
     </div>
   );
 }
+
+
