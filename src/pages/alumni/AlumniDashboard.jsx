@@ -1,63 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
-  Heading,
-  Text,
   Button,
-  HStack,
-  VStack,
-  SimpleGrid,
-  Card,
-  CardBody,
-  Flex,
   Spinner,
+  Avatar,
   Badge,
   Icon,
-  useToast,
+  Progress,
+  HStack,
+  Text,
 } from '@chakra-ui/react';
-import { EmailIcon, ViewIcon, CalendarIcon, BellIcon } from '@chakra-ui/icons';
+import { CalendarIcon, ChevronRightIcon, BellIcon, ViewIcon } from '@chakra-ui/icons';
+import { FaUsers, FaBriefcase, FaGraduationCap } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import AlumniLayout from '../../components/AlumniLayout';
 import { useAuth } from '../../context/AuthContext';
 import { PlacementService } from '../../services/placement.service';
-
-const colors = {
-  accent: '#d4a960',
-  accentHover: '#b8923d',
-  darkGreen: '#166534',
-  darkGreenLight: '#15803d',
-  dark: '#1e293b',
-  secondary: '#64748b',
-  cardBg: '#ffffff',
-  pageBg: '#f8fafc',
-  border: '#e2e8f0',
-  lightAccent: '#fef9e7',
-  muted: '#94a3b8',
-};
-
-const CARD_RADIUS = '20px';
-const CARD_SHADOW = '0 4px 24px rgba(15, 23, 42, 0.08)';
+import { getFileUrl } from '../../utils/fileUrl';
+import { getDisplayProjectSnaps } from '../../utils/projectSnaps';
+import './AlumniDashboard.css';
 
 function formatEventDate(iso) {
   if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleString('en-IN', { 
-    dateStyle: 'medium', 
+  return new Date(iso).toLocaleString('en-IN', {
+    dateStyle: 'medium',
     timeStyle: 'short',
-    timeZone: 'Asia/Kolkata'
+    timeZone: 'Asia/Kolkata',
   });
+}
+
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const diffMs = Date.now() - d;
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(diffMs / 3600000);
+  const days = Math.floor(diffMs / 86400000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString('en-IN', { dateStyle: 'medium' });
 }
 
 function isUpcoming(iso) {
   return iso && new Date(iso) >= new Date();
 }
 
+const PROFILE_FIELDS = [
+  { key: 'full_name', label: 'Full name' },
+  { key: 'graduation_year', label: 'Graduation year' },
+  { key: 'current_company', label: 'Company' },
+  { key: 'current_designation', label: 'Role' },
+  { key: 'personal_email', label: 'Email' },
+  { key: 'phone_number', label: 'Phone' },
+  { key: 'profile_image', label: 'Photo' },
+  { key: 'alumni_remark', label: 'Bio' },
+];
+
+function getProfileCompletion(profile) {
+  if (!profile) return { percent: 0, missing: PROFILE_FIELDS.map((f) => f.label) };
+  const missing = [];
+  let filled = 0;
+  for (const { key, label } of PROFILE_FIELDS) {
+    const v = profile[key];
+    const ok = v != null && String(v).trim() !== '';
+    if (ok) filled += 1;
+    else missing.push(label);
+  }
+  return {
+    percent: Math.round((filled / PROFILE_FIELDS.length) * 100),
+    missing,
+  };
+}
+
+function normalizeNotification(n) {
+  if (!n || typeof n !== 'object') return null;
+  return {
+    id: n.id ?? n.node_id,
+    title: n.title ?? 'Notification',
+    message: n.message ?? '',
+    type: n.notificationType ?? n.notification_type ?? 'General',
+    createdAt: n.createdAt ?? n.created_at,
+    isRead: Boolean(n.isRead ?? n.is_read),
+  };
+}
+
 const AlumniDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const toast = useToast();
   const [events, setEvents] = useState([]);
-  const [hrCount, setHrCount] = useState(0);
+  const [hrList, setHrList] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [alumniNetwork, setAlumniNetwork] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,264 +103,452 @@ const AlumniDashboard = () => {
     (async () => {
       setLoading(true);
       try {
-        const [eventsData, hrData] = await Promise.all([
+        const [
+          eventsData,
+          hrData,
+          profileData,
+          unread,
+          notifResult,
+          projectsData,
+          alumniData,
+        ] = await Promise.all([
           PlacementService.getAlumniEvents(),
           PlacementService.getMyHrRecommendations().catch(() => []),
+          PlacementService.getAlumniMe().catch(() => null),
+          PlacementService.getAlumniNotificationsUnreadCount().catch(() => 0),
+          PlacementService.getAlumniNotifications({ limit: 5, page: 1 }).catch(() => ({ notifications: [] })),
+          PlacementService.getAlumniProjects().catch(() => []),
+          PlacementService.getAllAlumni().catch(() => []),
         ]);
         if (!cancelled) {
           setEvents(Array.isArray(eventsData) ? eventsData : []);
-          setHrCount(Array.isArray(hrData) ? hrData.length : 0);
+          setHrList(Array.isArray(hrData) ? hrData : []);
+          setProfile(profileData);
+          setUnreadCount(typeof unread === 'number' ? unread : 0);
+          const notifList = (notifResult?.notifications ?? [])
+            .map(normalizeNotification)
+            .filter(Boolean);
+          setNotifications(notifList.slice(0, 5));
+          setProjects(Array.isArray(projectsData) ? projectsData : []);
+          setAlumniNetwork(Array.isArray(alumniData) ? alumniData : []);
         }
-      } catch (e) {
-        if (!cancelled) toast({ title: 'Failed to load dashboard', status: 'error', isClosable: true });
+      } catch {
+        /* partial data ok */
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [toast]);
+  }, []);
 
-  const upcomingEvents = events.filter((e) => isUpcoming(e.event_datetime)).slice(0, 5);
-  const displayName = user?.name || user?.full_name || 'Alumni';
+  const upcomingEvents = useMemo(
+    () => events.filter((e) => isUpcoming(e.event_datetime)).slice(0, 5),
+    [events]
+  );
+  const pastEventsCount = useMemo(
+    () => events.filter((e) => !isUpcoming(e.event_datetime)).length,
+    [events]
+  );
+  const displayName = profile?.full_name || user?.name || user?.full_name || 'Alumni';
+  const profileImage = profile?.profile_image ? getFileUrl(profile.profile_image) : user?.profile_image;
+  const { percent: profilePercent, missing: missingProfileFields } = useMemo(
+    () => getProfileCompletion(profile),
+    [profile]
+  );
+  const spotlightProjects = useMemo(() => projects.slice(0, 3), [projects]);
+  const networkSample = useMemo(
+    () => alumniNetwork.filter((a) => a.full_name).slice(0, 4),
+    [alumniNetwork]
+  );
+  const recentHr = useMemo(() => hrList.slice(0, 3), [hrList]);
+
+  const heroMeta = [
+    profile?.graduation_year && { icon: FaGraduationCap, text: `Class of ${profile.graduation_year}` },
+    profile?.institution_name && { icon: FaBriefcase, text: profile.institution_name },
+    profile?.current_work_location && { text: profile.current_work_location },
+  ].filter(Boolean);
 
   return (
     <AlumniLayout>
-      <Box maxW="1200px" mx="auto">
-        {/* Hero – matches alumni nav bar gray */}
-        <Box
-          bg="#20343c"
-          borderRadius="2xl"
-          p={{ base: 6, md: 10 }}
-          color="white"
-          boxShadow="xl"
-          mb={{ base: 6, md: 10 }}
-        >
-          <Heading size="lg" mb={2} fontWeight="800" letterSpacing="-0.02em">
-            Welcome back, {displayName}!
-          </Heading>
-          <Text fontSize="lg" opacity={0.95} mb={6}>
-            Connect with your alma mater, mentor juniors, and stay updated with campus placements.
-          </Text>
-          <HStack spacing={4} flexWrap="wrap" gap={3}>
-            <Button
-              bg="#FDE74C"
-              color="#20343c"
-              _hover={{ bg: '#e5d43a', color: '#20343c' }}
-              leftIcon={<ViewIcon />}
-              onClick={() => navigate('/placement/alumni-profile')}
-              fontWeight="600"
-              borderRadius="xl"
-              size="md"
-            >
-              My Profile
-            </Button>
-            <Button
-              variant="outline"
-              borderColor="whiteAlpha.600"
-              color="white"
-              _hover={{ bg: 'whiteAlpha.200', borderColor: 'white' }}
-              leftIcon={<EmailIcon />}
-              onClick={() => navigate('/placement/alumni-hr-recommendations')}
-              fontWeight="600"
-              borderRadius="xl"
-              size="md"
-            >
-              Refer HR
-            </Button>
-            <Button
-              variant="outline"
-              borderColor="whiteAlpha.600"
-              color="white"
-              _hover={{ bg: 'whiteAlpha.200', borderColor: 'white' }}
-              leftIcon={<ViewIcon />}
-              onClick={() => navigate('/placement/alumni-directory')}
-              fontWeight="600"
-              borderRadius="xl"
-              size="md"
-            >
-              Alumni Directory
-            </Button>
-            <Button
-              variant="outline"
-              borderColor="whiteAlpha.600"
-              color="white"
-              _hover={{ bg: 'whiteAlpha.200', borderColor: 'white' }}
-              leftIcon={<CalendarIcon />}
-              onClick={() => navigate('/placement/alumni-events')}
-              fontWeight="600"
-              borderRadius="xl"
-              size="md"
-            >
-              Events
-            </Button>
-          </HStack>
-        </Box>
+      <div className="alumni-dash">
+        <header className="alumni-dash__hero">
+          <div className="alumni-dash__hero-top">
+            <div>
+              <h1 className="alumni-dash__hero-title">Welcome back, {displayName.split(' ')[0]}!</h1>
+              <p className="alumni-dash__hero-sub">
+                {profile?.current_designation && profile?.current_company
+                  ? `${profile.current_designation} at ${profile.current_company}`
+                  : 'Your alumni portal — mentor students, refer opportunities, and stay connected.'}
+              </p>
+              {heroMeta.length > 0 && (
+                <div className="alumni-dash__hero-chips">
+                  {heroMeta.map((chip, i) => (
+                    <span key={i} className="alumni-dash__chip">
+                      {chip.icon && <Icon as={chip.icon} boxSize={3} />}
+                      {chip.text}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {!loading && profilePercent < 100 && (
+              <div className="alumni-dash__hero-progress">
+                <Text fontSize="xs" color="whiteAlpha.800" mb={1}>
+                  Profile {profilePercent}%
+                </Text>
+                <Progress
+                  value={profilePercent}
+                  size="sm"
+                  borderRadius="full"
+                  colorScheme="yellow"
+                  bg="whiteAlpha.300"
+                />
+              </div>
+            )}
+          </div>
+        </header>
 
-        {/* Quick stats */}
-        <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4} mb={8}>
-          <Card
-            borderLeft="4px solid"
-            borderLeftColor={colors.accent}
-            boxShadow={CARD_SHADOW}
-            borderRadius={CARD_RADIUS}
-            bg={colors.cardBg}
-          >
-            <CardBody>
-              <Text color={colors.secondary} fontSize="sm" fontWeight="600" mb={1}>HR Referrals</Text>
-              <Heading size="xl" color={colors.darkGreen}>{loading ? '—' : hrCount}</Heading>
-              <Text fontSize="sm" color={colors.muted}>Submitted by you</Text>
-            </CardBody>
-          </Card>
-          <Card
-            borderLeft="4px solid"
-            borderLeftColor={colors.darkGreen}
-            boxShadow={CARD_SHADOW}
-            borderRadius={CARD_RADIUS}
-            bg={colors.cardBg}
-          >
-            <CardBody>
-              <Text color={colors.secondary} fontSize="sm" fontWeight="600" mb={1}>Upcoming Events</Text>
-              <Heading size="xl" color={colors.darkGreen}>
-                {loading ? '—' : upcomingEvents.length}
-              </Heading>
-              <Text fontSize="sm" color={colors.muted}>Shared with alumni</Text>
-            </CardBody>
-          </Card>
-          <Card
-            borderLeft="4px solid"
-            borderLeftColor="#3182ce"
-            boxShadow={CARD_SHADOW}
-            borderRadius={CARD_RADIUS}
-            bg={colors.cardBg}
-          >
-            <CardBody>
-              <Text color={colors.secondary} fontSize="sm" fontWeight="600" mb={1}>Quick Actions</Text>
-              <HStack spacing={2} mt={2} flexWrap="wrap">
-                <Button size="sm" colorScheme="green" variant="outline" onClick={() => navigate('/placement/alumni-events')}>
-                  Events
-                </Button>
-                <Button size="sm" colorScheme="green" variant="outline" onClick={() => navigate('/placement/alumni-notifications')}>
-                  Notifications
-                </Button>
-              </HStack>
-            </CardBody>
-          </Card>
-        </SimpleGrid>
-
-        {/* Upcoming events (alumni-specific) */}
-        <Heading size="md" color={colors.dark} mb={4} fontWeight="700">
-          Upcoming events for you
-        </Heading>
-        {loading ? (
-          <Flex justify="center" py={10}><Spinner color={colors.accent} size="lg" /></Flex>
-        ) : upcomingEvents.length === 0 ? (
-          <Card bg={colors.cardBg} borderRadius={CARD_RADIUS} boxShadow="sm" p={8} borderWidth="1px" borderColor={colors.border}>
-            <VStack spacing={2}>
-              <Icon as={CalendarIcon} boxSize={10} color={colors.muted} />
-              <Text color={colors.secondary}>No upcoming events shared with alumni yet.</Text>
-              <Button size="sm" colorScheme="green" variant="ghost" onClick={() => navigate('/placement/alumni-events')}>
-                View all events
-              </Button>
-            </VStack>
-          </Card>
-        ) : (
-          <VStack align="stretch" spacing={4} mb={10}>
-            {upcomingEvents.map((ev) => (
-              <Card
-                key={ev.id}
-                bg={colors.cardBg}
-                borderRadius={CARD_RADIUS}
-                boxShadow={CARD_SHADOW}
-                borderWidth="1px"
-                borderColor={colors.border}
-                _hover={{ borderColor: colors.accent, boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}
-                transition="all 0.2s"
-                cursor="pointer"
-                onClick={() => navigate('/placement/alumni-events')}
-              >
-                <CardBody>
-                  <Flex justify="space-between" align={{ base: 'flex-start', md: 'center' }} direction={{ base: 'column', md: 'row' }} gap={3}>
-                    <Box>
-                      <Badge colorScheme="green" mb={2}>{ev.type || 'Event'}</Badge>
-                      <Heading size="sm" color={colors.dark}>{ev.title}</Heading>
-                      <Text fontSize="sm" color={colors.secondary} mt={1}>{formatEventDate(ev.event_datetime)}</Text>
-                    </Box>
-                    <Button size="sm" colorScheme="green" variant="outline" onClick={(e) => { e.stopPropagation(); navigate('/placement/alumni-events'); }}>
-                      View
-                    </Button>
-                  </Flex>
-                </CardBody>
-              </Card>
-            ))}
-            <Button variant="link" colorScheme="green" onClick={() => navigate('/placement/alumni-events')}>
-              See all events →
-            </Button>
-          </VStack>
-        )}
-
-        {/* Quick links grid */}
-        <Heading size="md" color={colors.dark} mb={4} fontWeight="700">
-          Quick links
-        </Heading>
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-          <Card
-            borderLeft="4px solid"
-            borderLeftColor={colors.accent}
-            boxShadow="md"
-            cursor="pointer"
-            borderRadius={CARD_RADIUS}
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'xl' }}
-            transition="all 0.2s"
-            onClick={() => navigate('/placement/alumni-projects')}
-          >
-            <CardBody>
-              <VStack align="start" spacing={1}>
-                <Text color={colors.muted} fontSize="sm">Student Projects</Text>
-                <Heading size="md" color={colors.darkGreen}>Explore student work</Heading>
-                <Text fontSize="sm" color={colors.secondary}>View projects, skills, and profiles of current students.</Text>
-              </VStack>
-            </CardBody>
-          </Card>
-          <Card
-            borderLeft="4px solid"
-            borderLeftColor="#3182ce"
-            boxShadow="md"
-            cursor="pointer"
-            borderRadius={CARD_RADIUS}
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'xl' }}
-            transition="all 0.2s"
-            onClick={() => navigate('/placement/alumni-directory')}
-          >
-            <CardBody>
-              <VStack align="start" spacing={1}>
-                <Text color={colors.muted} fontSize="sm">Alumni Directory</Text>
-                <Heading size="md" color={colors.darkGreen}>Browse alumni network</Heading>
-                <Text fontSize="sm" color={colors.secondary}>View and search fellow alumni.</Text>
-              </VStack>
-            </CardBody>
-          </Card>
-          <Card
-            borderLeft="4px solid"
-            borderLeftColor={colors.darkGreen}
-            boxShadow="md"
-            cursor="pointer"
-            borderRadius={CARD_RADIUS}
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'xl' }}
-            transition="all 0.2s"
+        <div className="alumni-dash__stats" aria-label="Overview">
+          <div
+            className="alumni-dash__stat-card"
+            role="button"
+            tabIndex={0}
             onClick={() => navigate('/placement/alumni-hr-recommendations')}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/placement/alumni-hr-recommendations')}
           >
-            <CardBody>
-              <VStack align="start" spacing={1}>
-                <Text color={colors.muted} fontSize="sm">Refer HR</Text>
-                <Heading size="md" color={colors.darkGreen}>Submit a referral</Heading>
-                <Text fontSize="sm" color={colors.secondary}>Share job opportunities with the placement team.</Text>
-              </VStack>
-            </CardBody>
-          </Card>
-        </SimpleGrid>
-      </Box>
+            <div className="alumni-dash__stat-label">HR referrals</div>
+            <div className="alumni-dash__stat-value">{loading ? '—' : hrList.length}</div>
+            <p className="alumni-dash__stat-hint">Opportunities shared</p>
+          </div>
+          <div
+            className="alumni-dash__stat-card alumni-dash__stat-card--events"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/placement/alumni-events')}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/placement/alumni-events')}
+          >
+            <div className="alumni-dash__stat-label">Upcoming events</div>
+            <div className="alumni-dash__stat-value">{loading ? '—' : upcomingEvents.length}</div>
+            <p className="alumni-dash__stat-hint">
+              {pastEventsCount > 0 ? `${pastEventsCount} past` : 'Campus & alumni'}
+            </p>
+          </div>
+          <div
+            className="alumni-dash__stat-card alumni-dash__stat-card--projects"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/placement/alumni-projects')}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/placement/alumni-projects')}
+          >
+            <div className="alumni-dash__stat-label">Student projects</div>
+            <div className="alumni-dash__stat-value">{loading ? '—' : projects.length}</div>
+            <p className="alumni-dash__stat-hint">Available to review</p>
+          </div>
+          <div
+            className="alumni-dash__stat-card alumni-dash__stat-card--notify"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/placement/alumni-notifications')}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/placement/alumni-notifications')}
+          >
+            <div className="alumni-dash__stat-label">Notifications</div>
+            <div className="alumni-dash__stat-value">{loading ? '—' : unreadCount}</div>
+            <p className="alumni-dash__stat-hint">{unreadCount > 0 ? 'Unread' : 'All caught up'}</p>
+          </div>
+        </div>
+
+        <div className="alumni-dash__grid">
+          <div className="alumni-dash__main">
+            <section className="alumni-dash__panel">
+              <div className="alumni-dash__panel-head">
+                <h2 className="alumni-dash__section-title">Upcoming events</h2>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  colorScheme="green"
+                  rightIcon={<ChevronRightIcon />}
+                  onClick={() => navigate('/placement/alumni-events')}
+                >
+                  All events
+                </Button>
+              </div>
+              {loading ? (
+                <div className="alumni-dash__loading"><Spinner color="#d4a960" /></div>
+              ) : upcomingEvents.length === 0 ? (
+                <div className="alumni-dash__empty-inline">
+                  <Icon as={CalendarIcon} boxSize={5} color="#d4a960" />
+                  <p>No upcoming events. You&apos;ll see campus and alumni events here when they&apos;re scheduled.</p>
+                </div>
+              ) : (
+                <div className="alumni-dash__list">
+                  {upcomingEvents.map((ev) => (
+                    <div
+                      key={ev.id}
+                      className="alumni-dash__event-row"
+                      onClick={() => navigate('/placement/alumni-events')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && navigate('/placement/alumni-events')}
+                    >
+                      <div className="alumni-dash__event-main">
+                        <Badge colorScheme="green" fontSize="0.65rem" mb={1}>
+                          {ev.type || 'Event'}
+                        </Badge>
+                        <div className="alumni-dash__event-title">{ev.title}</div>
+                        <div className="alumni-dash__event-date">{formatEventDate(ev.event_datetime)}</div>
+                        {ev.location && (
+                          <div className="alumni-dash__event-meta">{ev.location}</div>
+                        )}
+                      </div>
+                      <ChevronRightIcon color="#94a3b8" boxSize={5} flexShrink={0} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="alumni-dash__panel">
+              <div className="alumni-dash__panel-head">
+                <h2 className="alumni-dash__section-title">Recent updates</h2>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  colorScheme="green"
+                  rightIcon={<ChevronRightIcon />}
+                  onClick={() => navigate('/placement/alumni-notifications')}
+                >
+                  View all
+                </Button>
+              </div>
+              {loading ? (
+                <div className="alumni-dash__loading"><Spinner color="#d4a960" size="md" /></div>
+              ) : notifications.length === 0 ? (
+                <div className="alumni-dash__empty-inline">
+                  <Icon as={BellIcon} boxSize={5} color="#3182ce" />
+                  <p>No notifications yet. Placement news and event alerts will appear here.</p>
+                </div>
+              ) : (
+                <div className="alumni-dash__list">
+                  {notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      className={`alumni-dash__notif-row${n.isRead ? '' : ' alumni-dash__notif-row--unread'}`}
+                      onClick={() => navigate('/placement/alumni-notifications')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && navigate('/placement/alumni-notifications')}
+                    >
+                      <div className="alumni-dash__notif-main">
+                        <div className="alumni-dash__notif-title">{n.title}</div>
+                        {n.message && (
+                          <p className="alumni-dash__notif-msg">{n.message.slice(0, 120)}{n.message.length > 120 ? '…' : ''}</p>
+                        )}
+                      </div>
+                      <span className="alumni-dash__notif-time">{formatTimeAgo(n.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="alumni-dash__panel">
+              <div className="alumni-dash__panel-head">
+                <h2 className="alumni-dash__section-title">Student project spotlight</h2>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  colorScheme="green"
+                  rightIcon={<ChevronRightIcon />}
+                  onClick={() => navigate('/placement/alumni-projects')}
+                >
+                  Browse all
+                </Button>
+              </div>
+              {loading ? (
+                <div className="alumni-dash__loading"><Spinner color="#d4a960" size="md" /></div>
+              ) : spotlightProjects.length === 0 ? (
+                <div className="alumni-dash__empty-inline">
+                  <Icon as={ViewIcon} boxSize={5} color="#166534" />
+                  <p>No student projects to show yet. Check back as students publish their work.</p>
+                </div>
+              ) : (
+                <div className="alumni-dash__project-grid">
+                  {spotlightProjects.map((p) => {
+                    const thumbUrl = getFileUrl(getDisplayProjectSnaps(p)[0]);
+                    return (
+                      <div
+                        key={p.id}
+                        className="alumni-dash__project-card"
+                        onClick={() => navigate(`/placement/alumni-projects?project=${p.id}`)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && navigate(`/placement/alumni-projects?project=${p.id}`)}
+                      >
+                        <div
+                          className="alumni-dash__project-thumb"
+                          style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
+                        >
+                          {!thumbUrl && <Icon as={ViewIcon} boxSize={6} color="#94a3b8" />}
+                        </div>
+                        <div className="alumni-dash__project-body">
+                          <p className="alumni-dash__project-title">{p.title || 'Untitled project'}</p>
+                          <p className="alumni-dash__project-meta">
+                            {p.usn ? `${p.usn} · ` : ''}{p.genre || 'Student work'}
+                          </p>
+                          {p.one_line_description && (
+                            <p className="alumni-dash__project-desc">{p.one_line_description}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+
+          <aside className="alumni-dash__sidebar">
+            <div
+              className="alumni-dash__sidebar-card alumni-dash__sidebar-card--clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/placement/alumni-profile')}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/placement/alumni-profile')}
+            >
+              <div className="alumni-dash__profile-row">
+                <Avatar
+                  size="lg"
+                  name={displayName}
+                  src={profileImage}
+                  border="2px solid"
+                  borderColor="#FDE74C"
+                  bg="#475569"
+                />
+                <div className="alumni-dash__profile-meta">
+                  <p className="alumni-dash__profile-name">{displayName}</p>
+                  {profile?.current_designation && (
+                    <p className="alumni-dash__profile-role">{profile.current_designation}</p>
+                  )}
+                  {profile?.current_company && (
+                    <p className="alumni-dash__profile-company">{profile.current_company}</p>
+                  )}
+                  {profile?.personal_email && (
+                    <p className="alumni-dash__profile-email">{profile.personal_email}</p>
+                  )}
+                </div>
+              </div>
+              {profilePercent < 100 && !loading && (
+                <Box mt={3} pt={3} borderTop="1px solid" borderColor="gray.100">
+                  <HStack justify="space-between" mb={2}>
+                    <Text fontSize="xs" fontWeight="600" color="gray.600">
+                      Complete your profile
+                    </Text>
+                    <Text fontSize="xs" fontWeight="700" color="#166534">
+                      {profilePercent}%
+                    </Text>
+                  </HStack>
+                  <Progress value={profilePercent} size="xs" colorScheme="green" borderRadius="full" mb={2} />
+                  <Text fontSize="xs" color="gray.500" noOfLines={2}>
+                    Missing: {missingProfileFields.slice(0, 3).join(', ')}
+                    {missingProfileFields.length > 3 ? '…' : ''}
+                  </Text>
+                </Box>
+              )}
+            </div>
+
+            <div className="alumni-dash__sidebar-card">
+              <div className="alumni-dash__panel-head">
+                <h2 className="alumni-dash__section-title">Alumni network</h2>
+              </div>
+              <div className="alumni-dash__network-stat">
+                <Icon as={FaUsers} color="#d4a960" boxSize={5} />
+                <div>
+                  <p className="alumni-dash__network-count">
+                    {loading ? '—' : alumniNetwork.length}
+                  </p>
+                  <p className="alumni-dash__network-label">alumni in directory</p>
+                </div>
+              </div>
+              {networkSample.length > 0 && (
+                <HStack spacing={-2} mt={3} mb={3}>
+                  {networkSample.map((a) => (
+                    <Avatar
+                      key={a.id ?? a.student_id ?? a.full_name}
+                      size="sm"
+                      name={a.full_name}
+                      src={a.profile_image ? getFileUrl(a.profile_image) : undefined}
+                      border="2px solid white"
+                      bg="#475569"
+                    />
+                  ))}
+                </HStack>
+              )}
+              <Button
+                size="sm"
+                width="100%"
+                variant="outline"
+                colorScheme="green"
+                onClick={() => navigate('/placement/alumni-directory')}
+              >
+                Open directory
+              </Button>
+            </div>
+
+            {recentHr.length > 0 && (
+              <div className="alumni-dash__sidebar-card">
+                <h2 className="alumni-dash__section-title">Your recent referrals</h2>
+                <ul className="alumni-dash__hr-list">
+                  {recentHr.map((hr, idx) => (
+                    <li key={hr.id ?? idx} className="alumni-dash__hr-item">
+                      <p className="alumni-dash__hr-title">
+                        {hr.company_name || hr.company || 'Company'}
+                        {hr.role_title || hr.job_title ? ` — ${hr.role_title || hr.job_title}` : ''}
+                      </p>
+                      {(hr.opportunity_type || hr.created_at) && (
+                        <p className="alumni-dash__hr-meta">
+                          {[hr.opportunity_type, hr.created_at && formatTimeAgo(hr.created_at)].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  size="sm"
+                  width="100%"
+                  mt={2}
+                  variant="link"
+                  colorScheme="green"
+                  onClick={() => navigate('/placement/alumni-hr-recommendations')}
+                >
+                  Manage referrals →
+                </Button>
+              </div>
+            )}
+
+            {!loading && recentHr.length === 0 && (
+              <div className="alumni-dash__sidebar-card alumni-dash__cta-card">
+                <p className="alumni-dash__cta-title">Know an opening?</p>
+                <p className="alumni-dash__cta-text">
+                  Refer HR contacts or job openings to help students in the placement process.
+                </p>
+                <Button
+                  size="sm"
+                  width="100%"
+                  bg="#FDE74C"
+                  color="#20343c"
+                  _hover={{ bg: '#e5d43a' }}
+                  onClick={() => navigate('/placement/alumni-hr-recommendations')}
+                >
+                  Submit a referral
+                </Button>
+              </div>
+            )}
+          </aside>
+        </div>
+      </div>
     </AlumniLayout>
   );
 };
 
 export default AlumniDashboard;
+

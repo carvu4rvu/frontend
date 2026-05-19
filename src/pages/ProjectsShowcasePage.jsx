@@ -9,14 +9,6 @@ import {
   HStack,
   VStack,
   Button,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
   Input,
   InputGroup,
   InputLeftElement,
@@ -30,13 +22,15 @@ import {
   Wrap,
   WrapItem,
   Link,
+  Badge,
 } from '@chakra-ui/react';
 import { ViewIcon, SearchIcon, StarIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaUser, FaHeart, FaRegHeart, FaBookmark, FaRegBookmark, FaLink, FaComment } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { PlacementService } from '../services/placement.service';
 import { getFileUrl } from '../utils/fileUrl';
-import { splitProjectSnaps, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
+import { getShowcasePreviewImage, getShowcaseGalleryStrip, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
+import TopChartsList from '../components/projects/TopChartsList';
 
 const PLAY_GREEN = '#01875f';
 const PLAY_GREEN_HOVER = '#01704f';
@@ -62,11 +56,11 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showcaseFilter, setShowcaseFilter] = useState('all');
+  const [visibilityFilter, setVisibilityFilter] = useState('all');
   const [likingId, setLikingId] = useState(null);
   const [favoritingId, setFavoritingId] = useState(null);
   const [shareLoadingId, setShareLoadingId] = useState(null);
   const heroCarouselRef = useRef(null);
-  const { isOpen: isRankingsOpen, onOpen: onRankingsOpen, onClose: onRankingsClose } = useDisclosure();
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);
@@ -98,20 +92,28 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
   }, [projects, search]);
 
   const favoriteProjects = useMemo(() => projects.filter((p) => p.is_favorited), [projects]);
-  const showcaseDisplayProjects = useMemo(
-    () => (showcaseFilter === 'favorites' ? favoriteProjects : filteredProjects),
-    [showcaseFilter, favoriteProjects, filteredProjects]
+
+  const showcaseDisplayProjects = useMemo(() => {
+    let list = showcaseFilter === 'favorites' ? favoriteProjects : filteredProjects;
+    if (variant === 'admin') {
+      if (visibilityFilter === 'public') {
+        list = list.filter((p) => String(p.visibility || '').toUpperCase() === 'PUBLIC');
+      } else if (visibilityFilter === 'private') {
+        list = list.filter((p) => String(p.visibility || 'PRIVATE').toUpperCase() !== 'PUBLIC');
+      }
+    }
+    return list;
+  }, [showcaseFilter, favoriteProjects, filteredProjects, visibilityFilter, variant]);
+
+  const publicCount = useMemo(
+    () => projects.filter((p) => String(p.visibility || '').toUpperCase() === 'PUBLIC').length,
+    [projects]
   );
   const featuredProjects = useMemo(() => showcaseDisplayProjects.slice(0, 6), [showcaseDisplayProjects]);
   const topByLikes = useMemo(
     () => [...showcaseDisplayProjects].sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0)).slice(0, 6),
     [showcaseDisplayProjects]
   );
-  const allRankedByLikes = useMemo(
-    () => [...showcaseDisplayProjects].sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0)),
-    [showcaseDisplayProjects]
-  );
-
   const scrollHero = (direction) => {
     const el = heroCarouselRef.current;
     if (!el) return;
@@ -177,6 +179,8 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
   };
 
   const projectsBase = projectBasePath ?? (variant === 'admin' ? '/placement/gallery' : variant === 'company' ? '/company/projects' : '/placement/alumni-projects');
+  const topChartsPath =
+    variant === 'admin' ? '/placement/gallery/top-charts' : `${projectsBase}/top-charts`;
   const goToProjectDetail = (project, e) => {
     if (e) e.stopPropagation();
     if (project?.id) {
@@ -223,6 +227,17 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
               Projects from students who have registered to your placement drives.
             </Text>
           )}
+          {variant === 'alumni' && (
+            <Text mb={6} color="gray.600" fontSize="sm">
+              Showing approved projects marked <strong>Public</strong> by students ({showcaseDisplayProjects.length} visible).
+              Private projects stay hidden until the student sets visibility to Public.
+            </Text>
+          )}
+          {variant === 'admin' && (
+            <Text mb={4} color="gray.600" fontSize="sm">
+              Manage all projects. Alumni showcase lists approved + public only ({publicCount} public of {projects.length} total).
+            </Text>
+          )}
 
           <Flex
             direction={{ base: 'column', md: 'row' }}
@@ -245,7 +260,35 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                 _focus={{ borderColor: PLAY_GREEN, boxShadow: `0 0 0 1px ${PLAY_GREEN}` }}
               />
             </InputGroup>
-            <HStack spacing={2} ml={{ md: 'auto' }}>
+            <HStack spacing={2} ml={{ md: 'auto' }} flexWrap="wrap">
+              {variant === 'admin' && (
+                <>
+                  <Button
+                    size="sm"
+                    variant={visibilityFilter === 'all' ? 'solid' : 'outline'}
+                    colorScheme={visibilityFilter === 'all' ? 'teal' : 'gray'}
+                    onClick={() => setVisibilityFilter('all')}
+                  >
+                    All visibility
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={visibilityFilter === 'public' ? 'solid' : 'outline'}
+                    colorScheme={visibilityFilter === 'public' ? 'green' : 'gray'}
+                    onClick={() => setVisibilityFilter('public')}
+                  >
+                    Public
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={visibilityFilter === 'private' ? 'solid' : 'outline'}
+                    colorScheme={visibilityFilter === 'private' ? 'gray' : 'gray'}
+                    onClick={() => setVisibilityFilter('private')}
+                  >
+                    Private
+                  </Button>
+                </>
+              )}
               <Button
                 size="sm"
                 variant={showcaseFilter === 'all' ? 'solid' : 'outline'}
@@ -290,8 +333,8 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                 sx={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}
               >
                 {featuredProjects.map((p) => {
-                  const heroImg = (p.project_snaps || [])[0];
-                  const icon = (p.project_snaps || [])[0];
+                  const heroImg = getShowcasePreviewImage(p);
+                  const icon = getShowcasePreviewImage(p);
                   const desc = p.one_line_description || p.full_description || '';
                   return (
                     <Box
@@ -345,42 +388,45 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                           />
                         </Tooltip>
                       </Box>
-                      <Box position="absolute" bottom={6} left={6} right={6} color="white" maxW="md">
-                        <HStack align="flex-start" spacing={3} mb={2}>
+                      <Box position="absolute" bottom={{ base: 5, md: 8 }} left={{ base: 5, md: 8 }} right={6} color="white" maxW={{ base: 'sm', md: 'lg' }}>
+                        <HStack align="flex-start" spacing={4} mb={3}>
                           {icon ? (
                             <Image
                               src={getFileUrl(icon)}
-                              w={10}
-                              h={10}
-                              borderRadius="lg"
-                              border="1px solid"
-                              borderColor="whiteAlpha.300"
-                              shadow="lg"
+                              w={{ base: 14, md: 16 }}
+                              h={{ base: 14, md: 16 }}
+                              borderRadius="xl"
+                              border="2px solid"
+                              borderColor="whiteAlpha.400"
+                              shadow="xl"
                               objectFit="cover"
+                              flexShrink={0}
                               onError={(e) => { e.target.style.display = 'none'; }}
                             />
                           ) : (
-                            <Box w={10} h={10} borderRadius="lg" bg="whiteAlpha.300" />
+                            <Box w={{ base: 14, md: 16 }} h={{ base: 14, md: 16 }} borderRadius="xl" bg="whiteAlpha.300" flexShrink={0} />
                           )}
-                          <Box>
-                            <Text fontWeight="bold" fontSize="lg" lineHeight="tight">
+                          <Box minW={0}>
+                            <Text fontWeight="bold" fontSize={{ base: 'xl', md: '2xl' }} lineHeight="short">
                               {p.title}
                             </Text>
-                            <Text fontSize="xs" opacity={0.9}>
+                            <Text fontSize={{ base: 'sm', md: 'md' }} opacity={0.92} mt={0.5}>
                               {p.usn} • {p.genre || p.category || '—'}
                             </Text>
                           </Box>
                         </HStack>
-                        <Text fontSize="sm" noOfLines={2} opacity={0.8} display={{ base: 'none', md: 'block' }} mb={2}>
+                        <Text fontSize={{ base: 'sm', md: 'md' }} noOfLines={2} opacity={0.88} display={{ base: 'none', md: 'block' }} mb={3} lineHeight="tall">
                           {desc}
                         </Text>
                         <Button
-                          size="sm"
+                          size={{ base: 'sm', md: 'md' }}
                           colorScheme="whiteAlpha"
                           bg="whiteAlpha.900"
                           color="gray.800"
+                          fontWeight="semibold"
+                          px={{ base: 4, md: 5 }}
                           _hover={{ bg: 'white' }}
-                          leftIcon={<ViewIcon />}
+                          leftIcon={<ViewIcon boxSize={{ base: 4, md: 5 }} />}
                           onClick={(e) => goToProjectDetail(p, e)}
                         >
                           View full details
@@ -409,152 +455,24 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                   <Heading size="md" fontWeight="bold">
                     Top Charts
                   </Heading>
-                  <Button size="sm" colorScheme="green" bg={PLAY_GREEN} _hover={{ bg: PLAY_GREEN_HOVER }} onClick={onRankingsOpen}>
+                  <Button
+                    size="sm"
+                    colorScheme="green"
+                    bg={PLAY_GREEN}
+                    _hover={{ bg: PLAY_GREEN_HOVER }}
+                    onClick={() => navigate(topChartsPath)}
+                  >
                     View more
                   </Button>
                 </Flex>
-                <Box display="grid" gridTemplateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }} gap={{ base: 2, md: 6 }} minW={0}>
-                  {topByLikes.map((p, i) => {
-                    const icon = (p.project_snaps || [])[0];
-                    return (
-                      <Flex
-                        key={p.id}
-                        align="center"
-                        gap={4}
-                        py={2}
-                        px={2}
-                        borderRadius="xl"
-                        cursor="pointer"
-                        _hover={{ bg: 'gray.50' }}
-                        transition="background 0.2s"
-                        onClick={() => goToProjectDetail(p)}
-                      >
-                        <Text fontWeight="bold" fontSize="lg" color="gray.400" w={4}>
-                          {i + 1}
-                        </Text>
-                        {icon ? (
-                          <Box boxSize="64px" flexShrink={0} borderRadius="xl" overflow="hidden" border="1px solid" borderColor="gray.100">
-                            <Image src={getFileUrl(icon)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
-                          </Box>
-                        ) : (
-                          <Box boxSize="64px" flexShrink={0} borderRadius="xl" bg="gray.100" />
-                        )}
-                        <Box flex={1} minW={0} overflow="hidden">
-                          <Tooltip label={p.title || 'Untitled'} placement="top" hasArrow>
-                            <Text fontWeight="medium" color="gray.900" noOfLines={1} title={p.title || 'Untitled'}>
-                              {p.title || 'Untitled'}
-                            </Text>
-                          </Tooltip>
-                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
-                            {p.genre || p.category || '—'}
-                          </Text>
-                          <HStack mt={1} spacing={2}>
-                            <Text fontSize="10px" color="gray.400">{formatCount(p.likes_count)} likes</Text>
-                          </HStack>
-                        </Box>
-                        <HStack ml="auto" spacing={1} flexShrink={0}>
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            leftIcon={<ViewIcon />}
-                            borderColor="blue.200"
-                            color="blue.600"
-                            _hover={{ bg: 'blue.50' }}
-                            onClick={(e) => goToProjectDetail(p, e)}
-                          >
-                            Full details
-                          </Button>
-                          <Tooltip label={p.is_liked ? 'Unlike' : 'Like'}>
-                            <IconButton
-                              icon={<Icon as={p.is_liked ? FaHeart : FaRegHeart} />}
-                              size="sm"
-                              variant="ghost"
-                              color={p.is_liked ? 'red.500' : 'gray.500'}
-                              _hover={{ color: 'red.500' }}
-                              onClick={(e) => handleLike(p.id, e)}
-                              isLoading={likingId === p.id}
-                              aria-label={p.is_liked ? 'Unlike' : 'Like'}
-                            />
-                          </Tooltip>
-                          <Tooltip label={p.is_favorited ? 'Remove from favorites' : 'Add to favorites'}>
-                            <IconButton
-                              icon={<Icon as={p.is_favorited ? FaBookmark : FaRegBookmark} />}
-                              size="sm"
-                              variant="ghost"
-                              color={p.is_favorited ? 'orange.500' : 'gray.500'}
-                              _hover={{ color: 'orange.500' }}
-                              onClick={(e) => handleFavorite(p.id, e)}
-                              isLoading={favoritingId === p.id}
-                              aria-label={p.is_favorited ? 'Remove from favorites' : 'Add to favorites'}
-                            />
-                          </Tooltip>
-                        </HStack>
-                      </Flex>
-                    );
-                  })}
-                </Box>
+                <TopChartsList
+                  projects={topByLikes}
+                  mode="preview"
+                  onViewProject={goToProjectDetail}
+                />
               </Box>
             </Box>
           )}
-
-          {/* Rankings modal */}
-          <Modal isOpen={isRankingsOpen} onClose={onRankingsClose} size="2xl" scrollBehavior="inside">
-            <ModalOverlay />
-            <ModalContent maxH="85vh">
-              <ModalHeader>Top Charts – Full Rankings</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody pb={6} overflowY="auto">
-                <VStack align="stretch" spacing={2}>
-                  {allRankedByLikes.map((p, i) => {
-                    const icon = (p.project_snaps || [])[0];
-                    return (
-                      <Flex
-                        key={p.id}
-                        align="center"
-                        gap={4}
-                        py={2}
-                        px={3}
-                        borderRadius="xl"
-                        cursor="pointer"
-                        _hover={{ bg: 'gray.50' }}
-                        transition="background 0.2s"
-                        onClick={() => { onRankingsClose(); goToProjectDetail(p); }}
-                      >
-                        <Text fontWeight="bold" fontSize="lg" color="gray.400" w={6} flexShrink={0}>
-                          {i + 1}
-                        </Text>
-                        {icon ? (
-                          <Box boxSize="48px" flexShrink={0} borderRadius="lg" overflow="hidden" border="1px solid" borderColor="gray.100">
-                            <Image src={getFileUrl(icon)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
-                          </Box>
-                        ) : (
-                          <Box boxSize="48px" flexShrink={0} borderRadius="lg" bg="gray.100" />
-                        )}
-                        <Box flex={1} minW={0} overflow="hidden">
-                          <Tooltip label={p.title || 'Untitled'} placement="top" hasArrow>
-                            <Text fontWeight="medium" color="gray.900" noOfLines={1}>{p.title || 'Untitled'}</Text>
-                          </Tooltip>
-                          <Text fontSize="xs" color="gray.500" noOfLines={1}>{p.genre || p.category || '—'}</Text>
-                          <Text fontSize="10px" color="gray.400">{formatCount(p.likes_count)} likes</Text>
-                        </Box>
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          leftIcon={<ViewIcon />}
-                          borderColor="blue.200"
-                          color="blue.600"
-                          _hover={{ bg: 'blue.50' }}
-                          onClick={(e) => { e.stopPropagation(); onRankingsClose(); goToProjectDetail(p, e); }}
-                        >
-                          Full details
-                        </Button>
-                      </Flex>
-                    );
-                  })}
-                </VStack>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
 
           {/* Section 3: Main feed */}
           <Box>
@@ -572,14 +490,17 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                     : projects.length === 0
                       ? (variant === 'company'
                         ? 'No student projects yet. Projects from students who register to your placement drives will appear here.'
-                        : 'No projects found.')
+                        : variant === 'alumni'
+                          ? 'No public approved projects yet. Students can set a project to Public in their profile after it is approved.'
+                          : 'No projects found.')
                       : 'No projects match your search. Try different keywords.'}
                 </Text>
               </Box>
             ) : (
               <VStack spacing={12} align="stretch">
                 {showcaseDisplayProjects.map((p) => {
-                  const { cover: icon, gallery: screenshots } = splitProjectSnaps(p.project_snaps || []);
+                  const icon = getShowcasePreviewImage(p);
+                  const screenshots = getShowcaseGalleryStrip(p);
                   const desc = p.full_description || p.one_line_description || 'No description.';
                   return (
                     <Box key={p.id} p={5} borderRadius={CARD_RADIUS} shadow={CARD_SHADOW} bg="white">
@@ -599,9 +520,23 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                             <Text color={PLAY_GREEN} fontSize="sm" fontWeight="medium">
                               {p.usn}
                             </Text>
-                            <Text color="gray.500" fontSize="xs">
-                              {p.genre || p.category || '—'}
-                            </Text>
+                            <HStack spacing={2} mt={0.5} flexWrap="wrap">
+                              <Text color="gray.500" fontSize="xs">
+                                {p.genre || p.category || '—'}
+                              </Text>
+                              <Badge
+                                size="sm"
+                                colorScheme={String(p.visibility || '').toUpperCase() === 'PUBLIC' ? 'green' : 'gray'}
+                                variant="subtle"
+                              >
+                                {String(p.visibility || 'PRIVATE').toUpperCase() === 'PUBLIC' ? 'Public' : 'Private'}
+                              </Badge>
+                              {String(p.project_status || '').toLowerCase() !== 'approved' && (
+                                <Badge size="sm" colorScheme="orange" variant="subtle">
+                                  {p.project_status || 'pending'}
+                                </Badge>
+                              )}
+                            </HStack>
                           </Box>
                         </HStack>
                         <HStack spacing={2} flexWrap="wrap">

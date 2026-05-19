@@ -49,6 +49,19 @@ export const getFileUrl = (filePath) => {
   if (filePath.startsWith('/uploads/')) {
     return `${API_BASE_URL}${filePath}`;
   }
+
+  // Supabase storage object path (e.g. projects/folder/file.jpg) without full URL
+  const supabaseBase = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+  if (supabaseBase && !filePath.startsWith('/')) {
+    const path = filePath.replace(/^\/+/, '');
+    if (path.startsWith('projects/') || path.startsWith('storage/v1/object/public/projects/')) {
+      const objectPath = path.startsWith('storage/')
+        ? path.replace(/^storage\/v1\/object\/public\/projects\//, '')
+        : path.replace(/^projects\//, '');
+      return `${supabaseBase}/storage/v1/object/public/projects/${objectPath}`;
+    }
+  }
+
   if (!filePath.startsWith('/')) {
     return `${API_BASE_URL}/uploads/${filePath}`;
   }

@@ -75,6 +75,7 @@ import AlumniDashboard from './pages/alumni/AlumniDashboard';
 import AlumniDirectory from './pages/alumni/AlumniDirectory';
 import AlumniProfile from './pages/alumni/AlumniProfile';
 import ProjectsShowcasePage from './pages/ProjectsShowcasePage';
+import ProjectTopChartsPage from './pages/ProjectTopChartsPage';
 import AlumniLayout from './components/AlumniLayout';
 import VcLayout from './components/VcLayout';
 import { PlacementService } from './services/placement.service';
@@ -131,10 +132,9 @@ const Layout = () => {
   // Hide Navbar on student pages, placement (admin) pages, alumni, company pages (they have their own layouts)
   const hideNavbar = isStudentDashboard || isStudentProfile || isAlumniPage || isCompanyPage || isAdminStudentDetail || isPlacementRoute;
 
-  // Show Footer only on dashboard pages
+  // Show site footer only on admin/student dashboards (alumni portal has its own layout)
   const isDashboard =
     location.pathname === '/placement/dashboard' ||
-    location.pathname === '/placement/alumni-dashboard' ||
     location.pathname === '/student-dashboard';
   const showFooter = isDashboard;
 
@@ -344,6 +344,21 @@ const router = createBrowserRouter([
         )
       },
       {
+        path: "/placement/gallery/top-charts",
+        element: (
+          <PlacementProtectedRoute requiredRole="admin">
+            <ProjectTopChartsPage
+              LayoutComponent={AdminLayout}
+              variant="admin"
+              fetchProjects={async () => {
+                const data = await PlacementService.getAllProjects({});
+                return Array.isArray(data) ? data : [];
+              }}
+            />
+          </PlacementProtectedRoute>
+        )
+      },
+      {
         path: "/placement/gallery/manage",
         element: (
           <PlacementProtectedRoute requiredRole="admin">
@@ -447,6 +462,22 @@ const router = createBrowserRouter([
           </PlacementProtectedRoute>
         ),
         errorElement: <ProjectDetailErrorBoundary />
+      },
+      {
+        path: "/placement/alumni-projects/top-charts",
+        element: (
+          <PlacementProtectedRoute requiredRole="alumni">
+            <ProjectTopChartsPage
+              LayoutComponent={AlumniLayout}
+              variant="alumni"
+              projectBasePath="/placement/alumni-projects"
+              fetchProjects={async () => {
+                const data = await PlacementService.getAlumniProjects();
+                return Array.isArray(data) ? data : [];
+              }}
+            />
+          </PlacementProtectedRoute>
+        )
       },
       {
         path: "/placement/alumni-events",
@@ -581,6 +612,22 @@ const router = createBrowserRouter([
           </PlacementProtectedRoute>
         ),
         errorElement: <ProjectDetailErrorBoundary />
+      },
+      {
+        path: "/company/projects/top-charts",
+        element: (
+          <PlacementProtectedRoute requiredRole="company">
+            <ProjectTopChartsPage
+              LayoutComponent={CompanyLayout}
+              variant="company"
+              projectBasePath="/company/projects"
+              fetchProjects={async () => {
+                const data = await CompanyService.getProjects();
+                return Array.isArray(data) ? data : [];
+              }}
+            />
+          </PlacementProtectedRoute>
+        )
       },
       {
         path: "/placement/overview",

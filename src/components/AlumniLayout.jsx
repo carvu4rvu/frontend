@@ -65,9 +65,10 @@ const AlumniLayout = ({ children }) => {
   const shortName = displayName.split(' ')[0];
 
   return (
-    <Box minH="100vh" bg="gray.50">
+    <Box minH="100vh" bg="gray.50" display="flex" flexDirection="column">
       {/* Top header – same as student nav bar */}
       <Flex
+        flexShrink={0}
         h={{ base: '60px', md: '72px' }}
         bg={HEADER_BG}
         borderBottom="1px solid"
@@ -262,7 +263,7 @@ const AlumniLayout = ({ children }) => {
         </HStack>
       </Flex>
 
-      <Box p={{ base: 4, md: 8 }}>
+      <Box flex="1" p={{ base: 4, md: 6 }} pb={{ base: 4, md: 5 }}>
         <Box maxW="100%">{children}</Box>
       </Box>
     </Box>

@@ -882,7 +882,11 @@ export const PlacementService = {
   /** Alumni: get approved public projects with like status */
   getAlumniProjects: async () => {
     const response = await apiFetch('/placement/projects/alumni');
-    return response.data ?? [];
+    const data = response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.projects)) return data.projects;
+    return [];
   },
 
   /** Alumni: get single approved project by id (full detail for view page) */

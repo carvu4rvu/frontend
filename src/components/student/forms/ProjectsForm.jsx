@@ -246,7 +246,7 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
       one_line_description: "",
       full_description: "",
       genre: "",
-      visibility: "PRIVATE",
+      visibility: "PUBLIC",
       priority: getNextPriority(items),
       hosted_link: "",
       github_repo: "",

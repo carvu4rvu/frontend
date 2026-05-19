@@ -431,10 +431,12 @@ const AdminDashboard = () => {
             {/* Header */}
             <Box>
               <Heading as="h1" size="lg" color="gray.800" mb={1}>
-                Admin Overview
+                {isVc ? 'Placement Dashboard' : 'Admin Overview'}
               </Heading>
               <Text color="gray.500" fontSize="sm">
-                Key metrics and placement statistics.
+                {isVc
+                  ? 'Read-only overview of placement metrics, drives, offers, and recruiting partners.'
+                  : 'Key metrics and placement statistics.'}
               </Text>
             </Box>
 

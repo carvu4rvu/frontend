@@ -1,0 +1,625 @@
+/* Alumni dashboard – dense layout, no huge empty gaps */
+
+.alumni-dash {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.alumni-dash__hero {
+  background: linear-gradient(135deg, #20343c 0%, #2a4a55 55%, #1a2e35 100%);
+  border-radius: 16px;
+  padding: 1.5rem 1.75rem;
+  color: #fff;
+  box-shadow: 0 8px 32px rgba(32, 52, 60, 0.25);
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .alumni-dash__hero {
+    padding: 2rem 2.25rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+.alumni-dash__hero-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35rem;
+  line-height: 1.25;
+}
+
+@media (min-width: 768px) {
+  .alumni-dash__hero-title {
+    font-size: 1.65rem;
+  }
+}
+
+.alumni-dash__hero-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.alumni-dash__hero-progress {
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.alumni-dash__hero-sub {
+  font-size: 0.95rem;
+  opacity: 0.92;
+  margin: 0 0 0.75rem;
+  max-width: 42rem;
+  line-height: 1.5;
+}
+
+.alumni-dash__hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.alumni-dash__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.alumni-dash__stat-card[role='button'] {
+  cursor: pointer;
+}
+
+.alumni-dash__stat-card[role='button']:hover {
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.alumni-dash__sidebar-card--clickable {
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.alumni-dash__sidebar-card--clickable:hover {
+  border-color: #d4a960;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+}
+
+.alumni-dash__events-empty-text {
+  color: #64748b;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.alumni-dash__event-title {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.alumni-dash__event-date {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+.alumni-dash__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .alumni-dash__grid {
+    grid-template-columns: 1fr minmax(280px, 300px);
+    gap: 1.5rem;
+  }
+}
+
+.alumni-dash__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .alumni-dash__stats {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+}
+
+.alumni-dash__stat-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #d4a960;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.alumni-dash__stat-card:hover {
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.1);
+}
+
+.alumni-dash__stat-card--events {
+  border-left-color: #166534;
+}
+
+.alumni-dash__stat-card--projects {
+  border-left-color: #7c3aed;
+}
+
+.alumni-dash__stat-card--notify {
+  border-left-color: #3182ce;
+}
+
+.alumni-dash__stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.25rem;
+}
+
+.alumni-dash__stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #166534;
+  line-height: 1.1;
+}
+
+.alumni-dash__stat-hint {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+}
+
+.alumni-dash__section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.alumni-dash__panel {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.alumni-dash__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafbfc;
+}
+
+.alumni-dash__list {
+  padding: 0;
+}
+
+.alumni-dash__empty-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.25rem 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.alumni-dash__empty-inline p {
+  margin: 0;
+}
+
+.alumni-dash__event-meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.alumni-dash__notif-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.alumni-dash__notif-row:last-child {
+  border-bottom: none;
+}
+
+.alumni-dash__notif-row:hover {
+  background: #f8fafc;
+}
+
+.alumni-dash__notif-row--unread {
+  background: #f0fdf4;
+  border-left: 3px solid #166534;
+}
+
+.alumni-dash__notif-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.alumni-dash__notif-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1e293b;
+}
+
+.alumni-dash__notif-msg {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0.2rem 0 0;
+  line-height: 1.4;
+}
+
+.alumni-dash__notif-time {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.alumni-dash__project-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .alumni-dash__project-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .alumni-dash__project-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.alumni-dash__project-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  background: #fff;
+}
+
+.alumni-dash__project-card:hover {
+  border-color: #d4a960;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+}
+
+.alumni-dash__project-thumb {
+  height: 100px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alumni-dash__project-body {
+  padding: 0.75rem;
+}
+
+.alumni-dash__project-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.2rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.alumni-dash__project-meta {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.alumni-dash__project-desc {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0.35rem 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.alumni-dash__profile-email {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alumni-dash__network-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.alumni-dash__network-count {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #166534;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.alumni-dash__network-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.alumni-dash__hr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.alumni-dash__hr-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.alumni-dash__hr-item:last-child {
+  border-bottom: none;
+}
+
+.alumni-dash__hr-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.alumni-dash__hr-meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0.15rem 0 0;
+}
+
+.alumni-dash__cta-card {
+  background: linear-gradient(135deg, #fef9e7 0%, #fff 100%);
+  border-color: #f5e6b8;
+}
+
+.alumni-dash__cta-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #1e293b;
+  margin: 0 0 0.35rem;
+}
+
+.alumni-dash__cta-text {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 0.75rem;
+  line-height: 1.45;
+}
+
+.alumni-dash__events-panel {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.alumni-dash__events-empty {
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.alumni-dash__events-empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 0.75rem;
+  border-radius: 12px;
+  background: #fef9e7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a960;
+}
+
+.alumni-dash__event-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.alumni-dash__event-row:last-child {
+  border-bottom: none;
+}
+
+.alumni-dash__event-row:hover {
+  background: #f8fafc;
+}
+
+.alumni-dash__links {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .alumni-dash__links {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .alumni-dash__links {
+    grid-template-columns: 1fr;
+  }
+}
+
+.alumni-dash__link-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  border-left: 3px solid #d4a960;
+}
+
+.alumni-dash__link-card:hover {
+  border-color: #d4a960;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.alumni-dash__link-card--blue {
+  border-left-color: #3182ce;
+}
+
+.alumni-dash__link-card--green {
+  border-left-color: #166534;
+}
+
+.alumni-dash__link-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #166534;
+  margin: 0 0 0.2rem;
+}
+
+.alumni-dash__link-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Sidebar */
+.alumni-dash__sidebar-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.alumni-dash__profile-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.alumni-dash__profile-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.alumni-dash__profile-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alumni-dash__profile-role {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0.15rem 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alumni-dash__profile-company {
+  font-size: 0.8rem;
+  color: #d4a960;
+  font-weight: 600;
+  margin: 0.1rem 0 0;
+}
+
+.alumni-dash__nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.alumni-dash__nav-item {
+  margin: 0;
+}
+
+.alumni-dash__nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.alumni-dash__nav-btn:hover {
+  background: #f1f5f9;
+  color: #20343c;
+}
+
+.alumni-dash__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2.5rem;
+}

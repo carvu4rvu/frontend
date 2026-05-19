@@ -164,9 +164,14 @@ const VcLayout = ({ children }) => {
               bg="#475569"
               color="white"
             />
-            <Text color="white" fontSize="sm" fontWeight="medium" maxW="120px" isTruncated>
-              {shortName}
-            </Text>
+            <Box textAlign="left" lineHeight="short">
+              <Text color="white" fontSize="sm" fontWeight="medium" maxW="120px" isTruncated>
+                {shortName}
+              </Text>
+              <Text color="gray.400" fontSize="xs" display={{ base: 'none', lg: 'block' }}>
+                Vice Chancellor
+              </Text>
+            </Box>
           </HStack>
         </HStack>
       </Flex>
