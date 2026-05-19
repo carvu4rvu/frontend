@@ -57,6 +57,7 @@ import AdminLayout from '../../components/AdminLayout';
 import ProjectsShowcasePage from '../ProjectsShowcasePage';
 import { PlacementService } from '../../services/placement.service';
 import { getFileUrl } from '../../utils/fileUrl';
+import { splitProjectSnaps, MAX_GALLERY_IMAGES } from '../../utils/projectSnaps';
 
 const PLAY_GREEN = '#01875f';
 const PLAY_GREEN_HOVER = '#01704f';
@@ -411,8 +412,14 @@ const AdminProjects = ({ mode = 'showcase' }) => {
     }
   };
 
-  const snaps = editingProject?.project_snaps || [];
-  const detailSnaps = selectedDetailProject?.project_snaps || selectedDetailProject?.snaps || [];
+  const editingSnapsSplit = useMemo(
+    () => splitProjectSnaps(editingProject?.project_snaps || []),
+    [editingProject]
+  );
+  const detailSnapsSplit = useMemo(
+    () => splitProjectSnaps(selectedDetailProject?.project_snaps || selectedDetailProject?.snaps || []),
+    [selectedDetailProject]
+  );
 
   const techList = useMemo(() => {
     const p = editingProject;
@@ -1191,8 +1198,9 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                           ) : (
                             <VStack spacing={6} align="stretch">
                               {manageFilteredProjects.map((p) => {
-                                const icon = (p.project_snaps || [])[0];
-                                const screenshots = p.project_snaps || [];
+                                const { cover, gallery: gallerySnaps } = splitProjectSnaps(p.project_snaps || []);
+                                const icon = cover || gallerySnaps[0] || null;
+                                const screenshots = gallerySnaps;
                                 const edits = getProjectEdits(p);
                                 const isHighlighted = highlightedProjectId && Number(p.id) === Number(highlightedProjectId);
                                 const statusLabel = (s) => {
@@ -1374,7 +1382,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                         {/* Screenshots */}
                                         {screenshots.length > 0 && (
                                           <SimpleGrid columns={4} spacing={2} mt={4}>
-                                            {[0, 1, 2, 3].map((i) => {
+                                            {Array.from({ length: MAX_GALLERY_IMAGES }, (_, i) => i).map((i) => {
                                               const snap = screenshots[i] || null;
                                               return (
                                                 <Box
@@ -1442,9 +1450,9 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                         overflow="hidden"
                         flexShrink={0}
                       >
-                        {snaps.length > 0 ? (
+                        {editingSnapsSplit.cover ? (
                           <Image
-                            src={getFileUrl(snaps[0])}
+                            src={getFileUrl(editingSnapsSplit.cover)}
                             w="100%"
                             h="100%"
                             objectFit="cover"
@@ -1468,11 +1476,11 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                     {/* Image gallery: 4 tiles (filled + empty transparent) */}
                     <Box>
                         <Text fontSize="xs" color="gray.500" fontWeight="600" mb={2} textTransform="uppercase">
-                          Project images
+                          Gallery images
                         </Text>
                         <SimpleGrid columns={4} spacing={3}>
-                          {[0, 1, 2, 3].map((i) => {
-                            const snap = snaps[i] || null;
+                          {Array.from({ length: MAX_GALLERY_IMAGES }, (_, i) => i).map((i) => {
+                            const snap = editingSnapsSplit.gallery[i] || null;
                             return (
                               <Box
                                 key={i}
@@ -1617,14 +1625,37 @@ const AdminProjects = ({ mode = 'showcase' }) => {
               <ModalBody py={4} overflowY="auto">
                 {selectedDetailProject && (
                   <VStack align="stretch" spacing={6}>
-                    {/* Image Gallery: 4 tiles (filled + empty transparent) like student view */}
+                    {detailSnapsSplit.cover && (
+                      <Box>
+                        <Text fontSize="xs" color="gray.500" fontWeight="600" mb={2} textTransform="uppercase">
+                          Cover image
+                        </Text>
+                        <Box
+                          maxW="320px"
+                          aspectRatio="16/9"
+                          borderRadius="xl"
+                          overflow="hidden"
+                          border="1px solid"
+                          borderColor="gray.200"
+                          bg="#000"
+                        >
+                          <Image
+                            src={getFileUrl(detailSnapsSplit.cover)}
+                            w="100%"
+                            h="100%"
+                            objectFit="contain"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </Box>
+                      </Box>
+                    )}
                     <Box>
                       <Text fontSize="xs" color="gray.500" fontWeight="600" mb={2} textTransform="uppercase">
-                        Project images
+                        Gallery images
                       </Text>
                       <SimpleGrid columns={4} spacing={3}>
-                        {[0, 1, 2, 3].map((i) => {
-                          const snap = detailSnaps[i] || null;
+                        {Array.from({ length: MAX_GALLERY_IMAGES }, (_, i) => i).map((i) => {
+                          const snap = detailSnapsSplit.gallery[i] || null;
                           return (
                             <Box
                               key={i}
