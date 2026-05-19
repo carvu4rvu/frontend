@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
-  Heading,
   Text,
   Button,
   HStack,
   Input,
-  InputGroup,
-  InputLeftElement,
-  SimpleGrid,
-  Card,
-  CardBody,
   Flex,
   useToast,
   Modal,
@@ -23,7 +17,6 @@ import {
   FormControl,
   FormLabel,
   useDisclosure,
-  Container,
   Badge,
   Icon,
   Spinner,
@@ -42,12 +35,125 @@ import {
   TableContainer,
   Checkbox,
   Switch,
+  SimpleGrid,
 } from '@chakra-ui/react';
 import { SearchIcon, AddIcon, ExternalLinkIcon, CopyIcon, EmailIcon } from '@chakra-ui/icons';
+import { FaGraduationCap, FaKey, FaExchangeAlt, FaHistory } from 'react-icons/fa';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 import AlumniRegistrationCodes from './AlumniRegistrationCodes';
+import './AlumniPortal.css';
+
+function AlumniTabLabel({ icon, children }) {
+  return (
+    <HStack spacing={2}>
+      <Icon as={icon} boxSize={3} aria-hidden />
+      <Text as="span">{children}</Text>
+    </HStack>
+  );
+}
+
+function formatOfferMeta(alum) {
+  const parts = [];
+  const jt = alum.accepted_offer?.job_type;
+  const ay = alum.accepted_offer?.academic_year;
+  if (jt) parts.push(jt);
+  if (ay) parts.push(`AY ${ay}`);
+  return parts.join(' · ');
+}
+
+function AlumniGridCard({ alum, onOpen }) {
+  const usn = alum.usn || alum.student_id;
+  const batch = alum.batch_year ?? alum.graduation_year;
+  const schoolProgram = [alum.school_name, alum.program_name].filter(Boolean).join(' · ');
+  const role = alum.current_designation?.trim();
+  const company = alum.current_company?.trim();
+  const hasPlacement = !!(role || company);
+  const offerMeta = formatOfferMeta(alum);
+  const personalEmail = alum.personal_email?.trim();
+
+  return (
+    <article
+      className="alumni-portal__card"
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="alumni-portal__card-head">
+        <div className="alumni-portal__card-head-main">
+          <h3 className="alumni-portal__card-name">{alum.full_name || '—'}</h3>
+          {usn && <p className="alumni-portal__card-usn">{usn}</p>}
+          {schoolProgram && <p className="alumni-portal__card-meta">{schoolProgram}</p>}
+        </div>
+        <div className="alumni-portal__card-badges">
+          {batch != null && batch !== '' && (
+            <span className="alumni-portal__card-year">Batch {batch}</span>
+          )}
+          <span
+            className={`alumni-portal__card-source ${
+              alum.alumni_source === 'converted'
+                ? 'alumni-portal__card-source--converted'
+                : 'alumni-portal__card-source--registered'
+            }`}
+          >
+            {alum.alumni_source === 'converted' ? 'Converted' : 'Registered'}
+          </span>
+        </div>
+      </div>
+
+      <div
+        className={`alumni-portal__card-placement ${
+          hasPlacement ? '' : 'alumni-portal__card-placement--empty'
+        }`}
+      >
+        <p className="alumni-portal__card-section-label">Accepted placement</p>
+        {hasPlacement ? (
+          <>
+            <p className="alumni-portal__card-role">{role || '—'}</p>
+            <p className="alumni-portal__card-company">{company || '—'}</p>
+            {offerMeta && <p className="alumni-portal__card-offer-meta">{offerMeta}</p>}
+            {alum.placement_from_offer && (
+              <span className="alumni-portal__card-offer-tag">Synced from placement offer</span>
+            )}
+          </>
+        ) : (
+          <p className="alumni-portal__card-empty">No accepted placement on record</p>
+        )}
+      </div>
+
+      {personalEmail && (
+        <p className="alumni-portal__card-email" title={personalEmail}>
+          {personalEmail}
+        </p>
+      )}
+
+      {alum.current_work_location?.trim() && (
+        <p className="alumni-portal__card-location">{alum.current_work_location.trim()}</p>
+      )}
+
+      <div className="alumni-portal__card-foot">
+        <span
+          className={`alumni-portal__card-status ${
+            alum.profile_data_added ? 'alumni-portal__card-status--added' : 'alumni-portal__card-status--pending'
+          }`}
+        >
+          Profile {alum.profile_data_added ? 'complete' : 'pending'}
+        </span>
+        <div className="alumni-portal__card-icons">
+          {personalEmail && <Icon as={EmailIcon} title={personalEmail} aria-label="Has personal email" />}
+          {alum.linkedin && <Icon as={ExternalLinkIcon} title="LinkedIn profile" aria-label="LinkedIn" />}
+        </div>
+      </div>
+    </article>
+  );
+}
 
 const AlumniList = () => {
   const navigate = useNavigate();
@@ -59,6 +165,14 @@ const AlumniList = () => {
   // Read initial values from URL query params
   const initialSchoolId = searchParams.get('school_id') || '';
   const initialProgramId = searchParams.get('program_id') || '';
+  const initialBatch = searchParams.get('batch') || searchParams.get('year_of_joining') || 'all';
+  const initialCurrentYear = searchParams.get('current_year') || 'all';
+  const initialSection = searchParams.get('section') || 'all';
+  const initialOptIn = searchParams.get('opt_in') || 'all';
+  const initialIsPlaced = searchParams.get('is_placed') || 'all';
+  const initialConversionsSearch = searchParams.get('search') || '';
+  const initialPersonalEmailOnly =
+    searchParams.get('personal_email') === '1' || searchParams.get('has_personal_email') === 'true';
   const initialTab = searchParams.get('tab');
   const [tabIndex, setTabIndex] = useState(initialTab === 'conversions' ? 2 : 0);
   const [alumni, setAlumni] = useState([]);
@@ -70,7 +184,19 @@ const AlumniList = () => {
   const [conversionsSchoolId, setConversionsSchoolId] = useState(initialSchoolId);
   const [conversionsProgramId, setConversionsProgramId] = useState(initialProgramId);
   const [conversionsLoading, setConversionsLoading] = useState(false);
-  const [conversionsFilterPersonalEmail, setConversionsFilterPersonalEmail] = useState(false);
+  const [conversionsFilterPersonalEmail, setConversionsFilterPersonalEmail] = useState(initialPersonalEmailOnly);
+  const [conversionsBatch, setConversionsBatch] = useState(initialBatch);
+  const [conversionsCurrentYear, setConversionsCurrentYear] = useState(initialCurrentYear);
+  const [conversionsSection, setConversionsSection] = useState(initialSection);
+  const [conversionsOptIn, setConversionsOptIn] = useState(initialOptIn);
+  const [conversionsIsPlaced, setConversionsIsPlaced] = useState(initialIsPlaced);
+  const [conversionsSearch, setConversionsSearch] = useState(initialConversionsSearch);
+  const [conversionsSearchDebounced, setConversionsSearchDebounced] = useState(initialConversionsSearch);
+  const [conversionsFilterMeta, setConversionsFilterMeta] = useState({
+    years: [],
+    current_years: [],
+    sections: [],
+  });
   const [conversionsSelectedUsns, setConversionsSelectedUsns] = useState(new Set());
   const [convertLoading, setConvertLoading] = useState(false);
   const [convertResult, setConvertResult] = useState(null);
@@ -113,15 +239,78 @@ const AlumniList = () => {
       next.delete('tab');
       next.delete('school_id');
       next.delete('program_id');
+      next.delete('batch');
+      next.delete('year_of_joining');
+      next.delete('current_year');
+      next.delete('section');
+      next.delete('opt_in');
+      next.delete('is_placed');
+      next.delete('search');
+      next.delete('personal_email');
+      next.delete('has_personal_email');
     }
     setSearchParams(next, { replace: true });
   };
+
+  const syncConversionsUrl = useCallback(
+    (overrides = {}) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', 'conversions');
+        const sid = overrides.school_id ?? conversionsSchoolId;
+        const pid = overrides.program_id ?? conversionsProgramId;
+        const batch = overrides.batch ?? conversionsBatch;
+        const currentYear = overrides.current_year ?? conversionsCurrentYear;
+        const section = overrides.section ?? conversionsSection;
+        const optIn = overrides.opt_in ?? conversionsOptIn;
+        const isPlaced = overrides.is_placed ?? conversionsIsPlaced;
+        const search = overrides.search ?? conversionsSearchDebounced;
+        const personalOnly =
+          overrides.personal_email ?? (conversionsFilterPersonalEmail ? '1' : '0');
+
+        if (sid) next.set('school_id', sid);
+        else next.delete('school_id');
+        if (pid) next.set('program_id', pid);
+        else next.delete('program_id');
+        if (batch && batch !== 'all') next.set('batch', batch);
+        else {
+          next.delete('batch');
+          next.delete('year_of_joining');
+        }
+        if (currentYear && currentYear !== 'all') next.set('current_year', currentYear);
+        else next.delete('current_year');
+        if (section && section !== 'all') next.set('section', section);
+        else next.delete('section');
+        if (optIn && optIn !== 'all') next.set('opt_in', optIn);
+        else next.delete('opt_in');
+        if (isPlaced && isPlaced !== 'all') next.set('is_placed', isPlaced);
+        else next.delete('is_placed');
+        if (search && String(search).trim()) next.set('search', String(search).trim());
+        else next.delete('search');
+        if (personalOnly === '1' || personalOnly === true) next.set('personal_email', '1');
+        else next.delete('personal_email');
+        return next;
+      }, { replace: true });
+    },
+    [
+      setSearchParams,
+      conversionsSchoolId,
+      conversionsProgramId,
+      conversionsBatch,
+      conversionsCurrentYear,
+      conversionsSection,
+      conversionsOptIn,
+      conversionsIsPlaced,
+      conversionsSearchDebounced,
+      conversionsFilterPersonalEmail,
+    ]
+  );
 
   const fetchAlumni = async () => {
     setLoading(true);
     try {
       const data = await PlacementService.getAllAlumni();
-      setAlumni(data);
+      setAlumni(Array.isArray(data) ? data : []);
     } catch (error) {
       toast({
         title: 'Error fetching alumni',
@@ -180,13 +369,13 @@ const AlumniList = () => {
     }
   };
 
-  const filteredAlumni = alumni.filter((a) => {
+  const alumniList = Array.isArray(alumni) ? alumni : [];
+
+  const filteredAlumni = alumniList.filter((a) => {
     const q = searchQuery.toLowerCase();
-    return (
-      a.full_name?.toLowerCase().includes(q) ||
-      (a.usn || a.student_id)?.toLowerCase().includes(q) ||
-      a.current_company?.toLowerCase().includes(q)
-    );
+    const haystack = [a.full_name, a.usn || a.student_id, a.current_company, a.current_designation, a.personal_email, a.school_name]
+      .map((v) => (v == null ? '' : String(v)).toLowerCase());
+    return haystack.some((s) => s.includes(q));
   });
 
   const linkId = (a) => a.student_id || a.usn || a.id;
@@ -201,27 +390,67 @@ const AlumniList = () => {
     }
   }, [toast]);
 
-  const fetchConversionsData = useCallback(async () => {
+  const buildConversionsQueryParams = useCallback(() => {
     const sid = conversionsSchoolId && conversionsSchoolId !== '' ? conversionsSchoolId : null;
     const pid = conversionsProgramId && conversionsProgramId !== '' ? conversionsProgramId : null;
-    if (sid == null || pid == null) {
+    if (sid == null || pid == null) return null;
+    return {
+      school_id: sid,
+      program_id: pid,
+      batch: conversionsBatch !== 'all' ? conversionsBatch : undefined,
+      current_year: conversionsCurrentYear !== 'all' ? conversionsCurrentYear : undefined,
+      section: conversionsSection !== 'all' ? conversionsSection : undefined,
+      opt_in: conversionsOptIn !== 'all' ? conversionsOptIn : undefined,
+      is_placed: conversionsIsPlaced !== 'all' ? conversionsIsPlaced : undefined,
+      search: conversionsSearchDebounced.trim() || undefined,
+      has_personal_email: conversionsFilterPersonalEmail || undefined,
+    };
+  }, [
+    conversionsSchoolId,
+    conversionsProgramId,
+    conversionsBatch,
+    conversionsCurrentYear,
+    conversionsSection,
+    conversionsOptIn,
+    conversionsIsPlaced,
+    conversionsSearchDebounced,
+    conversionsFilterPersonalEmail,
+  ]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setConversionsSearchDebounced(conversionsSearch), 400);
+    return () => clearTimeout(timer);
+  }, [conversionsSearch]);
+
+  const fetchConversionsData = useCallback(async () => {
+    const params = buildConversionsQueryParams();
+    if (params == null) {
       setConversionsRows([]);
+      setConversionsFilterMeta({ years: [], current_years: [], sections: [] });
       return;
     }
     setConversionsLoading(true);
     setConversionsSelectedUsns(new Set());
     try {
-      const data = await PlacementService.getAlumniConversions({ school_id: sid, program_id: pid });
+      const data = await PlacementService.getAlumniConversions(params);
       setConversionsRows(data.rows || []);
+      setConversionsFilterMeta(data.filter_meta || { years: [], current_years: [], sections: [] });
       if (!conversionsSchools.length) setConversionsSchools(data.schools || []);
       if (!conversionsPrograms.length) setConversionsPrograms(data.programs || []);
+      syncConversionsUrl();
     } catch (e) {
       toast({ title: 'Error loading conversions data', status: 'error' });
       setConversionsRows([]);
     } finally {
       setConversionsLoading(false);
     }
-  }, [conversionsSchoolId, conversionsProgramId, toast, conversionsSchools.length, conversionsPrograms.length]);
+  }, [
+    buildConversionsQueryParams,
+    toast,
+    conversionsSchools.length,
+    conversionsPrograms.length,
+    syncConversionsUrl,
+  ]);
 
   useEffect(() => {
     if (tabIndex === 2) fetchConversionsMeta();
@@ -244,16 +473,28 @@ const AlumniList = () => {
   }, [tabIndex, fetchConversionLogs]);
 
   useEffect(() => {
-    if (tabIndex === 2 && (conversionsSchoolId || conversionsProgramId)) fetchConversionsData();
-  }, [tabIndex, conversionsSchoolId, conversionsProgramId]);
+    if (tabIndex === 2 && conversionsSchoolId && conversionsProgramId) {
+      fetchConversionsData();
+    }
+  }, [
+    tabIndex,
+    conversionsSchoolId,
+    conversionsProgramId,
+    conversionsBatch,
+    conversionsCurrentYear,
+    conversionsSection,
+    conversionsOptIn,
+    conversionsIsPlaced,
+    conversionsSearchDebounced,
+    conversionsFilterPersonalEmail,
+    fetchConversionsData,
+  ]);
 
   const conversionsProgramsFiltered = conversionsSchoolId
     ? (conversionsPrograms || []).filter((p) => String(p.school_id) === String(conversionsSchoolId))
     : (conversionsPrograms || []);
 
-  const conversionsRowsFiltered = conversionsFilterPersonalEmail
-    ? (conversionsRows || []).filter((r) => r.personal_email && String(r.personal_email).trim() !== '')
-    : (conversionsRows || []);
+  const conversionsRowsFiltered = conversionsRows || [];
 
   const conversionsSelectAll = conversionsRowsFiltered.length > 0 && conversionsRowsFiltered.every((r) => conversionsSelectedUsns.has(r.usn));
   const conversionsSelectSome = conversionsRowsFiltered.some((r) => conversionsSelectedUsns.has(r.usn));
@@ -342,117 +583,112 @@ const AlumniList = () => {
     onConvertClose();
   };
 
-  return (
-    <AdminLayout>
-      <Box bg="#f0f0f0" minH="100vh" pb={10}>
-        <Container maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }} pt={8}>
-          <Flex mb={6} justify="space-between" align="center" wrap="wrap" gap={4}>
-            <Box>
-              <Heading size="lg" color="gray.800">Alumni Network</Heading>
-              <Text color="gray.500" fontSize="sm">Track and manage alumni</Text>
-            </Box>
-            <Button
-              bg="#22c35e"
-              color="white"
-              _hover={{ bg: '#1da851' }}
-              leftIcon={<AddIcon boxSize={3} />}
-              onClick={onOpen}
-              size="sm"
-            >
-              Add manually
-            </Button>
-          </Flex>
+  const displayedCount = filteredAlumni.length;
+  const totalCount = alumniList.length;
 
-          <Tabs index={tabIndex} onChange={handleTabsChange} variant="enclosed" colorScheme="blue" bg="white" borderRadius="xl" shadow="sm" p={2}>
-            <TabList mb={4}>
-              <Tab fontWeight="bold">Current Alumni</Tab>
-              <Tab fontWeight="bold">Manage Registrations</Tab>
-              <Tab fontWeight="bold">Alumni Conversions</Tab>
-              <Tab fontWeight="bold">Conversion logs</Tab>
+  return (
+    <AdminLayout fullWidth>
+      <div className="alumni-portal">
+        <div className="alumni-portal__inner">
+          <header className="alumni-portal__hero">
+            <div className="alumni-portal__hero-inner">
+              <div className="alumni-portal__hero-icon" aria-hidden>
+                <FaGraduationCap />
+              </div>
+              <div>
+                <h1 className="alumni-portal__hero-title">Alumni Network</h1>
+                <p className="alumni-portal__hero-subtitle">
+                  Browse alumni profiles, manage registration codes, and convert graduating students.
+                </p>
+              </div>
+            </div>
+            <button type="button" className="alumni-portal__btn-add" onClick={onOpen}>
+              <AddIcon boxSize={3} aria-hidden />
+              Add manually
+            </button>
+          </header>
+
+          <div className="alumni-portal__stats" aria-label="Summary">
+            <span className="alumni-portal__stat-pill">
+              <strong>{totalCount.toLocaleString()}</strong> alumni
+            </span>
+            {searchQuery.trim() && (
+              <span className="alumni-portal__stat-pill alumni-portal__stat-pill--muted">
+                <strong>{displayedCount.toLocaleString()}</strong> matching search
+              </span>
+            )}
+          </div>
+
+          <Tabs
+            index={tabIndex}
+            onChange={handleTabsChange}
+            variant="unstyled"
+            className="alumni-portal__tabs-wrap"
+            isLazy
+          >
+            <TabList className="alumni-portal__tab-list">
+              <Tab className="alumni-portal__tab">
+                <AlumniTabLabel icon={FaGraduationCap}>Current Alumni</AlumniTabLabel>
+              </Tab>
+              <Tab className="alumni-portal__tab">
+                <AlumniTabLabel icon={FaKey}>Manage Registrations</AlumniTabLabel>
+              </Tab>
+              <Tab className="alumni-portal__tab">
+                <AlumniTabLabel icon={FaExchangeAlt}>Alumni Conversions</AlumniTabLabel>
+              </Tab>
+              <Tab className="alumni-portal__tab">
+                <AlumniTabLabel icon={FaHistory}>Conversion logs</AlumniTabLabel>
+              </Tab>
             </TabList>
 
-            <TabPanels>
+            <TabPanels className="alumni-portal__tab-panels">
               <TabPanel p={0}>
-                <Flex mb={6} justify="space-between" align="center" gap={4} wrap="wrap">
-                  <Box flex="1">
-                    <InputGroup>
-                      <InputLeftElement pointerEvents="none">
-                        <SearchIcon color="gray.400" />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="Search by name, USN, or company..."
+                <div className="alumni-portal__toolbar-card">
+                  <div className="alumni-portal__toolbar">
+                    <div className="alumni-portal__search-wrap">
+                      <SearchIcon className="alumni-portal__search-icon" aria-hidden />
+                      <input
+                        type="search"
+                        className="alumni-portal__search-input"
+                        placeholder="Search name, USN, company, role, or email..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        bg="gray.50"
-                        border="none"
-                        _focus={{ bg: 'white', boxShadow: 'outline' }}
+                        aria-label="Search alumni"
                       />
-                    </InputGroup>
-                  </Box>
-                  <Button variant="outline" colorScheme="gray" leftIcon={<CopyIcon />} onClick={handleCopyEmails} size="md">
-                    Copy emails
-                  </Button>
-                </Flex>
+                    </div>
+                    <button type="button" className="alumni-portal__btn-secondary" onClick={handleCopyEmails}>
+                      <CopyIcon boxSize={3} aria-hidden />
+                      Copy emails
+                    </button>
+                  </div>
+                </div>
 
                 {loading ? (
-                  <Flex justify="center" py={10}><Spinner /></Flex>
+                  <div className="alumni-portal__loading"><Spinner /></div>
+                ) : filteredAlumni.length === 0 ? (
+                  <div className="alumni-portal__empty">No alumni found.</div>
                 ) : (
-                  <>
-                    <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                      {filteredAlumni.map((alum) => (
-                        <Card
-                          key={alum.id}
-                          bg="white"
-                          boxShadow="sm"
-                          borderRadius="xl"
-                          cursor="pointer"
-                          _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
-                          transition="all 0.2s"
-                          onClick={() => navigate(`/placement/alumni/${linkId(alum)}`)}
-                          borderWidth="1px"
-                        >
-                          <CardBody>
-                            <Flex justify="space-between" align="start" mb={2}>
-                              <Box>
-                                <Text fontWeight="bold" fontSize="lg" color="gray.800">{alum.full_name}</Text>
-                                <Text fontSize="sm" color="gray.500">{alum.usn || alum.student_id || '—'}</Text>
-                              </Box>
-                              {alum.graduation_year && <Badge colorScheme="blue" variant="subtle">{alum.graduation_year}</Badge>}
-                            </Flex>
-                            <Box mt={4}>
-                              <Text fontSize="sm" fontWeight="bold" color="gray.600" textTransform="uppercase" letterSpacing="wide">Current role</Text>
-                              <Text fontSize="md" fontWeight="medium" color="#20343c">{alum.current_designation || 'N/A'}</Text>
-                              <Text fontSize="sm" color="blue.600">{alum.current_company || 'N/A'}</Text>
-                            </Box>
-                            <Flex mt={3} align="center" gap={2}>
-                              <Text fontSize="xs" fontWeight="600" color="gray.500" textTransform="uppercase" letterSpacing="wide">Profile / Data</Text>
-                              <Badge size="sm" colorScheme={alum.profile_data_added ? 'green' : 'gray'} variant={alum.profile_data_added ? 'solid' : 'subtle'}>
-                                {alum.profile_data_added ? 'Added' : 'Pending'}
-                              </Badge>
-                            </Flex>
-                            <HStack mt={4} spacing={4} color="gray.400">
-                              {alum.personal_email && <Icon as={EmailIcon} title={alum.personal_email} />}
-                              {alum.linkedin && <Icon as={ExternalLinkIcon} title="LinkedIn" />}
-                            </HStack>
-                          </CardBody>
-                        </Card>
-                      ))}
-                    </SimpleGrid>
-                    {filteredAlumni.length === 0 && (
-                      <Box textAlign="center" py={10}>
-                        <Text color="gray.500">No alumni found.</Text>
-                      </Box>
-                    )}
-                  </>
+                  <div className="alumni-portal__grid">
+                    {filteredAlumni.map((alum, index) => (
+                      <AlumniGridCard
+                        key={alum.id ?? alum.usn ?? alum.student_id ?? `alum-${index}`}
+                        alum={alum}
+                        onOpen={() => navigate(`/placement/alumni/${linkId(alum)}`)}
+                      />
+                    ))}
+                  </div>
                 )}
               </TabPanel>
 
               <TabPanel p={0}>
-                <AlumniRegistrationCodes />
+                <Box className="alumni-portal__panel">
+                  <AlumniRegistrationCodes />
+                </Box>
               </TabPanel>
 
               <TabPanel p={0}>
-                <Box mb={4}>
+                <Box className="alumni-portal__panel">
+                <Box className="alumni-portal__filters">
                   <HStack spacing={4} flexWrap="wrap" align="end">
                     <FormControl w="200px">
                       <FormLabel fontSize="sm">School</FormLabel>
@@ -462,6 +698,10 @@ const AlumniList = () => {
                         onChange={(e) => {
                           setConversionsSchoolId(e.target.value);
                           setConversionsProgramId('');
+                          setConversionsBatch('all');
+                          setConversionsCurrentYear('all');
+                          setConversionsSection('all');
+                          setConversionsFilterMeta({ years: [], current_years: [], sections: [] });
                         }}
                         size="sm"
                       >
@@ -483,27 +723,108 @@ const AlumniList = () => {
                         ))}
                       </Select>
                     </FormControl>
-                    <Button size="sm" colorScheme="blue" onClick={fetchConversionsData} isDisabled={!conversionsSchoolId || !conversionsProgramId}>
+                    <Button
+                      size="sm"
+                      className="alumni-portal__btn-primary"
+                      onClick={fetchConversionsData}
+                      isDisabled={!conversionsSchoolId || !conversionsProgramId}
+                      isLoading={conversionsLoading}
+                    >
                       Load
                     </Button>
-                    {!conversionsLoading && conversionsRows.length > 0 && (
-                      <FormControl display="flex" alignItems="center" w="auto">
-                        <FormLabel fontSize="sm" mb={0} whiteSpace="nowrap">Personal emails only</FormLabel>
+                  </HStack>
+                  {conversionsSchoolId && conversionsProgramId && (
+                    <HStack spacing={4} flexWrap="wrap" align="end" mt={3}>
+                      <FormControl w="140px">
+                        <FormLabel fontSize="sm">Batch (joining year)</FormLabel>
+                        <Select
+                          size="sm"
+                          value={conversionsBatch}
+                          onChange={(e) => setConversionsBatch(e.target.value)}
+                        >
+                          <option value="all">All batches</option>
+                          {(conversionsFilterMeta.years || []).map((y) => (
+                            <option key={y} value={String(y)}>{y}</option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl w="130px">
+                        <FormLabel fontSize="sm">Current year</FormLabel>
+                        <Select
+                          size="sm"
+                          value={conversionsCurrentYear}
+                          onChange={(e) => setConversionsCurrentYear(e.target.value)}
+                        >
+                          <option value="all">All years</option>
+                          {(conversionsFilterMeta.current_years || []).map((y) => (
+                            <option key={`cy-${y}`} value={String(y)}>Year {y}</option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl w="120px">
+                        <FormLabel fontSize="sm">Section</FormLabel>
+                        <Select
+                          size="sm"
+                          value={conversionsSection}
+                          onChange={(e) => setConversionsSection(e.target.value)}
+                        >
+                          <option value="all">All sections</option>
+                          {(conversionsFilterMeta.sections || []).map((sec) => (
+                            <option key={sec} value={sec}>{sec}</option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl w="120px">
+                        <FormLabel fontSize="sm">Opt in</FormLabel>
+                        <Select
+                          size="sm"
+                          value={conversionsOptIn}
+                          onChange={(e) => setConversionsOptIn(e.target.value)}
+                        >
+                          <option value="all">All</option>
+                          <option value="true">Yes</option>
+                          <option value="false">No</option>
+                        </Select>
+                      </FormControl>
+                      <FormControl w="120px">
+                        <FormLabel fontSize="sm">Placed</FormLabel>
+                        <Select
+                          size="sm"
+                          value={conversionsIsPlaced}
+                          onChange={(e) => setConversionsIsPlaced(e.target.value)}
+                        >
+                          <option value="all">All</option>
+                          <option value="true">Yes</option>
+                          <option value="false">No</option>
+                        </Select>
+                      </FormControl>
+                      <FormControl w="220px" flex="1" minW="180px">
+                        <FormLabel fontSize="sm">Search</FormLabel>
+                        <Input
+                          size="sm"
+                          placeholder="USN, name, or email"
+                          value={conversionsSearch}
+                          onChange={(e) => setConversionsSearch(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormControl display="flex" alignItems="center" w="auto" pb={1}>
+                        <FormLabel fontSize="sm" mb={0} whiteSpace="nowrap">Personal email only</FormLabel>
                         <Switch
                           size="sm"
+                          ml={2}
                           isChecked={conversionsFilterPersonalEmail}
                           onChange={(e) => setConversionsFilterPersonalEmail(e.target.checked)}
                         />
                       </FormControl>
-                    )}
-                  </HStack>
+                    </HStack>
+                  )}
                 </Box>
                 {conversionsLoading ? (
-                  <Flex justify="center" py={8}><Spinner /></Flex>
+                  <div className="alumni-portal__loading"><Spinner /></div>
                 ) : (
-                  <TableContainer overflowX="auto">
+                  <TableContainer className="alumni-portal__table-wrap" overflowX="auto">
                     <Table variant="simple" size="sm">
-                      <Thead bg="gray.50">
+                      <Thead>
                         <Tr>
                           <Th px={2} w="40px">
                             <Checkbox
@@ -518,7 +839,9 @@ const AlumniList = () => {
                           <Th>RVU mail id</Th>
                           <Th>Personal mail id</Th>
                           <Th>Program</Th>
-                          <Th>Year of joining</Th>
+                          <Th>Batch</Th>
+                          <Th>Current year</Th>
+                          <Th>Section</Th>
                           <Th>Program year</Th>
                           <Th>Opt in</Th>
                           <Th>Is placed</Th>
@@ -540,6 +863,8 @@ const AlumniList = () => {
                             <Td fontSize="sm">{row.personal_email || '—'}</Td>
                             <Td fontSize="sm">{row.program || '—'}</Td>
                             <Td>{row.year_of_joining ?? '—'}</Td>
+                            <Td>{row.current_year ?? '—'}</Td>
+                            <Td>{row.section || '—'}</Td>
                             <Td fontSize="sm">[{row.course_year_min ?? 0}-{row.course_year_max ?? 0}]</Td>
                             <Td>
                               <Badge colorScheme={row.opt_in ? 'green' : 'gray'} size="sm">{row.opt_in ? 'Yes' : 'No'}</Badge>
@@ -553,34 +878,33 @@ const AlumniList = () => {
                     </Table>
                   </TableContainer>
                 )}
-                {!conversionsLoading && conversionsRows.length === 0 && (conversionsSchoolId && conversionsProgramId) && (
-                  <Text color="gray.500" py={4}>No students found for this school and program.</Text>
-                )}
-                {!conversionsLoading && conversionsRows.length > 0 && conversionsRowsFiltered.length === 0 && conversionsFilterPersonalEmail && (
-                  <Text color="gray.500" py={4}>No students with personal email in this list.</Text>
+                {!conversionsLoading && conversionsSchoolId && conversionsProgramId && conversionsRows.length === 0 && (
+                  <Text color="gray.500" py={4}>No students match the selected filters.</Text>
                 )}
                 {!conversionsLoading && conversionsRows.length === 0 && !conversionsSchoolId && (
                   <Text color="gray.500" py={4}>Select a school and program to view students.</Text>
                 )}
                 {showConvertButton && (
                   <Flex mt={4} justify="flex-end">
-                    <Button size="md" colorScheme="green" onClick={openConvertModal}>
+                    <Button size="md" className="alumni-portal__btn-green" onClick={openConvertModal}>
                       Convert to Alumni
                     </Button>
                   </Flex>
                 )}
+                </Box>
               </TabPanel>
 
               <TabPanel p={0}>
-                <Box mb={4}>
-                  <Text fontSize="sm" color="gray.600" mb={2}>Alumni conversion log (role change + alumni record creation).</Text>
-                </Box>
+                <Box className="alumni-portal__panel">
+                  <p className="alumni-portal__panel-intro">
+                    Alumni conversion log (RVU role change, alumni profile, and personal Gmail login).
+                  </p>
                 {conversionLogsLoading ? (
-                  <Flex justify="center" py={8}><Spinner /></Flex>
+                  <div className="alumni-portal__loading"><Spinner /></div>
                 ) : (
-                  <TableContainer overflowX="auto">
+                  <TableContainer className="alumni-portal__table-wrap" overflowX="auto">
                     <Table variant="simple" size="sm">
-                      <Thead bg="gray.50">
+                      <Thead>
                         <Tr>
                           <Th>#</Th>
                           <Th>Batch ID</Th>
@@ -589,7 +913,7 @@ const AlumniList = () => {
                           <Th>Personal email</Th>
                           <Th>Alumni migrated</Th>
                           <Th>Role converted</Th>
-                          <Th>Personal row created</Th>
+                          <Th>Personal email login</Th>
                           <Th>Status</Th>
                           <Th>Error</Th>
                           <Th>Created</Th>
@@ -623,15 +947,16 @@ const AlumniList = () => {
                   </TableContainer>
                 )}
                 {!conversionLogsLoading && conversionLogs.length === 0 && (
-                  <Text color="gray.500" py={4}>No conversion logs yet.</Text>
+                  <div className="alumni-portal__empty">No conversion logs yet.</div>
                 )}
+                </Box>
               </TabPanel>
             </TabPanels>
           </Tabs>
 
           <Modal isOpen={isOpen} onClose={onClose} size="xl" scrollBehavior="inside">
             <ModalOverlay />
-            <ModalContent>
+            <ModalContent className="alumni-portal__modal-content">
               <ModalHeader>Add new alumni (manual)</ModalHeader>
               <ModalCloseButton />
               <ModalBody>
@@ -697,7 +1022,7 @@ const AlumniList = () => {
 
           <Modal isOpen={isConvertOpen} onClose={closeConvertModal} size="lg" isCentered>
             <ModalOverlay />
-            <ModalContent>
+            <ModalContent className="alumni-portal__modal-content">
               <ModalHeader>Convert to Alumni</ModalHeader>
               <ModalCloseButton isDisabled={convertLoading} />
               <ModalBody>
@@ -706,7 +1031,7 @@ const AlumniList = () => {
                     <Text mb={4}>
                       {usnsToSend.length === 0
                         ? (hasSelectedWithoutEmail ? 'Select only students with personal mail id. Only students with a personal email can be converted to alumni.' : 'Select students to convert.')
-                        : `Convert ${usnsToSend.length} student(s) to alumni? Their RVU login will be set to alumni role and their details will be added to the alumni table. Failed conversions will be reverted automatically.`}
+                        : `Convert ${usnsToSend.length} student(s) to alumni? Their RVU login will become alumni, an alumni profile will be created, and a separate login will be added for their personal Gmail (same password as their college account). Failed conversions are reverted automatically.`}
                     </Text>
                     {convertLoading && (
                       <Flex align="center" gap={3} py={2}>
@@ -753,8 +1078,8 @@ const AlumniList = () => {
               </ModalFooter>
             </ModalContent>
           </Modal>
-        </Container>
-      </Box>
+        </div>
+      </div>
     </AdminLayout>
   );
 };

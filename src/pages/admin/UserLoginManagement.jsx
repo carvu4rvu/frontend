@@ -1,16 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Container,
-  Heading,
   Text,
   HStack,
   VStack,
   Input,
-  InputGroup,
-  InputLeftElement,
-  InputRightElement,
   Select,
   Button,
   Table,
@@ -48,8 +43,19 @@ import {
   Avatar,
 } from '@chakra-ui/react';
 import { SearchIcon, CheckIcon, CloseIcon, AddIcon, DeleteIcon, EditIcon } from '@chakra-ui/icons';
-import { FaBuilding, FaKey, FaUserTie } from 'react-icons/fa';
+import {
+  FaBuilding,
+  FaGraduationCap,
+  FaKey,
+  FaUser,
+  FaUserGraduate,
+  FaUsers,
+  FaUserShield,
+  FaUserSlash,
+  FaUserTie,
+} from 'react-icons/fa';
 import AdminLayout from '../../components/AdminLayout';
+import './UserLoginManagement.css';
 import { 
   getUserLoginList, 
   getStudentsWithoutLogin, 
@@ -65,12 +71,33 @@ import {
   deleteVcLogin,
 } from '../../services/userLogin.service';
 
-const headerBg = '#172e36';
-const headerColor = '#fbeec8';
-const borderColor = '#c2b38a';
-const cardBg = '#ffffff';
-const rowHoverBg = '#f8f9fa';
-const accentColor = '#d4a960';
+/** e.g. student → "Student login", admin → "Admin login" */
+function formatRoleTabLabel(roleName) {
+  const raw = (roleName || '').trim();
+  if (!raw) return 'Login';
+  const titled = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  return `${titled} login`;
+}
+
+/** These roles use dedicated tabs (create/edit passwords) — skip duplicate role tabs */
+const DEDICATED_TAB_ROLE_NAMES = new Set(['company', 'vc']);
+
+function getRoleTabIcon(roleName) {
+  const n = (roleName || '').trim().toLowerCase();
+  if (n === 'admin' || n === 'superadmin') return FaUserShield;
+  if (n === 'alumni') return FaGraduationCap;
+  if (n === 'student') return FaUserGraduate;
+  return FaUser;
+}
+
+function LoginTabLabel({ icon, children }) {
+  return (
+    <HStack spacing={2}>
+      <Icon as={icon} boxSize={3} aria-hidden />
+      <Text as="span">{children}</Text>
+    </HStack>
+  );
+}
 
 const UserLoginManagement = () => {
   const navigate = useNavigate();
@@ -150,7 +177,16 @@ const UserLoginManagement = () => {
       if (searchDebounced.trim()) params.search = searchDebounced.trim();
       const data = await getUserLoginList(params);
       setUsers(data.users || []);
-      setRoles(data.roles || []);
+      const nextRoles = data.roles || [];
+      setRoles((prev) => {
+        if (
+          prev.length === nextRoles.length &&
+          prev.every((r, i) => r.id === nextRoles[i]?.id && r.name === nextRoles[i]?.name)
+        ) {
+          return prev;
+        }
+        return nextRoles;
+      });
       setTotal(data.total ?? 0);
     } catch (err) {
       toast({
@@ -164,7 +200,7 @@ const UserLoginManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, roleFilter, activeFilter, searchDebounced, toast]);
+  }, [page, limit, roleFilter, activeFilter, searchDebounced]);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 400);
@@ -174,10 +210,6 @@ const UserLoginManagement = () => {
   useEffect(() => {
     setPage(1);
   }, [roleFilter, activeFilter, searchDebounced]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
 
   const fetchNoLogin = useCallback(async () => {
     setNoLoginLoading(true);
@@ -205,7 +237,7 @@ const UserLoginManagement = () => {
     } finally {
       setNoLoginLoading(false);
     }
-  }, [noLoginPage, noLoginSchool, noLoginProgram, noLoginYear, noLoginSearchDebounced, toast]);
+  }, [noLoginPage, noLoginSchool, noLoginProgram, noLoginYear, noLoginSearchDebounced]);
 
   useEffect(() => {
     const t = setTimeout(() => setNoLoginSearchDebounced(noLoginSearch), 400);
@@ -239,7 +271,7 @@ const UserLoginManagement = () => {
     } finally {
       setCompanyLoading(false);
     }
-  }, [companyPage, companySearchDebounced, toast]);
+  }, [companyPage, companySearchDebounced]);
 
   useEffect(() => {
     const t = setTimeout(() => setCompanySearchDebounced(companySearch), 400);
@@ -271,7 +303,7 @@ const UserLoginManagement = () => {
     } finally {
       setVcLoading(false);
     }
-  }, [vcPage, vcSearchDebounced, toast]);
+  }, [vcPage, vcSearchDebounced]);
 
   useEffect(() => {
     const t = setTimeout(() => setVcSearchDebounced(vcSearch), 400);
@@ -283,11 +315,89 @@ const UserLoginManagement = () => {
   }, [vcSearchDebounced]);
 
   const [tabIndex, setTabIndex] = useState(0);
+
+  const sortedRoles = useMemo(
+    () => [...roles].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+    [roles]
+  );
+
+  const rolesForLoginTabs = useMemo(
+    () =>
+      sortedRoles.filter((r) => !DEDICATED_TAB_ROLE_NAMES.has((r.name || '').trim().toLowerCase())),
+    [sortedRoles]
+  );
+
+  const tabKinds = useMemo(() => {
+    const kinds = [{ type: 'all-users', key: 'all-users' }];
+    rolesForLoginTabs.forEach((r) => {
+      kinds.push({ type: 'role', key: `role-${r.id}`, roleId: r.id, roleName: r.name });
+    });
+    kinds.push({ type: 'no-login', key: 'no-login' });
+    kinds.push({ type: 'company', key: 'company' });
+    kinds.push({ type: 'vc', key: 'vc' });
+    return kinds;
+  }, [rolesForLoginTabs]);
+
+  const safeTabIndex = tabKinds.length ? Math.min(tabIndex, tabKinds.length - 1) : 0;
+  const activeTabKind = tabKinds[safeTabIndex];
+  const activeTabType = activeTabKind?.type ?? null;
+  const activeRoleId = activeTabKind?.type === 'role' ? activeTabKind.roleId : null;
+
   useEffect(() => {
-    if (tabIndex === 1) fetchNoLogin();
-    if (tabIndex === 2) fetchCompanyLogins();
-    if (tabIndex === 3) fetchVcLogins();
-  }, [tabIndex, fetchNoLogin, fetchCompanyLogins, fetchVcLogins]);
+    getUserLoginList({ page: 1, limit: 1 })
+      .then((data) => {
+        const nextRoles = data.roles || [];
+        if (!nextRoles.length) return;
+        setRoles((prev) => {
+          if (
+            prev.length === nextRoles.length &&
+            prev.every((r, i) => r.id === nextRoles[i]?.id && r.name === nextRoles[i]?.name)
+          ) {
+            return prev;
+          }
+          return nextRoles;
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (tabKinds.length > 0 && tabIndex >= tabKinds.length) {
+      setTabIndex(0);
+      setRoleFilter('all');
+    }
+  }, [tabKinds.length, tabIndex]);
+
+  const handleTabChange = useCallback(
+    (index) => {
+      setTabIndex(index);
+      setSelectedIds(new Set());
+      const kind = tabKinds[index];
+      if (!kind) return;
+      if (kind.type === 'all-users') {
+        setRoleFilter('all');
+        setPage(1);
+      } else if (kind.type === 'role') {
+        setRoleFilter(String(kind.roleId));
+        setPage(1);
+      } else if (kind.type === 'no-login') {
+        setNoLoginPage(1);
+      } else if (kind.type === 'company') {
+        setCompanyPage(1);
+      } else if (kind.type === 'vc') {
+        setVcPage(1);
+      }
+    },
+    [tabKinds]
+  );
+
+  useEffect(() => {
+    if (!activeTabType) return;
+    if (activeTabType === 'all-users' || activeTabType === 'role') fetchUsers();
+    else if (activeTabType === 'no-login') fetchNoLogin();
+    else if (activeTabType === 'company') fetchCompanyLogins();
+    else if (activeTabType === 'vc') fetchVcLogins();
+  }, [activeTabType, activeRoleId, tabIndex, fetchUsers, fetchNoLogin, fetchCompanyLogins, fetchVcLogins]);
 
   const handleSingleToggle = async (id, currentActive) => {
     const next = !currentActive;
@@ -516,860 +626,752 @@ const UserLoginManagement = () => {
   // Filter companies that don't have logins yet
   const availableCompanies = companies.filter(c => !companiesWithLogins.includes(c.id));
 
-  return (
-    <AdminLayout>
-      <Box bg="#f0f0f0" minH="100vh" pb={10}>
-        <Container maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }} pt={8}>
-          <Heading size="lg" color="gray.800" mb={1}>
-            Login Settings
-          </Heading>
-          <Text color="gray.500" fontSize="sm" mb={4}>
-            Manage all users, students without login, company logins, and VC (Vice Chancellor) logins.
-          </Text>
+  const statSummary = (() => {
+    if (!activeTabKind) {
+      return { primary: 0, primaryLabel: 'accounts', page: 1, pageSize: limit };
+    }
+    if (activeTabKind.type === 'no-login') {
+      return { primary: noLoginTotal, primaryLabel: 'without login', page: noLoginPage, pageSize: 50 };
+    }
+    if (activeTabKind.type === 'company') {
+      return { primary: companyTotal, primaryLabel: 'company logins', page: companyPage, pageSize: 50 };
+    }
+    if (activeTabKind.type === 'vc') {
+      return { primary: vcTotal, primaryLabel: 'VC logins', page: vcPage, pageSize: 50 };
+    }
+    if (activeTabKind.type === 'role') {
+      return {
+        primary: total,
+        primaryLabel: formatRoleTabLabel(activeTabKind.roleName).toLowerCase(),
+        page,
+        pageSize: limit,
+      };
+    }
+    return { primary: total, primaryLabel: 'all users login', page, pageSize: limit };
+  })();
 
-          <Tabs index={tabIndex} onChange={setTabIndex} variant="unstyled" mb={4}>
-            <TabList
-              gap={0}
-              borderBottom="2px"
-              borderColor="gray.200"
-              bg="gray.100"
-              borderRadius="lg"
-              p={1}
-              w="fit-content"
-            >
-              <Tab
-                borderRadius="md"
-                px={4}
-                py={2}
-                fontSize="sm"
-                fontWeight="medium"
-                _selected={{ bg: 'white', color: 'gray.800', boxShadow: 'sm', border: '1px', borderColor: 'gray.200', borderBottom: '2px solid white', mb: '-2px' }}
-                _hover={{ bg: 'whiteAlpha.700' }}
-                color="gray.600"
-              >
-                User logins
-              </Tab>
-              <Tab
-                borderRadius="md"
-                px={4}
-                py={2}
-                fontSize="sm"
-                fontWeight="medium"
-                _selected={{ bg: 'white', color: 'gray.800', boxShadow: 'sm', border: '1px', borderColor: 'gray.200', borderBottom: '2px solid white', mb: '-2px' }}
-                _hover={{ bg: 'whiteAlpha.700' }}
-                color="gray.600"
-              >
-                Students without login
-              </Tab>
-              <Tab
-                borderRadius="md"
-                px={4}
-                py={2}
-                fontSize="sm"
-                fontWeight="medium"
-                _selected={{ bg: 'white', color: 'gray.800', boxShadow: 'sm', border: '1px', borderColor: 'gray.200', borderBottom: '2px solid white', mb: '-2px' }}
-                _hover={{ bg: 'whiteAlpha.700' }}
-                color="gray.600"
-              >
-                <HStack spacing={2}>
-                  <Icon as={FaBuilding} boxSize={3} />
-                  <Text>Company logins</Text>
-                </HStack>
-              </Tab>
-              <Tab
-                borderRadius="md"
-                px={4}
-                py={2}
-                fontSize="sm"
-                fontWeight="medium"
-                _selected={{ bg: 'white', color: 'gray.800', boxShadow: 'sm', border: '1px', borderColor: 'gray.200', borderBottom: '2px solid white', mb: '-2px' }}
-                _hover={{ bg: 'whiteAlpha.700' }}
-                color="gray.600"
-              >
-                <HStack spacing={2}>
-                  <Icon as={FaUserTie} boxSize={3} />
-                  <Text>VC Management</Text>
-                </HStack>
-              </Tab>
-            </TabList>
+  const renderUserLoginPanel = () => (
+    <Box className="login-settings__panel">
+      <Flex className="login-settings__toolbar">
+        <div className="login-settings__search-wrap">
+          <SearchIcon className="login-settings__search-icon" aria-hidden />
+          <input
+            type="search"
+            className="login-settings__search-input"
+            placeholder="Search by USN or login..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoComplete="off"
+            aria-label="Search user logins"
+          />
+        </div>
+        <Select
+          size="sm"
+          w="140px"
+          value={activeFilter}
+          onChange={(e) => setActiveFilter(e.target.value)}
+          bg="white"
+          borderColor="gray.300"
+        >
+          <option value="all">All status</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </Select>
+        <HStack flex="1" justify="flex-end" flexWrap="wrap" gap={2}>
+          {selectedIds.size > 0 && (
+            <>
+              <Tooltip label="Activate selected users">
+                <Button
+                  size="sm"
+                  leftIcon={<CheckIcon />}
+                  className="login-settings__btn-outline-green"
+                  variant="outline"
+                  onClick={() => handleBulk(true)}
+                  isLoading={bulkLoading}
+                >
+                  Activate ({selectedIds.size})
+                </Button>
+              </Tooltip>
+              <Tooltip label="Deactivate selected users">
+                <Button
+                  size="sm"
+                  leftIcon={<CloseIcon />}
+                  className="login-settings__btn-outline-red"
+                  variant="outline"
+                  onClick={() => handleBulk(false)}
+                  isLoading={bulkLoading}
+                >
+                  Deactivate ({selectedIds.size})
+                </Button>
+              </Tooltip>
+            </>
+          )}
+        </HStack>
+      </Flex>
 
-            <TabPanels pt={4}>
-              {/* Tab 1: User Logins */}
-              <TabPanel p={0}>
-          <Box
-            bg={cardBg}
-            borderRadius="xl"
-            boxShadow="sm"
-            border="1px"
-            borderColor="gray.200"
-            overflow="hidden"
-            mb={4}
-          >
-            {/* Filters */}
-            <Flex
-              p={4}
-              gap={3}
-              wrap="wrap"
-              align="center"
-              borderBottom="1px"
-              borderColor="gray.100"
-              bg="gray.50"
-            >
-              <InputGroup maxW="280px" size="sm" position="relative" overflow="hidden">
-                <InputLeftElement pointerEvents="none">
-                  <SearchIcon color="gray.400" />
-                </InputLeftElement>
-                <Input
-                  placeholder="Search by USN or login..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  bg="white"
-                  borderColor="gray.300"
-                  _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
-                  autoComplete="off"
-                  pr={2}
-                />
-                <InputRightElement width="2" pointerEvents="none" children={null} />
-              </InputGroup>
-              <Select
-                size="sm"
-                w="160px"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                bg="white"
-                borderColor="gray.300"
-              >
-                <option value="all">All roles</option>
-                {roles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                size="sm"
-                w="140px"
-                value={activeFilter}
-                onChange={(e) => setActiveFilter(e.target.value)}
-                bg="white"
-                borderColor="gray.300"
-              >
-                <option value="all">All status</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-              </Select>
-              <HStack flex="1" justify="flex-end" flexWrap="wrap" gap={2}>
-                {selectedIds.size > 0 && (
+      <TableContainer className="login-settings__table-wrap" overflowX="auto">
+        {loading ? (
+          <Flex className="login-settings__loading" justify="center" py={12}>
+            <Spinner size="lg" color="gray.400" />
+          </Flex>
+        ) : (
+          <Table size="sm" variant="simple">
+            <Thead>
+              <Tr>
+                <Th w="40px" textAlign="center">
+                  <Checkbox
+                    isChecked={users.length > 0 && selectedIds.size === users.length}
+                    isIndeterminate={selectedIds.size > 0 && selectedIds.size < users.length}
+                    onChange={toggleSelectAll}
+                    colorScheme="yellow"
+                    borderColor="whiteAlpha.600"
+                  />
+                </Th>
+                <Th fontSize="xs" textTransform="none">ID</Th>
+                <Th fontSize="xs" textTransform="none">USN</Th>
+                <Th fontSize="xs" textTransform="none">Email</Th>
+                <Th fontSize="xs" textTransform="none">Role</Th>
+                <Th fontSize="xs" textTransform="none" textAlign="center">Status</Th>
+                {!isSmall && (
                   <>
-                    <Tooltip label="Activate selected users">
-                      <Button
-                        size="sm"
-                        leftIcon={<CheckIcon />}
-                        colorScheme="green"
-                        variant="outline"
-                        onClick={() => handleBulk(true)}
-                        isLoading={bulkLoading}
-                      >
-                        Activate ({selectedIds.size})
-                      </Button>
-                    </Tooltip>
-                    <Tooltip label="Deactivate selected users">
-                      <Button
-                        size="sm"
-                        leftIcon={<CloseIcon />}
-                        colorScheme="red"
-                        variant="outline"
-                        onClick={() => handleBulk(false)}
-                        isLoading={bulkLoading}
-                      >
-                        Deactivate ({selectedIds.size})
-                      </Button>
-                    </Tooltip>
+                    <Th fontSize="xs" textTransform="none">Last login</Th>
+                    <Th fontSize="xs" textTransform="none" textAlign="center">Failed logins</Th>
                   </>
                 )}
-              </HStack>
-            </Flex>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {users.map((u) => (
+                <Tr key={u.id} borderBottom="1px" borderColor="gray.100">
+                  <Td borderColor="gray.100" textAlign="center">
+                    <Checkbox
+                      isChecked={selectedIds.has(u.id)}
+                      onChange={() => toggleSelect(u.id)}
+                      colorScheme="blue"
+                    />
+                  </Td>
+                  <Td borderColor="gray.100" fontSize="sm" fontFamily="mono">{u.id}</Td>
+                  <Td
+                    borderColor="gray.100"
+                    fontSize="sm"
+                    className={u.usn ? 'login-settings__usn-link' : undefined}
+                    onClick={u.usn ? () => navigate(`/placement/students/${encodeURIComponent(u.usn)}`) : undefined}
+                  >
+                    {u.usn || '—'}
+                  </Td>
+                  <Td borderColor="gray.100" fontSize="sm" noOfLines={1} maxW="200px">{u.email_id || '—'}</Td>
+                  <Td borderColor="gray.100">
+                    <span className="login-settings__role-badge">{u.role_name || '—'}</span>
+                  </Td>
+                  <Td borderColor="gray.100" textAlign="center">
+                    <Switch
+                      size="sm"
+                      isChecked={!!u.is_active}
+                      onChange={() => handleSingleToggle(u.id, u.is_active)}
+                      isDisabled={updatingId === u.id}
+                      colorScheme="green"
+                    />
+                    {updatingId === u.id && <Spinner size="xs" ml={2} />}
+                  </Td>
+                  {!isSmall && (
+                    <>
+                      <Td borderColor="gray.100" fontSize="xs" color="gray.600">{formatDate(u.last_login_at)}</Td>
+                      <Td borderColor="gray.100" textAlign="center" fontSize="sm">{u.failed_login_attempts ?? 0}</Td>
+                    </>
+                  )}
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        )}
+      </TableContainer>
 
-            {/* Table */}
-            <TableContainer overflowX="auto">
-              {loading ? (
-                <Flex justify="center" py={12}>
-                  <Spinner size="lg" color="gray.400" />
-                </Flex>
-              ) : (
-                <Table size="sm" variant="simple">
-                  <Thead>
-                    <Tr bg={headerBg}>
-                      <Th color={headerColor} borderColor={borderColor} w="40px" textAlign="center">
-                        <Checkbox
-                          isChecked={users.length > 0 && selectedIds.size === users.length}
-                          isIndeterminate={selectedIds.size > 0 && selectedIds.size < users.length}
-                          onChange={toggleSelectAll}
-                          colorScheme="yellow"
-                          borderColor="whiteAlpha.600"
-                        />
-                      </Th>
-                      <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">
-                        ID
-                      </Th>
-                      <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">
-                        USN
-                      </Th>
-                      <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">
-                        Email
-                      </Th>
-                      <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">
-                        Role
-                      </Th>
-                      <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none" textAlign="center">
-                        Status
-                      </Th>
-                      {!isSmall && (
-                        <>
-                          <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">
-                            Last login
-                          </Th>
-                          <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none" textAlign="center">
-                            Failed logins
-                          </Th>
-                        </>
-                      )}
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {users.map((u) => (
-                      <Tr
-                        key={u.id}
-                        _hover={{ bg: rowHoverBg }}
-                        borderBottom="1px"
-                        borderColor="gray.100"
-                      >
-                        <Td borderColor="gray.100" textAlign="center">
-                          <Checkbox
-                            isChecked={selectedIds.has(u.id)}
-                            onChange={() => toggleSelect(u.id)}
-                            colorScheme="blue"
-                          />
-                        </Td>
-                        <Td borderColor="gray.100" fontSize="sm" fontFamily="mono">
-                          {u.id}
-                        </Td>
-                        <Td
-                          borderColor="gray.100"
-                          fontSize="sm"
-                          fontWeight="medium"
-                          cursor={u.usn ? 'pointer' : 'default'}
-                          _hover={u.usn ? { textDecoration: 'underline' } : {}}
-                          onClick={u.usn ? () => navigate(`/placement/students/${encodeURIComponent(u.usn)}`) : undefined}
-                        >
-                          {u.usn || '—'}
-                        </Td>
-                        <Td borderColor="gray.100" fontSize="sm" noOfLines={1} maxW="200px">
-                          {u.email_id || '—'}
-                        </Td>
-                        <Td borderColor="gray.100">
-                          <Badge colorScheme="gray" fontSize="xs" textTransform="capitalize">
-                            {u.role_name || '—'}
-                          </Badge>
-                        </Td>
-                        <Td borderColor="gray.100" textAlign="center">
-                          <Switch
-                            size="sm"
-                            isChecked={!!u.is_active}
-                            onChange={() => handleSingleToggle(u.id, u.is_active)}
-                            isDisabled={updatingId === u.id}
-                            colorScheme="green"
-                          />
-                          {updatingId === u.id && (
-                            <Spinner size="xs" ml={2} />
-                          )}
-                        </Td>
-                        {!isSmall && (
-                          <>
-                            <Td borderColor="gray.100" fontSize="xs" color="gray.600">
-                              {formatDate(u.last_login_at)}
-                            </Td>
-                            <Td borderColor="gray.100" textAlign="center" fontSize="sm">
-                              {u.failed_login_attempts ?? 0}
-                            </Td>
-                          </>
-                        )}
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              )}
-            </TableContainer>
+      {!loading && users.length === 0 && (
+        <Flex className="login-settings__empty">No users match the current filters.</Flex>
+      )}
 
-            {!loading && users.length === 0 && (
-              <Flex py={12} justify="center" color="gray.500">
-                No users match the current filters.
-              </Flex>
+      {!loading && total > 0 && (
+        <Flex className="login-settings__footer">
+          <Text className="login-settings__footer-text">
+            Showing {users.length} of {total} user(s)
+            {total > limit && ` (page ${page})`}
+          </Text>
+          <HStack spacing={2}>
+            <Button size="sm" variant="outline" isDisabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              Previous
+            </Button>
+            <Button size="sm" variant="outline" isDisabled={page * limit >= total} onClick={() => setPage((p) => p + 1)}>
+              Next
+            </Button>
+          </HStack>
+        </Flex>
+      )}
+    </Box>
+  );
+
+  return (
+    <AdminLayout fullWidth>
+      <div className="login-settings">
+        <div className="login-settings__inner">
+          <header className="login-settings__hero">
+            <div className="login-settings__hero-inner">
+              <div className="login-settings__hero-icon" aria-hidden>
+                <FaKey />
+              </div>
+              <div>
+                <h1 className="login-settings__hero-title">Login Settings</h1>
+                <p className="login-settings__hero-subtitle">
+                  Manage user accounts, students without login, company portal access, and VC credentials.
+                </p>
+              </div>
+            </div>
+          </header>
+
+          <div className="login-settings__stats" aria-label="Summary">
+            <span className="login-settings__stat-pill">
+              <strong>{statSummary.primary.toLocaleString()}</strong> {statSummary.primaryLabel}
+            </span>
+            {statSummary.primary > statSummary.pageSize && (
+              <span className="login-settings__stat-pill login-settings__stat-pill--muted">
+                Page {statSummary.page}
+              </span>
             )}
+          </div>
 
-            {/* Pagination / count */}
-            {!loading && total > 0 && (
-              <Flex px={4} py={3} borderTop="1px" borderColor="gray.100" justify="space-between" align="center" bg="gray.50">
-                <Text fontSize="sm" color="gray.600">
-                  Showing {users.length} of {total} user(s)
-                  {total > limit && ` (page ${page})`}
-                </Text>
-                <HStack spacing={2}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    isDisabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    isDisabled={page * limit >= total}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </HStack>
-              </Flex>
-            )}
-          </Box>
-              </TabPanel>
+          <Tabs isLazy index={safeTabIndex} onChange={handleTabChange} variant="unstyled" className="login-settings__tabs">
+            <TabList className="login-settings__tab-list">
+              {tabKinds.map((kind) => {
+                if (kind.type === 'all-users') {
+                  return (
+                    <Tab key={kind.key} className="login-settings__tab">
+                      <LoginTabLabel icon={FaUsers}>All users login</LoginTabLabel>
+                    </Tab>
+                  );
+                }
+                if (kind.type === 'role') {
+                  return (
+                    <Tab key={kind.key} className="login-settings__tab">
+                      <LoginTabLabel icon={getRoleTabIcon(kind.roleName)}>
+                        {formatRoleTabLabel(kind.roleName)}
+                      </LoginTabLabel>
+                    </Tab>
+                  );
+                }
+                if (kind.type === 'no-login') {
+                  return (
+                    <Tab key={kind.key} className="login-settings__tab">
+                      <LoginTabLabel icon={FaUserSlash}>Students without login</LoginTabLabel>
+                    </Tab>
+                  );
+                }
+                if (kind.type === 'company') {
+                  return (
+                    <Tab key={kind.key} className="login-settings__tab">
+                      <LoginTabLabel icon={FaBuilding}>Company logins</LoginTabLabel>
+                    </Tab>
+                  );
+                }
+                return (
+                  <Tab key={kind.key} className="login-settings__tab">
+                    <LoginTabLabel icon={FaUserTie}>VC Management</LoginTabLabel>
+                  </Tab>
+                );
+              })}
+            </TabList>
 
-              {/* Tab 2: Students without login */}
-              <TabPanel p={0}>
-                <Box
-                  bg={cardBg}
-                  borderRadius="xl"
-                  boxShadow="sm"
-                  border="1px"
-                  borderColor="gray.200"
-                  overflow="hidden"
-                  mb={4}
-                >
-                  <Flex
-                    p={4}
-                    gap={3}
-                    wrap="wrap"
-                    align="center"
-                    borderBottom="1px"
-                    borderColor="gray.100"
-                    bg="gray.50"
-                  >
-                    <InputGroup maxW="280px" size="sm" position="relative" overflow="hidden">
-                      <InputLeftElement pointerEvents="none">
-                        <SearchIcon color="gray.400" />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="Search by USN, name or email..."
-                        value={noLoginSearch}
-                        onChange={(e) => setNoLoginSearch(e.target.value)}
-                        bg="white"
-                        borderColor="gray.300"
-                        _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
-                        autoComplete="off"
-                        pr={2}
-                      />
-                      <InputRightElement width="2" pointerEvents="none" children={null} />
-                    </InputGroup>
-                    <Select
-                      size="sm"
-                      w="180px"
-                      value={noLoginSchool}
-                      onChange={(e) => setNoLoginSchool(e.target.value)}
-                      bg="white"
-                      borderColor="gray.300"
-                    >
-                      <option value="all">All schools</option>
-                      {schools.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </Select>
-                    <Select
-                      size="sm"
-                      w="180px"
-                      value={noLoginProgram}
-                      onChange={(e) => setNoLoginProgram(e.target.value)}
-                      bg="white"
-                      borderColor="gray.300"
-                    >
-                      <option value="all">All programs</option>
-                      {programs.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </Select>
-                    <Select
-                      size="sm"
-                      w="120px"
-                      value={noLoginYear}
-                      onChange={(e) => setNoLoginYear(e.target.value)}
-                      bg="white"
-                      borderColor="gray.300"
-                    >
-                      <option value="all">All years</option>
-                      {years.map((y) => (
-                        <option key={y} value={y}>
-                          {y}
-                        </option>
-                      ))}
-                    </Select>
-                  </Flex>
-
-                  <TableContainer overflowX="auto">
-                    {noLoginLoading ? (
-                      <Flex justify="center" py={12}>
-                        <Spinner size="lg" color="gray.400" />
-                      </Flex>
-                    ) : (
-                      <Table size="sm" variant="simple">
-                        <Thead>
-                          <Tr bg={headerBg}>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">USN</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Name</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">College email</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">School</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Program</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Year of joining</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {studentsNoLogin.map((s) => (
-                            <Tr
-                              key={s.usn}
-                              _hover={{ bg: rowHoverBg, cursor: 'pointer' }}
-                              cursor="pointer"
-                              onClick={() => s.usn && navigate(`/placement/students/${encodeURIComponent(s.usn)}`)}
-                              borderBottom="1px"
-                              borderColor="gray.100"
-                            >
-                              <Td borderColor="gray.100" fontSize="sm" fontWeight="medium" fontFamily="mono">{s.usn}</Td>
-                              <Td borderColor="gray.100" fontSize="sm">{s.full_name || '—'}</Td>
-                              <Td borderColor="gray.100" fontSize="sm" noOfLines={1} maxW="220px">{s.college_email || '—'}</Td>
-                              <Td borderColor="gray.100" fontSize="sm">{s.school_name || '—'}</Td>
-                              <Td borderColor="gray.100" fontSize="sm">{s.program_name || '—'}</Td>
-                              <Td borderColor="gray.100" fontSize="sm">{s.year_of_joining ?? '—'}</Td>
-                            </Tr>
-                          ))}
-                        </Tbody>
-                      </Table>
-                    )}
-                  </TableContainer>
-
-                  {!noLoginLoading && studentsNoLogin.length === 0 && (
-                    <Flex py={12} justify="center" color="gray.500">
-                      No students without login match the current filters.
-                    </Flex>
-                  )}
-
-                  {!noLoginLoading && noLoginTotal > 0 && (
-                    <Flex px={4} py={3} borderTop="1px" borderColor="gray.100" justify="space-between" align="center" bg="gray.50">
-                      <Text fontSize="sm" color="gray.600">
-                        Showing {studentsNoLogin.length} of {noLoginTotal} student(s)
-                        {noLoginTotal > 50 && ` (page ${noLoginPage})`}
-                      </Text>
-                      <HStack spacing={2}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          isDisabled={noLoginPage <= 1}
-                          onClick={() => setNoLoginPage((p) => Math.max(1, p - 1))}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          isDisabled={noLoginPage * 50 >= noLoginTotal}
-                          onClick={() => setNoLoginPage((p) => p + 1)}
-                        >
-                          Next
-                        </Button>
-                      </HStack>
-                    </Flex>
-                  )}
-                </Box>
-              </TabPanel>
-
-              {/* Tab 3: Company Logins */}
-              <TabPanel p={0}>
-                <Box
-                  bg={cardBg}
-                  borderRadius="xl"
-                  boxShadow="sm"
-                  border="1px"
-                  borderColor="gray.200"
-                  overflow="hidden"
-                  mb={4}
-                >
-                  {/* Header with Add button */}
-                  <Flex
-                    p={4}
-                    gap={3}
-                    wrap="wrap"
-                    align="center"
-                    borderBottom="1px"
-                    borderColor="gray.100"
-                    bg="gray.50"
-                  >
-                    <InputGroup maxW="280px" size="sm">
-                      <InputLeftElement pointerEvents="none">
-                        <SearchIcon color="gray.400" />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="Search by email or company..."
-                        value={companySearch}
-                        onChange={(e) => setCompanySearch(e.target.value)}
-                        bg="white"
-                        borderColor="gray.300"
-                        _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
-                        autoComplete="off"
-                      />
-                    </InputGroup>
-                    <HStack flex="1" justify="flex-end">
-                      <Button
-                        size="sm"
-                        leftIcon={<AddIcon />}
-                        bg={accentColor}
-                        color="white"
-                        _hover={{ bg: '#c4983f' }}
-                        onClick={onCreateOpen}
-                      >
-                        Create Company Login
-                      </Button>
-                    </HStack>
-                  </Flex>
-
-                  {/* Company Logins Table */}
-                  <TableContainer overflowX="auto">
-                    {companyLoading ? (
-                      <Flex justify="center" py={12}>
-                        <Spinner size="lg" color="gray.400" />
-                      </Flex>
-                    ) : (
-                      <Table size="sm" variant="simple">
-                        <Thead>
-                          <Tr bg={headerBg}>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Company</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Email</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Status</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Last Login</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Created</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none" textAlign="center">Actions</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {companyLogins.map((login) => (
-                            <Tr
-                              key={login.id}
-                              _hover={{ bg: rowHoverBg }}
-                              borderBottom="1px"
-                              borderColor="gray.100"
-                            >
-                              <Td borderColor="gray.100">
-                                <HStack spacing={3}>
-                                  <Avatar
-                                    size="sm"
-                                    name={login.company_name || 'Company'}
-                                    bg={headerBg}
-                                    color="white"
-                                  />
-                                  <VStack align="start" spacing={0}>
-                                    <Text fontSize="sm" fontWeight="medium">{login.company_name || '—'}</Text>
-                                    {login.company_type && (
-                                      <Text fontSize="xs" color="gray.500">{login.company_type}</Text>
-                                    )}
-                                  </VStack>
-                                </HStack>
-                              </Td>
-                              <Td borderColor="gray.100" fontSize="sm">{login.email_id}</Td>
-                              <Td borderColor="gray.100">
-                                <Badge colorScheme={login.is_active ? 'green' : 'red'} fontSize="xs">
-                                  {login.is_active ? 'Active' : 'Inactive'}
-                                </Badge>
-                              </Td>
-                              <Td borderColor="gray.100" fontSize="xs" color="gray.600">
-                                {formatDate(login.last_login_at)}
-                              </Td>
-                              <Td borderColor="gray.100" fontSize="xs" color="gray.600">
-                                {formatDate(login.created_at)}
-                              </Td>
-                              <Td borderColor="gray.100" textAlign="center">
-                                <HStack spacing={1} justify="center">
-                                  <Tooltip label="Edit password">
-                                    <IconButton
-                                      aria-label="Edit password"
-                                      icon={<EditIcon />}
-                                      size="sm"
-                                      colorScheme="blue"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setEditCompanyTarget(login);
-                                        setEditCompanyPassword('');
-                                        onCompanyPasswordOpen();
-                                      }}
-                                    />
-                                  </Tooltip>
-                                  <Tooltip label="Delete company login">
-                                    <IconButton
-                                      aria-label="Delete"
-                                      icon={<DeleteIcon />}
-                                      size="sm"
-                                      colorScheme="red"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setDeleteTarget(login);
-                                        onDeleteOpen();
-                                      }}
-                                    />
-                                  </Tooltip>
-                                </HStack>
-                              </Td>
-                            </Tr>
-                          ))}
-                        </Tbody>
-                      </Table>
-                    )}
-                  </TableContainer>
-
-                  {!companyLoading && companyLogins.length === 0 && (
-                    <Flex direction="column" py={12} align="center" color="gray.500">
-                      <Icon as={FaBuilding} boxSize={12} mb={4} opacity={0.3} />
-                      <Text fontSize="md" fontWeight="medium" mb={1}>No company logins yet</Text>
-                      <Text fontSize="sm" mb={4}>Create login credentials for companies to access the portal</Text>
-                      <Button
-                        size="sm"
-                        leftIcon={<AddIcon />}
-                        bg={accentColor}
-                        color="white"
-                        _hover={{ bg: '#c4983f' }}
-                        onClick={onCreateOpen}
-                      >
-                        Create Company Login
-                      </Button>
-                    </Flex>
-                  )}
-
-                  {!companyLoading && companyTotal > 0 && (
-                    <Flex px={4} py={3} borderTop="1px" borderColor="gray.100" justify="space-between" align="center" bg="gray.50">
-                      <Text fontSize="sm" color="gray.600">
-                        Showing {companyLogins.length} of {companyTotal} company login(s)
-                        {companyTotal > 50 && ` (page ${companyPage})`}
-                      </Text>
-                      <HStack spacing={2}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          isDisabled={companyPage <= 1}
-                          onClick={() => setCompanyPage((p) => Math.max(1, p - 1))}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          isDisabled={companyPage * 50 >= companyTotal}
-                          onClick={() => setCompanyPage((p) => p + 1)}
-                        >
-                          Next
-                        </Button>
-                      </HStack>
-                    </Flex>
-                  )}
-                </Box>
-              </TabPanel>
-
-              {/* Tab 4: VC Management */}
-              <TabPanel p={0}>
-                <Box
-                  bg={cardBg}
-                  borderRadius="xl"
-                  boxShadow="sm"
-                  border="1px"
-                  borderColor="gray.200"
-                  overflow="hidden"
-                  mb={4}
-                >
-                  <Flex
-                    p={4}
-                    gap={3}
-                    wrap="wrap"
-                    align="center"
-                    borderBottom="1px"
-                    borderColor="gray.100"
-                    bg="gray.50"
-                  >
-                    <InputGroup maxW="280px" size="sm">
-                      <InputLeftElement pointerEvents="none">
-                        <SearchIcon color="gray.400" />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="Search by email..."
-                        value={vcSearch}
-                        onChange={(e) => setVcSearch(e.target.value)}
-                        bg="white"
-                        borderColor="gray.300"
-                        _focus={{ borderColor: 'gray.400', boxShadow: 'none' }}
-                        autoComplete="off"
-                      />
-                    </InputGroup>
-                    <HStack flex="1" justify="flex-end">
-                      <Button
-                        size="sm"
-                        leftIcon={<AddIcon />}
-                        bg={accentColor}
-                        color="white"
-                        _hover={{ bg: '#c4983f' }}
-                        onClick={onVcCreateOpen}
-                      >
-                        Create VC Login
-                      </Button>
-                    </HStack>
-                  </Flex>
-
-                  <TableContainer overflowX="auto">
-                    {vcLoading ? (
-                      <Flex justify="center" py={12}>
-                        <Spinner size="lg" color="gray.400" />
-                      </Flex>
-                    ) : (
-                      <Table size="sm" variant="simple">
-                        <Thead>
-                          <Tr bg={headerBg}>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Email</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Status</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Last Login</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none">Created</Th>
-                            <Th color={headerColor} borderColor={borderColor} fontSize="xs" textTransform="none" textAlign="center">Actions</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {vcLogins.map((login) => (
-                            <Tr
-                              key={login.id}
-                              _hover={{ bg: rowHoverBg }}
-                              borderBottom="1px"
-                              borderColor="gray.100"
-                            >
-                              <Td borderColor="gray.100">
-                                <HStack spacing={3}>
-                                  <Avatar
-                                    size="sm"
-                                    name={login.email_id}
-                                    bg={headerBg}
-                                    color="white"
-                                  />
-                                  <Text fontSize="sm" fontWeight="medium">{login.email_id}</Text>
-                                </HStack>
-                              </Td>
-                              <Td borderColor="gray.100">
-                                <Badge colorScheme={login.is_active ? 'green' : 'red'} fontSize="xs">
-                                  {login.is_active ? 'Active' : 'Inactive'}
-                                </Badge>
-                              </Td>
-                              <Td borderColor="gray.100" fontSize="xs" color="gray.600">
-                                {formatDate(login.last_login_at)}
-                              </Td>
-                              <Td borderColor="gray.100" fontSize="xs" color="gray.600">
-                                {formatDate(login.created_at)}
-                              </Td>
-                              <Td borderColor="gray.100" textAlign="center">
-                                <HStack spacing={1} justify="center">
-                                  <Tooltip label="Edit password">
-                                    <IconButton
-                                      aria-label="Edit password"
-                                      icon={<EditIcon />}
-                                      size="sm"
-                                      colorScheme="blue"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setEditVcTarget(login);
-                                        setEditVcPassword('');
-                                        onVcPasswordOpen();
-                                      }}
-                                    />
-                                  </Tooltip>
-                                  <Tooltip label="Delete VC login">
-                                    <IconButton
-                                      aria-label="Delete"
-                                      icon={<DeleteIcon />}
-                                      size="sm"
-                                      colorScheme="red"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setDeleteVcTarget(login);
-                                        onVcDeleteOpen();
-                                      }}
-                                    />
-                                  </Tooltip>
-                                </HStack>
-                              </Td>
-                            </Tr>
-                          ))}
-                        </Tbody>
-                      </Table>
-                    )}
-                  </TableContainer>
-
-                  {!vcLoading && vcLogins.length === 0 && (
-                    <Flex direction="column" py={12} align="center" color="gray.500">
-                      <Icon as={FaUserTie} boxSize={12} mb={4} opacity={0.3} />
-                      <Text fontSize="md" fontWeight="medium" mb={1}>No VC logins yet</Text>
-                      <Text fontSize="sm" mb={4}>Create login credentials for Vice Chancellor / VC users</Text>
-                      <Button
-                        size="sm"
-                        leftIcon={<AddIcon />}
-                        bg={accentColor}
-                        color="white"
-                        _hover={{ bg: '#c4983f' }}
-                        onClick={onVcCreateOpen}
-                      >
-                        Create VC Login
-                      </Button>
-                    </Flex>
-                  )}
-
-                  {!vcLoading && vcTotal > 0 && (
-                    <Flex px={4} py={3} borderTop="1px" borderColor="gray.100" justify="space-between" align="center" bg="gray.50">
-                      <Text fontSize="sm" color="gray.600">
-                        Showing {vcLogins.length} of {vcTotal} VC login(s)
-                        {vcTotal > 50 && ` (page ${vcPage})`}
-                      </Text>
-                      <HStack spacing={2}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          isDisabled={vcPage <= 1}
-                          onClick={() => setVcPage((p) => Math.max(1, p - 1))}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          isDisabled={vcPage * 50 >= vcTotal}
-                          onClick={() => setVcPage((p) => p + 1)}
-                        >
-                          Next
-                        </Button>
-                      </HStack>
-                    </Flex>
-                  )}
-                </Box>
-              </TabPanel>
+            <TabPanels className="login-settings__tab-panels">
+              {tabKinds.map((kind) => {
+                if (kind.type === 'all-users' || kind.type === 'role') {
+                  return (
+                    <TabPanel key={kind.key} p={0}>
+                      {renderUserLoginPanel()}
+                    </TabPanel>
+                  );
+                }
+                if (kind.type === 'no-login') {
+                  return (
+                    <TabPanel key={kind.key} p={0}>
+                      
+                                      <Box className="login-settings__panel">
+                                        <Flex className="login-settings__toolbar">
+                                          <div className="login-settings__search-wrap">
+                                            <SearchIcon className="login-settings__search-icon" aria-hidden />
+                                            <input
+                                              type="search"
+                                              className="login-settings__search-input"
+                                              placeholder="Search by USN, name or email..."
+                                              value={noLoginSearch}
+                                              onChange={(e) => setNoLoginSearch(e.target.value)}
+                                              autoComplete="off"
+                                              aria-label="Search students without login"
+                                            />
+                                          </div>
+                                          <Select
+                                            size="sm"
+                                            w="180px"
+                                            value={noLoginSchool}
+                                            onChange={(e) => setNoLoginSchool(e.target.value)}
+                                            bg="white"
+                                            borderColor="gray.300"
+                                          >
+                                            <option value="all">All schools</option>
+                                            {schools.map((s) => (
+                                              <option key={s.id} value={s.id}>
+                                                {s.name}
+                                              </option>
+                                            ))}
+                                          </Select>
+                                          <Select
+                                            size="sm"
+                                            w="180px"
+                                            value={noLoginProgram}
+                                            onChange={(e) => setNoLoginProgram(e.target.value)}
+                                            bg="white"
+                                            borderColor="gray.300"
+                                          >
+                                            <option value="all">All programs</option>
+                                            {programs.map((p) => (
+                                              <option key={p.id} value={p.id}>
+                                                {p.name}
+                                              </option>
+                                            ))}
+                                          </Select>
+                                          <Select
+                                            size="sm"
+                                            w="120px"
+                                            value={noLoginYear}
+                                            onChange={(e) => setNoLoginYear(e.target.value)}
+                                            bg="white"
+                                            borderColor="gray.300"
+                                          >
+                                            <option value="all">All years</option>
+                                            {years.map((y) => (
+                                              <option key={y} value={y}>
+                                                {y}
+                                              </option>
+                                            ))}
+                                          </Select>
+                                        </Flex>
+                      
+                                        <TableContainer className="login-settings__table-wrap" overflowX="auto">
+                                          {noLoginLoading ? (
+                                            <Flex className="login-settings__loading" justify="center" py={12}>
+                                              <Spinner size="lg" color="gray.400" />
+                                            </Flex>
+                                          ) : (
+                                            <Table size="sm" variant="simple">
+                                              <Thead>
+                                                <Tr>
+                                                  <Th fontSize="xs" textTransform="none">USN</Th>
+                                                  <Th fontSize="xs" textTransform="none">Name</Th>
+                                                  <Th fontSize="xs" textTransform="none">College email</Th>
+                                                  <Th fontSize="xs" textTransform="none">School</Th>
+                                                  <Th fontSize="xs" textTransform="none">Program</Th>
+                                                  <Th fontSize="xs" textTransform="none">Year of joining</Th>
+                                                </Tr>
+                                              </Thead>
+                                              <Tbody>
+                                                {studentsNoLogin.map((s) => (
+                                                  <Tr
+                                                    key={s.usn}
+                                                    _hover={{ cursor: 'pointer' }}
+                                                    cursor="pointer"
+                                                    onClick={() => s.usn && navigate(`/placement/students/${encodeURIComponent(s.usn)}`)}
+                                                    borderBottom="1px"
+                                                    borderColor="gray.100"
+                                                  >
+                                                    <Td borderColor="gray.100" fontSize="sm" fontWeight="medium" fontFamily="mono">{s.usn}</Td>
+                                                    <Td borderColor="gray.100" fontSize="sm">{s.full_name || '—'}</Td>
+                                                    <Td borderColor="gray.100" fontSize="sm" noOfLines={1} maxW="220px">{s.college_email || '—'}</Td>
+                                                    <Td borderColor="gray.100" fontSize="sm">{s.school_name || '—'}</Td>
+                                                    <Td borderColor="gray.100" fontSize="sm">{s.program_name || '—'}</Td>
+                                                    <Td borderColor="gray.100" fontSize="sm">{s.year_of_joining ?? '—'}</Td>
+                                                  </Tr>
+                                                ))}
+                                              </Tbody>
+                                            </Table>
+                                          )}
+                                        </TableContainer>
+                      
+                                        {!noLoginLoading && studentsNoLogin.length === 0 && (
+                                          <Flex className="login-settings__empty">
+                                            No students without login match the current filters.
+                                          </Flex>
+                                        )}
+                      
+                                        {!noLoginLoading && noLoginTotal > 0 && (
+                                          <Flex className="login-settings__footer">
+                                            <Text className="login-settings__footer-text">
+                                              Showing {studentsNoLogin.length} of {noLoginTotal} student(s)
+                                              {noLoginTotal > 50 && ` (page ${noLoginPage})`}
+                                            </Text>
+                                            <HStack spacing={2}>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                isDisabled={noLoginPage <= 1}
+                                                onClick={() => setNoLoginPage((p) => Math.max(1, p - 1))}
+                                              >
+                                                Previous
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                isDisabled={noLoginPage * 50 >= noLoginTotal}
+                                                onClick={() => setNoLoginPage((p) => p + 1)}
+                                              >
+                                                Next
+                                              </Button>
+                                            </HStack>
+                                          </Flex>
+                                        )}
+                                      </Box>
+                                    </TabPanel>
+                  );
+                }
+                if (kind.type === 'company') {
+                  return (
+                    <TabPanel key={kind.key} p={0}>
+                      
+                                      <Box className="login-settings__panel">
+                                        <Flex className="login-settings__toolbar">
+                                          <div className="login-settings__search-wrap">
+                                            <SearchIcon className="login-settings__search-icon" aria-hidden />
+                                            <input
+                                              type="search"
+                                              className="login-settings__search-input"
+                                              placeholder="Search by email or company..."
+                                              value={companySearch}
+                                              onChange={(e) => setCompanySearch(e.target.value)}
+                                              autoComplete="off"
+                                              aria-label="Search company logins"
+                                            />
+                                          </div>
+                                          <HStack flex="1" justify="flex-end">
+                                            <Button
+                                              size="sm"
+                                              leftIcon={<AddIcon />}
+                                              className="login-settings__btn-primary"
+                                              onClick={onCreateOpen}
+                                            >
+                                              Create Company Login
+                                            </Button>
+                                          </HStack>
+                                        </Flex>
+                      
+                                        {/* Company Logins Table */}
+                                        <TableContainer className="login-settings__table-wrap" overflowX="auto">
+                                          {companyLoading ? (
+                                            <Flex className="login-settings__loading" justify="center" py={12}>
+                                              <Spinner size="lg" color="gray.400" />
+                                            </Flex>
+                                          ) : (
+                                            <Table size="sm" variant="simple">
+                                              <Thead>
+                                                <Tr>
+                                                  <Th fontSize="xs" textTransform="none">Company</Th>
+                                                  <Th fontSize="xs" textTransform="none">Email</Th>
+                                                  <Th fontSize="xs" textTransform="none">Status</Th>
+                                                  <Th fontSize="xs" textTransform="none">Last Login</Th>
+                                                  <Th fontSize="xs" textTransform="none">Created</Th>
+                                                  <Th fontSize="xs" textTransform="none" textAlign="center">Actions</Th>
+                                                </Tr>
+                                              </Thead>
+                                              <Tbody>
+                                                {companyLogins.map((login) => (
+                                                  <Tr
+                                                    key={login.id}
+                                                    borderBottom="1px"
+                                                    borderColor="gray.100"
+                                                  >
+                                                    <Td borderColor="gray.100">
+                                                      <HStack spacing={3}>
+                                                        <Avatar
+                                                          size="sm"
+                                                          name={login.company_name || 'Company'}
+                                                          bg="#172e36"
+                                                          color="white"
+                                                        />
+                                                        <VStack align="start" spacing={0}>
+                                                          <Text fontSize="sm" fontWeight="medium">{login.company_name || '—'}</Text>
+                                                          {login.company_type && (
+                                                            <Text fontSize="xs" color="gray.500">{login.company_type}</Text>
+                                                          )}
+                                                        </VStack>
+                                                      </HStack>
+                                                    </Td>
+                                                    <Td borderColor="gray.100" fontSize="sm">{login.email_id}</Td>
+                                                    <Td borderColor="gray.100">
+                                                      <Badge
+                                                        fontSize="xs"
+                                                        className={login.is_active ? 'login-settings__status-badge--active' : 'login-settings__status-badge--inactive'}
+                                                      >
+                                                        {login.is_active ? 'Active' : 'Inactive'}
+                                                      </Badge>
+                                                    </Td>
+                                                    <Td borderColor="gray.100" fontSize="xs" color="gray.600">
+                                                      {formatDate(login.last_login_at)}
+                                                    </Td>
+                                                    <Td borderColor="gray.100" fontSize="xs" color="gray.600">
+                                                      {formatDate(login.created_at)}
+                                                    </Td>
+                                                    <Td borderColor="gray.100" textAlign="center">
+                                                      <HStack spacing={1} justify="center">
+                                                        <Tooltip label="Edit password">
+                                                          <IconButton
+                                                            aria-label="Edit password"
+                                                            icon={<EditIcon />}
+                                                            size="sm"
+                                                            colorScheme="blue"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                              setEditCompanyTarget(login);
+                                                              setEditCompanyPassword('');
+                                                              onCompanyPasswordOpen();
+                                                            }}
+                                                          />
+                                                        </Tooltip>
+                                                        <Tooltip label="Delete company login">
+                                                          <IconButton
+                                                            aria-label="Delete"
+                                                            icon={<DeleteIcon />}
+                                                            size="sm"
+                                                            colorScheme="red"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                              setDeleteTarget(login);
+                                                              onDeleteOpen();
+                                                            }}
+                                                          />
+                                                        </Tooltip>
+                                                      </HStack>
+                                                    </Td>
+                                                  </Tr>
+                                                ))}
+                                              </Tbody>
+                                            </Table>
+                                          )}
+                                        </TableContainer>
+                      
+                                        {!companyLoading && companyLogins.length === 0 && (
+                                          <Flex className="login-settings__empty" direction="column">
+                                            <Icon as={FaBuilding} className="login-settings__empty-icon" boxSize={12} />
+                                            <Text className="login-settings__empty-title">No company logins yet</Text>
+                                            <Text className="login-settings__empty-hint">Create login credentials for companies to access the portal</Text>
+                                            <Button
+                                              size="sm"
+                                              leftIcon={<AddIcon />}
+                                              className="login-settings__btn-primary"
+                                              onClick={onCreateOpen}
+                                            >
+                                              Create Company Login
+                                            </Button>
+                                          </Flex>
+                                        )}
+                      
+                                        {!companyLoading && companyTotal > 0 && (
+                                          <Flex className="login-settings__footer">
+                                            <Text className="login-settings__footer-text">
+                                              Showing {companyLogins.length} of {companyTotal} company login(s)
+                                              {companyTotal > 50 && ` (page ${companyPage})`}
+                                            </Text>
+                                            <HStack spacing={2}>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                isDisabled={companyPage <= 1}
+                                                onClick={() => setCompanyPage((p) => Math.max(1, p - 1))}
+                                              >
+                                                Previous
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                isDisabled={companyPage * 50 >= companyTotal}
+                                                onClick={() => setCompanyPage((p) => p + 1)}
+                                              >
+                                                Next
+                                              </Button>
+                                            </HStack>
+                                          </Flex>
+                                        )}
+                                      </Box>
+                                    </TabPanel>
+                  );
+                }
+                if (kind.type === 'vc') {
+                  return (
+                    <TabPanel key={kind.key} p={0}>
+                      
+                                      <Box className="login-settings__panel">
+                                        <Flex className="login-settings__toolbar">
+                                          <div className="login-settings__search-wrap">
+                                            <SearchIcon className="login-settings__search-icon" aria-hidden />
+                                            <input
+                                              type="search"
+                                              className="login-settings__search-input"
+                                              placeholder="Search by email..."
+                                              value={vcSearch}
+                                              onChange={(e) => setVcSearch(e.target.value)}
+                                              autoComplete="off"
+                                              aria-label="Search VC logins"
+                                            />
+                                          </div>
+                                          <HStack flex="1" justify="flex-end">
+                                            <Button
+                                              size="sm"
+                                              leftIcon={<AddIcon />}
+                                              className="login-settings__btn-primary"
+                                              onClick={onVcCreateOpen}
+                                            >
+                                              Create VC Login
+                                            </Button>
+                                          </HStack>
+                                        </Flex>
+                      
+                                        <TableContainer className="login-settings__table-wrap" overflowX="auto">
+                                          {vcLoading ? (
+                                            <Flex className="login-settings__loading" justify="center" py={12}>
+                                              <Spinner size="lg" color="gray.400" />
+                                            </Flex>
+                                          ) : (
+                                            <Table size="sm" variant="simple">
+                                              <Thead>
+                                                <Tr>
+                                                  <Th fontSize="xs" textTransform="none">Email</Th>
+                                                  <Th fontSize="xs" textTransform="none">Status</Th>
+                                                  <Th fontSize="xs" textTransform="none">Last Login</Th>
+                                                  <Th fontSize="xs" textTransform="none">Created</Th>
+                                                  <Th fontSize="xs" textTransform="none" textAlign="center">Actions</Th>
+                                                </Tr>
+                                              </Thead>
+                                              <Tbody>
+                                                {vcLogins.map((login) => (
+                                                  <Tr
+                                                    key={login.id}
+                                                    borderBottom="1px"
+                                                    borderColor="gray.100"
+                                                  >
+                                                    <Td borderColor="gray.100">
+                                                      <HStack spacing={3}>
+                                                        <Avatar
+                                                          size="sm"
+                                                          name={login.email_id}
+                                                          bg="#172e36"
+                                                          color="white"
+                                                        />
+                                                        <Text fontSize="sm" fontWeight="medium">{login.email_id}</Text>
+                                                      </HStack>
+                                                    </Td>
+                                                    <Td borderColor="gray.100">
+                                                      <Badge
+                                                        fontSize="xs"
+                                                        className={login.is_active ? 'login-settings__status-badge--active' : 'login-settings__status-badge--inactive'}
+                                                      >
+                                                        {login.is_active ? 'Active' : 'Inactive'}
+                                                      </Badge>
+                                                    </Td>
+                                                    <Td borderColor="gray.100" fontSize="xs" color="gray.600">
+                                                      {formatDate(login.last_login_at)}
+                                                    </Td>
+                                                    <Td borderColor="gray.100" fontSize="xs" color="gray.600">
+                                                      {formatDate(login.created_at)}
+                                                    </Td>
+                                                    <Td borderColor="gray.100" textAlign="center">
+                                                      <HStack spacing={1} justify="center">
+                                                        <Tooltip label="Edit password">
+                                                          <IconButton
+                                                            aria-label="Edit password"
+                                                            icon={<EditIcon />}
+                                                            size="sm"
+                                                            colorScheme="blue"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                              setEditVcTarget(login);
+                                                              setEditVcPassword('');
+                                                              onVcPasswordOpen();
+                                                            }}
+                                                          />
+                                                        </Tooltip>
+                                                        <Tooltip label="Delete VC login">
+                                                          <IconButton
+                                                            aria-label="Delete"
+                                                            icon={<DeleteIcon />}
+                                                            size="sm"
+                                                            colorScheme="red"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                              setDeleteVcTarget(login);
+                                                              onVcDeleteOpen();
+                                                            }}
+                                                          />
+                                                        </Tooltip>
+                                                      </HStack>
+                                                    </Td>
+                                                  </Tr>
+                                                ))}
+                                              </Tbody>
+                                            </Table>
+                                          )}
+                                        </TableContainer>
+                      
+                                        {!vcLoading && vcLogins.length === 0 && (
+                                          <Flex className="login-settings__empty" direction="column">
+                                            <Icon as={FaUserTie} className="login-settings__empty-icon" boxSize={12} />
+                                            <Text className="login-settings__empty-title">No VC logins yet</Text>
+                                            <Text className="login-settings__empty-hint">Create login credentials for Vice Chancellor / VC users</Text>
+                                            <Button
+                                              size="sm"
+                                              leftIcon={<AddIcon />}
+                                              className="login-settings__btn-primary"
+                                              onClick={onVcCreateOpen}
+                                            >
+                                              Create VC Login
+                                            </Button>
+                                          </Flex>
+                                        )}
+                      
+                                        {!vcLoading && vcTotal > 0 && (
+                                          <Flex className="login-settings__footer">
+                                            <Text className="login-settings__footer-text">
+                                              Showing {vcLogins.length} of {vcTotal} VC login(s)
+                                              {vcTotal > 50 && ` (page ${vcPage})`}
+                                            </Text>
+                                            <HStack spacing={2}>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                isDisabled={vcPage <= 1}
+                                                onClick={() => setVcPage((p) => Math.max(1, p - 1))}
+                                              >
+                                                Previous
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                isDisabled={vcPage * 50 >= vcTotal}
+                                                onClick={() => setVcPage((p) => p + 1)}
+                                              >
+                                                Next
+                                              </Button>
+                                            </HStack>
+                                          </Flex>
+                                        )}
+                                      </Box>
+                                    </TabPanel>
+                  );
+                }
+                return null;
+              })}
             </TabPanels>
           </Tabs>
-        </Container>
-      </Box>
+        </div>
+      </div>
 
       {/* Create Company Login Modal */}
       <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="md">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="login-settings__modal-content">
           <ModalHeader>
             <HStack spacing={3}>
               <Flex
@@ -1380,7 +1382,7 @@ const UserLoginManagement = () => {
                 align="center"
                 justify="center"
               >
-                <Icon as={FaKey} color={accentColor} />
+                <Icon as={FaKey} color="#d4a960" />
               </Flex>
               <Box>
                 <Text fontWeight="bold">Create Company Login</Text>
@@ -1437,9 +1439,7 @@ const UserLoginManagement = () => {
               Cancel
             </Button>
             <Button
-              bg={accentColor}
-              color="white"
-              _hover={{ bg: '#c4983f' }}
+              className="login-settings__btn-primary"
               onClick={handleCreateCompanyLogin}
               isLoading={createLoading}
               isDisabled={!newCompanyLogin.company_id || !newCompanyLogin.email || !newCompanyLogin.password}
@@ -1453,7 +1453,7 @@ const UserLoginManagement = () => {
       {/* Delete Confirmation Modal */}
       <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="sm">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="login-settings__modal-content">
           <ModalHeader>Delete Company Login</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
@@ -1491,7 +1491,7 @@ const UserLoginManagement = () => {
         size="md"
       >
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="login-settings__modal-content">
           <ModalHeader>Edit Company Login Password</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
@@ -1517,9 +1517,7 @@ const UserLoginManagement = () => {
               Cancel
             </Button>
             <Button
-              bg={accentColor}
-              color="white"
-              _hover={{ bg: '#c4983f' }}
+              className="login-settings__btn-primary"
               onClick={handleUpdateCompanyPassword}
               isLoading={companyPasswordLoading}
               isDisabled={!editCompanyPassword || editCompanyPassword.length < 6}
@@ -1533,7 +1531,7 @@ const UserLoginManagement = () => {
       {/* Create VC Login Modal */}
       <Modal isOpen={isVcCreateOpen} onClose={onVcCreateClose} size="md">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="login-settings__modal-content">
           <ModalHeader>
             <HStack spacing={3}>
               <Flex
@@ -1544,7 +1542,7 @@ const UserLoginManagement = () => {
                 align="center"
                 justify="center"
               >
-                <Icon as={FaUserTie} color={accentColor} />
+                <Icon as={FaUserTie} color="#d4a960" />
               </Flex>
               <Box>
                 <Text fontWeight="bold">Create VC Login</Text>
@@ -1582,9 +1580,7 @@ const UserLoginManagement = () => {
               Cancel
             </Button>
             <Button
-              bg={accentColor}
-              color="white"
-              _hover={{ bg: '#c4983f' }}
+              className="login-settings__btn-primary"
               onClick={handleCreateVcLogin}
               isLoading={vcCreateLoading}
               isDisabled={!newVcLogin.email?.trim() || !newVcLogin.password}
@@ -1606,7 +1602,7 @@ const UserLoginManagement = () => {
         size="md"
       >
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="login-settings__modal-content">
           <ModalHeader>Edit VC Login Password</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
@@ -1632,9 +1628,7 @@ const UserLoginManagement = () => {
               Cancel
             </Button>
             <Button
-              bg={accentColor}
-              color="white"
-              _hover={{ bg: '#c4983f' }}
+              className="login-settings__btn-primary"
               onClick={handleUpdateVcPassword}
               isLoading={vcPasswordLoading}
               isDisabled={!editVcPassword || editVcPassword.length < 6}
@@ -1648,7 +1642,7 @@ const UserLoginManagement = () => {
       {/* Delete VC Login Modal */}
       <Modal isOpen={isVcDeleteOpen} onClose={onVcDeleteClose} size="sm">
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent className="login-settings__modal-content">
           <ModalHeader>Delete VC Login</ModalHeader>
           <ModalCloseButton />
           <ModalBody>

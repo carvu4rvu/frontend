@@ -1,0 +1,485 @@
+/* Login settings — /placement/user-login */
+
+.login-settings {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  width: 100%;
+  min-height: 100vh;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.login-settings__inner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem 1.75rem 2rem;
+}
+
+/* Hero */
+.login-settings__hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1.25rem;
+  padding: 1.5rem 1.75rem;
+  background: linear-gradient(135deg, #172e36 0%, #1e3a47 48%, #2a5563 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(23, 46, 54, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-settings__hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #d4a960 0%, #e8c98a 50%, transparent 100%);
+  pointer-events: none;
+}
+
+.login-settings__hero-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.login-settings__hero-icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(212, 169, 96, 0.18);
+  border: 1px solid rgba(212, 169, 96, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e8c98a;
+  font-size: 1.35rem;
+}
+
+.login-settings__hero-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.login-settings__hero-subtitle {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.55;
+  max-width: 40rem;
+}
+
+/* Stats */
+.login-settings__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.login-settings__stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  color: #172e36;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.login-settings__stat-pill strong {
+  font-weight: 700;
+}
+
+.login-settings__stat-pill--muted {
+  color: #64748b;
+  background: #f8fafc;
+}
+
+/* Tabs */
+.login-settings__tabs {
+  margin-bottom: 0;
+}
+
+.login-settings__tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 1rem;
+}
+
+.login-settings__tab {
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-settings__tab .chakra-stack {
+  white-space: nowrap;
+}
+
+.login-settings__tab svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.login-settings__tab[aria-selected='true'] svg {
+  opacity: 1;
+  color: #2a5563;
+}
+
+.login-settings__tab:hover {
+  color: #172e36 !important;
+  background: #f8fafc !important;
+}
+
+.login-settings__tab[aria-selected='true'] {
+  color: #172e36 !important;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%) !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.login-settings__tab-panels {
+  padding-top: 0 !important;
+}
+
+.login-settings__tab-panels [role='tabpanel'][hidden] {
+  display: none !important;
+}
+
+.login-settings__tab-panels [role='tabpanel']:not([hidden]) {
+  display: block;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Search field (native input — avoids Chakra InputGroup overlap bugs) */
+.login-settings__search-wrap {
+  position: relative;
+  flex: 1 1 200px;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.login-settings__search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  width: 1rem;
+  height: 1rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.login-settings__search-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  background: #fff;
+  color: #0f172a;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-settings__search-input::placeholder {
+  color: #94a3b8;
+}
+
+.login-settings__search-input:focus {
+  outline: none;
+  border-color: #2d6a7a;
+  box-shadow: 0 0 0 3px rgba(45, 106, 122, 0.12);
+}
+
+/* Panel card */
+.login-settings__panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  margin-bottom: 1rem;
+}
+
+/* Toolbar */
+.login-settings__toolbar {
+  padding: 0.875rem 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.login-settings__toolbar .chakra-select {
+  border-color: #e2e8f0 !important;
+  border-radius: 8px !important;
+  font-size: 0.875rem !important;
+  background: #fff !important;
+}
+
+.login-settings__toolbar .chakra-select:focus {
+  border-color: #2d6a7a !important;
+  box-shadow: 0 0 0 3px rgba(45, 106, 122, 0.12) !important;
+}
+
+.login-settings__btn-primary {
+  background: linear-gradient(135deg, #e8c98a 0%, #d4a960 100%) !important;
+  color: #172e36 !important;
+  font-weight: 600 !important;
+  border: 1px solid #c9a24d !important;
+  box-shadow: 0 2px 8px rgba(212, 169, 96, 0.35) !important;
+}
+
+.login-settings__btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f0d49a 0%, #e8c98a 100%) !important;
+  transform: translateY(-1px);
+}
+
+.login-settings__btn-outline-green {
+  color: #15803d !important;
+  border-color: #86efac !important;
+  background: #f0fdf4 !important;
+}
+
+.login-settings__btn-outline-red {
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+}
+
+/* Keep row checkboxes inside the table only */
+.login-settings__table-wrap .chakra-checkbox {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.login-settings__toolbar .chakra-checkbox {
+  display: none !important;
+}
+
+/* Table */
+.login-settings__table-wrap {
+  overflow-x: auto;
+}
+
+.login-settings__table-wrap table {
+  width: 100%;
+}
+
+.login-settings__table-wrap thead tr {
+  background: linear-gradient(135deg, #172e36 0%, #1e3a47 50%, #2a5563 100%);
+}
+
+.login-settings__table-wrap thead th {
+  color: #fbeec8 !important;
+  border-color: rgba(194, 179, 138, 0.35) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em;
+  padding: 0.75rem 1rem !important;
+  white-space: nowrap;
+}
+
+.login-settings__table-wrap tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.12s ease;
+}
+
+.login-settings__table-wrap tbody tr:hover {
+  background: #f8fafc;
+}
+
+.login-settings__table-wrap tbody td {
+  border-color: #f1f5f9 !important;
+  font-size: 0.875rem;
+  padding: 0.65rem 1rem !important;
+  vertical-align: middle;
+}
+
+.login-settings__table-wrap .login-settings__usn-link {
+  font-weight: 600;
+  color: #1e3a47;
+  cursor: pointer;
+}
+
+.login-settings__table-wrap .login-settings__usn-link:hover {
+  text-decoration: underline;
+  color: #2a5563;
+}
+
+.login-settings__role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.login-settings__status-badge--active {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.login-settings__status-badge--inactive {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+/* Empty & loading */
+.login-settings__loading,
+.login-settings__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  color: #64748b;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+.login-settings__empty-icon {
+  font-size: 2.5rem;
+  opacity: 0.25;
+  margin-bottom: 1rem;
+  color: #172e36;
+}
+
+.login-settings__empty-title {
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.35rem;
+}
+
+.login-settings__empty-hint {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  margin-bottom: 1rem;
+}
+
+/* Footer / pagination */
+.login-settings__footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.login-settings__footer-text {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.login-settings__footer .chakra-button {
+  border-color: #e2e8f0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.login-settings__footer .chakra-button:hover:not(:disabled) {
+  background: #fff;
+  border-color: #2d6a7a;
+  color: #172e36;
+}
+
+/* Modals */
+.login-settings__modal-content {
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+
+.login-settings__modal-content .chakra-modal__header {
+  background: linear-gradient(135deg, #172e36 0%, #2a5563 100%);
+  color: #fff;
+  font-size: 1.0625rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 3px solid #d4a960;
+}
+
+.login-settings__modal-content .chakra-modal__close-btn {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.login-settings__modal-content .chakra-modal__close-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.login-settings__modal-content .chakra-modal__body {
+  padding: 1.25rem 1.25rem 0.5rem;
+}
+
+.login-settings__modal-content .chakra-modal__footer {
+  padding: 1rem 1.25rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .login-settings__inner {
+    padding: 1rem;
+  }
+
+  .login-settings__hero {
+    padding: 1.25rem;
+  }
+
+  .login-settings__tab-list {
+    width: 100%;
+  }
+
+  .login-settings__tab {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.45rem 0.65rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .login-settings__search-wrap {
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .login-settings__toolbar .chakra-select {
+    width: 100% !important;
+  }
+}

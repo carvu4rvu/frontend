@@ -1,25 +1,20 @@
-import { Box, VStack, Heading, Icon as ChakraIcon } from "@chakra-ui/react"
+import { Box, VStack, Heading, Text, Icon as ChakraIcon } from '@chakra-ui/react';
+import './RoleCard.css';
 
-export const RoleCard = ({ title, icon, onClick }) => (
-    <Box 
-        as="button" 
-        onClick={onClick}
-        p={4} 
-        borderWidth="1px" 
-        borderRadius="xl" 
-        borderColor="gray.200"
-        _hover={{ borderColor: "#d4a960", shadow: "sm", transform: "translateY(-1px)" }}
-        transition="all 0.2s"
-        textAlign="center"
-        bg="gray.50"
-        width="full"
-        cursor="pointer"
-    >
-        <VStack gap={3}>
-            <Box color="#20343c" p={2} bg="white" borderRadius="full" shadow="sm">
-                <ChakraIcon as={icon} w={5} h={5} />
-            </Box>
-            <Heading size="xs" color="#20343c">{title}</Heading>
-        </VStack>
-    </Box>
-)
+export const RoleCard = ({ title, description, icon, onClick }) => (
+  <button type="button" className="role-card" onClick={onClick}>
+    <span className="role-card__icon-wrap" aria-hidden>
+      <ChakraIcon as={icon} className="role-card__icon" />
+    </span>
+    <VStack gap={1} align="center">
+      <Heading as="span" className="role-card__title">
+        {title}
+      </Heading>
+      {description && (
+        <Text as="span" className="role-card__description">
+          {description}
+        </Text>
+      )}
+    </VStack>
+  </button>
+);

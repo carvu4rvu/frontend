@@ -39,7 +39,6 @@ import AdminNotificationLayout from './pages/admin/AdminNotificationLayout';
 import AdminNotificationPage from './pages/admin/AdminNotificationPage';
 import AdminLayout from './components/AdminLayout';
 import CompanyLayout from './components/CompanyLayout';
-import BulkEmail from './pages/admin/BulkEmail';
 import UserLoginManagement from './pages/admin/UserLoginManagement';
 import AdminProjects from './pages/admin/AdminProjects';
 import AdminProjectDetail from './pages/admin/AdminProjectDetail';
@@ -321,14 +320,6 @@ const router = createBrowserRouter([
         element: (
           <PlacementProtectedRoute requiredRole="admin">
             <NotificationIdRedirect />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/placement/email",
-        element: (
-          <PlacementProtectedRoute requiredRole="admin">
-            <BulkEmail />
           </PlacementProtectedRoute>
         )
       },

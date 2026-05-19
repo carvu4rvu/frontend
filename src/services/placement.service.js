@@ -773,8 +773,24 @@ export const PlacementService = {
     const q = new URLSearchParams();
     if (params.school_id != null && params.school_id !== '') q.set('school_id', params.school_id);
     if (params.program_id != null && params.program_id !== '') q.set('program_id', params.program_id);
+    const batch = params.batch ?? params.year_of_joining;
+    if (batch != null && batch !== '' && batch !== 'all') q.set('batch', batch);
+    if (params.current_year != null && params.current_year !== '' && params.current_year !== 'all') {
+      q.set('current_year', params.current_year);
+    }
+    if (params.section != null && params.section !== '' && params.section !== 'all') {
+      q.set('section', params.section);
+    }
+    if (params.opt_in != null && params.opt_in !== '' && params.opt_in !== 'all') q.set('opt_in', params.opt_in);
+    if (params.is_placed != null && params.is_placed !== '' && params.is_placed !== 'all') {
+      q.set('is_placed', params.is_placed);
+    }
+    if (params.search != null && String(params.search).trim() !== '') q.set('search', String(params.search).trim());
+    if (params.has_personal_email === true || params.has_personal_email === 'true' || params.personal_email === '1') {
+      q.set('has_personal_email', 'true');
+    }
     const response = await apiFetch(`/placement/alumni/conversions${q.toString() ? `?${q}` : ''}`);
-    return response.data ?? { schools: [], programs: [], rows: [] };
+    return response.data ?? { schools: [], programs: [], rows: [], filter_meta: { years: [], current_years: [], sections: [] } };
   },
 
   convertToAlumni: async (usns) => {
@@ -818,6 +834,13 @@ export const PlacementService = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+    });
+    return response.data;
+  },
+
+  deleteAlumni: async (identifier) => {
+    const response = await apiFetch(`/placement/alumni/${encodeURIComponent(identifier)}`, {
+      method: 'DELETE',
     });
     return response.data;
   },
@@ -1109,37 +1132,6 @@ export const PlacementService = {
       views_count: r.views ?? 0,
       likes_count: r.likes ?? 0,
     })) : [];
-  },
-
-  /**
-   * Get email recipients for bulk email. Category: students | parents | alumni | staff.
-   * Filters depend on category (school_id, program_id, etc. for students; parent_type for parents; etc.)
-   */
-  getEmailRecipients: async (params = {}) => {
-    const searchParams = new URLSearchParams();
-    if (params.category) searchParams.set('category', params.category);
-    if (params.page != null) searchParams.set('page', params.page);
-    if (params.limit != null) searchParams.set('limit', params.limit);
-    if (params.search) searchParams.set('search', params.search);
-    if (params.school_id != null) searchParams.set('school_id', params.school_id);
-    if (params.program_id != null) searchParams.set('program_id', params.program_id);
-    if (params.major_id != null) searchParams.set('major_id', params.major_id);
-    if (params.minor_id != null) searchParams.set('minor_id', params.minor_id);
-    if (params.specialization_id != null) searchParams.set('specialization_id', params.specialization_id);
-    if (params.year_of_joining != null) searchParams.set('year_of_joining', params.year_of_joining);
-    if (params.current_year != null) searchParams.set('current_year', params.current_year);
-    if (params.current_semester != null) searchParams.set('current_semester', params.current_semester);
-    if (params.section) searchParams.set('section', params.section);
-    if (params.gender) searchParams.set('gender', params.gender);
-    if (params.is_active !== undefined && params.is_active !== '') searchParams.set('is_active', params.is_active);
-    if (params.is_registered !== undefined && params.is_registered !== '') searchParams.set('is_registered', params.is_registered);
-    if (params.parent_type) searchParams.set('parent_type', params.parent_type);
-    if (params.graduation_year != null) searchParams.set('graduation_year', params.graduation_year);
-    if (params.institution_name) searchParams.set('institution_name', params.institution_name);
-    if (params.role_id != null) searchParams.set('role_id', params.role_id);
-    const qs = searchParams.toString();
-    const response = await apiFetch(`/placement/email-recipients${qs ? `?${qs}` : ''}`);
-    return response.data;
   },
 
   /** Violations: eligibility decision logs */

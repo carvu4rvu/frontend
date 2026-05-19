@@ -179,37 +179,48 @@ const AlumniRegistration = () => {
                 <Text fontSize="md" color="gray.600" textAlign="center">Verify your email address</Text>
                 <FormControl isRequired>
                   <FormLabel color="gray.700" fontWeight="bold">Email Address</FormLabel>
-                  <InputGroup size="lg">
+                  <Box
+                    display="flex"
+                    flexDirection={{ base: 'column', sm: 'row' }}
+                    gap={3}
+                    alignItems={{ sm: 'flex-end' }}
+                  >
                     <Input
+                      flex={1}
+                      minW={0}
+                      w="100%"
                       name="email"
                       type="email"
                       value={formData.email}
                       onChange={handleChange}
                       placeholder="your.email@example.com"
+                      size="lg"
                       focusBorderColor="#d4a960"
                       bg="gray.50"
-                      pr="8.5rem"
+                      overflow="hidden"
+                      textOverflow="ellipsis"
                     />
-                    <InputRightElement width="8.5rem" mr={1}>
-                      <Button
-                        h="2rem"
-                        size="sm"
-                        onClick={handleSendOtp}
-                        isLoading={loading}
-                        isDisabled={!formData.email || resendTimer > 0}
-                        colorScheme="yellow"
-                        variant={resendTimer > 0 ? 'outline' : 'solid'}
-                        bg={resendTimer > 0 ? 'transparent' : '#d4a960'}
-                        color={resendTimer > 0 ? 'gray.500' : 'white'}
-                        _hover={resendTimer > 0 ? {} : { bg: '#bfa140' }}
-                        fontWeight="bold"
-                        fontSize="xs"
-                        width="100%"
-                      >
-                        {resendTimer > 0 ? `Resend in ${resendTimer}s` : otpSent ? 'Resend OTP' : 'Send OTP'}
-                      </Button>
-                    </InputRightElement>
-                  </InputGroup>
+                    <Button
+                      flexShrink={0}
+                      w={{ base: 'full', sm: 'auto' }}
+                      minW={{ sm: '8.5rem' }}
+                      size="lg"
+                      onClick={handleSendOtp}
+                      isLoading={loading}
+                      isDisabled={!formData.email || resendTimer > 0}
+                      variant={resendTimer > 0 ? 'outline' : 'solid'}
+                      bg={resendTimer > 0 ? 'transparent' : '#d4a960'}
+                      color={resendTimer > 0 ? 'gray.500' : 'white'}
+                      borderColor={resendTimer > 0 ? 'gray.300' : undefined}
+                      _hover={resendTimer > 0 ? { bg: 'gray.50' } : { bg: '#bfa140' }}
+                      _disabled={{ opacity: 0.7, cursor: 'not-allowed' }}
+                      fontWeight="bold"
+                      fontSize="sm"
+                      whiteSpace="nowrap"
+                    >
+                      {resendTimer > 0 ? `Resend in ${resendTimer}s` : otpSent ? 'Resend OTP' : 'Send OTP'}
+                    </Button>
+                  </Box>
                 </FormControl>
                 <FormControl isRequired>
                   <FormLabel color="gray.700" fontWeight="bold">Enter OTP</FormLabel>
@@ -222,12 +233,21 @@ const AlumniRegistration = () => {
                     focusBorderColor="#d4a960"
                     bg="gray.50"
                     textAlign="center"
-                    letterSpacing="0.5em"
+                    letterSpacing={formData.otp ? '0.5em' : 'normal'}
                     fontWeight="bold"
                     maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                   />
                   {otpSent && (
-                    <Text fontSize="sm" color="green.600" mt={2} textAlign="center" fontWeight="medium">
+                    <Text
+                      fontSize="sm"
+                      color="green.600"
+                      mt={2}
+                      textAlign="center"
+                      fontWeight="medium"
+                      wordBreak="break-word"
+                    >
                       ✓ OTP sent to {formData.email}
                     </Text>
                   )}

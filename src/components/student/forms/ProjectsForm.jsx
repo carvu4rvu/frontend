@@ -29,6 +29,7 @@ import { StyledFileInput } from "../../ui/StyledFileInput"
 import { useState, useEffect, useRef } from "react"
 import { FaPlus, FaTrash, FaEdit, FaExternalLinkAlt, FaPlusCircle } from "react-icons/fa"
 import { useAuth } from "../../../context/AuthContext"
+import { useProfileView } from "../../../context/ProfileViewContext"
 import { StudentProfileService } from "../../../services/studentProfile.service"
 import { ProjectService } from "../../../services/project.service"
 import { getFileUrl } from "../../../utils/fileUrl"
@@ -129,7 +130,8 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
   const items = Array.isArray(data) ? data : (data.projects || [])
   const toast = useToast()
   const { user } = useAuth()
-  const usn = user?.usn
+  const profileView = useProfileView()
+  const usn = (profileView?.viewUsn || user?.usn || "").toString().trim().toUpperCase() || null
 
   const [editingIndex, setEditingIndex] = useState(null)
   const [modalErrors, setModalErrors] = useState({})
@@ -239,9 +241,23 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
     closeEditModal()
   }
 
+  const notifyMissingUsn = () => {
+    toast({
+      status: "error",
+      title: "Cannot upload",
+      description: "Student USN is missing. Reload the page or open the profile from the student list.",
+      duration: 6000,
+      isClosable: true,
+    })
+  }
+
   /** Upload one file as cover image (replaces first slot). */
   const handleUploadCover = async (index, file) => {
-    if (!usn || !file || !(file instanceof File)) return
+    if (!usn) {
+      notifyMissingUsn()
+      return
+    }
+    if (!file || !(file instanceof File)) return
     if (file.size === 0) {
       toast({ status: "warning", description: "Please select a non-empty image.", isClosable: true })
       return
@@ -276,7 +292,10 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
 
   /** Upload one or more files as gallery images (appended after cover; max 3 gallery). */
   const handleUploadGallery = async (index, fileOrFiles) => {
-    if (!usn) return
+    if (!usn) {
+      notifyMissingUsn()
+      return
+    }
     const files = Array.isArray(fileOrFiles) ? fileOrFiles : fileOrFiles ? [fileOrFiles] : []
     if (files.length === 0) return
 
@@ -296,6 +315,7 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
     const toUpload = files.slice(0, remaining)
     let successCount = 0
     setUploadingCount((c) => c + toUpload.length)
+    const uploadedUrls = []
 
     for (const file of toUpload) {
       if (!file || !(file instanceof File)) {
@@ -311,13 +331,7 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
         const result = await StudentProfileService.uploadFile(usn, file, { folder: "projects" })
         const url = result?.url || result?.path
         if (url) {
-          const newItems = [...items]
-          const snaps = newItems[index].project_snaps || []
-          newItems[index] = {
-            ...newItems[index],
-            project_snaps: [...snaps, url],
-          }
-          onUpdate(newItems)
+          uploadedUrls.push(url)
           successCount += 1
         }
       } catch (e) {
@@ -331,6 +345,16 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
       } finally {
         setUploadingCount((c) => Math.max(0, c - 1))
       }
+    }
+
+    if (uploadedUrls.length > 0) {
+      const newItems = [...items]
+      const snaps = newItems[index]?.project_snaps || []
+      newItems[index] = {
+        ...newItems[index],
+        project_snaps: [...snaps, ...uploadedUrls],
+      }
+      onUpdate(newItems)
     }
 
     if (successCount > 0) {

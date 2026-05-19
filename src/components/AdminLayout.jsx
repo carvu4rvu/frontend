@@ -87,7 +87,6 @@ const AdminLayout = ({ children, fullWidth = false, compactTop = false }) => {
       bgColor: "#1a3540",
       textColor: "#fff",
       links: [
-        { label: "Email", path: "/placement/email", ariaLabel: "Bulk email and email tools" },
         { label: "Notifications", path: "/placement/notifications", ariaLabel: "Manage and send notifications" },
         { label: "Login Settings", path: "/placement/user-login", ariaLabel: "Manage user logins and active status" },
       ]

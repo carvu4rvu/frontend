@@ -1,0 +1,81 @@
+.register-role {
+  width: 100%;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  background: linear-gradient(160deg, #f1f5f9 0%, #e8eef3 45%, #f8fafc 100%);
+}
+
+.register-role__card {
+  width: 100%;
+  max-width: 560px;
+  padding: 2rem 2rem 1.75rem;
+  background: #fff;
+  border-radius: 20px;
+  border-top: 4px solid #20343c;
+  box-shadow:
+    0 4px 6px rgba(15, 23, 42, 0.04),
+    0 20px 40px rgba(15, 23, 42, 0.08);
+}
+
+.register-role__header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.register-role__title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #20343c;
+  letter-spacing: -0.02em;
+}
+
+.register-role__subtitle {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.register-role__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.register-role__footer {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #f1f5f9;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.register-role__login-link {
+  color: #d4a960;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.register-role__login-link:hover {
+  color: #b8923d;
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .register-role__card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .register-role__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-card {
+    min-height: 140px;
+  }
+}

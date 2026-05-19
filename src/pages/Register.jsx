@@ -8,10 +8,11 @@ import {
 import { Link as RouterLink, useNavigate } from "react-router-dom"
 import { 
   FaArrowLeft, FaArrowRight, FaCheck, 
-  FaUserGraduate, FaBuilding, FaUserTie, FaChalkboardTeacher, FaEye, FaEyeSlash
+  FaUserGraduate, FaUserTie, FaEye, FaEyeSlash
 } from "react-icons/fa"
 import { Field } from "../components/ui/field"
 import { RoleCard } from "../components/RoleCard"
+import "./RegisterRoleSelect.css"
 import PixelCard from "../components/PixelCard"
 import { useAuth } from "../context/AuthContext"
 import { apiFetch } from "../services/api"
@@ -1392,26 +1393,51 @@ export const Register = () => {
   }, [role]);
 
   return (
-    <Box py={10} bg="gray.50" minH="90vh" display="flex" alignItems="center" justifyContent="center">
-      <Container maxW={role ? "md" : "lg"} bg="white" p={8} borderRadius="xl" shadow="lg" borderTopWidth="4px" borderTopColor="#20343c">
+    <Box
+      py={role ? 10 : 0}
+      bg={role ? 'gray.50' : 'transparent'}
+      minH="90vh"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      className={role ? undefined : 'register-role'}
+    >
+      <Container
+        maxW={role ? 'md' : undefined}
+        className={role ? undefined : 'register-role__card'}
+        bg={role ? 'white' : 'transparent'}
+        p={role ? 8 : 0}
+        borderRadius={role ? 'xl' : undefined}
+        shadow={role ? 'lg' : undefined}
+        borderTopWidth={role ? '4px' : undefined}
+        borderTopColor={role ? '#20343c' : undefined}
+      >
         {!role ? (
-            <VStack gap={6} py={4}>
-                <VStack gap={2}>
-                    <Heading color="#20343c" textAlign="center" size="md">Join Our Platform</Heading>
-                    <Text color="gray.500" textAlign="center" fontSize="sm">Select your role to continue</Text>
-                </VStack>
-                <SimpleGrid columns={{ base: 1, sm: 2 }} gap={4} w="full">
-                    <RoleCard title="Student" icon={FaUserGraduate} onClick={() => setRole('student')} />
-                    <RoleCard title="Company" icon={FaBuilding} onClick={() => setRole('company')} />
-                    <RoleCard title="Alumni" icon={FaUserTie} onClick={() => navigate('/alumni/register')} />
-                    <RoleCard title="Placement Team" icon={FaChalkboardTeacher} onClick={() => setRole('verifier')} />
-                </SimpleGrid>
-                <Text textAlign="center" fontSize="sm" color="gray.600">
-                    Already have an account?{" "}
-                    <RouterLink to="/login" style={{ color: "#d4a960", fontWeight: "bold" }}>
+            <VStack gap={0} align="stretch" w="full">
+                <header className="register-role__header">
+                    <h1 className="register-role__title">Join Our Platform</h1>
+                    <p className="register-role__subtitle">Select your role to continue</p>
+                </header>
+                <div className="register-role__grid">
+                    <RoleCard
+                      title="Student"
+                      description="Register with your college email and USN"
+                      icon={FaUserGraduate}
+                      onClick={() => setRole('student')}
+                    />
+                    <RoleCard
+                      title="Alumni"
+                      description="Graduates joining the alumni network"
+                      icon={FaUserTie}
+                      onClick={() => navigate('/alumni/register')}
+                    />
+                </div>
+                <p className="register-role__footer">
+                    Already have an account?{' '}
+                    <RouterLink to="/login" className="register-role__login-link">
                         Login here
                     </RouterLink>
-                </Text>
+                </p>
             </VStack>
         ) : (
              <VStack align="stretch" gap={4}>
@@ -1426,8 +1452,6 @@ export const Register = () => {
                     Back to Role Selection
                 </Button>
                 {role === 'student' && <StudentRegister />}
-                {role === 'company' && <CompanyRegister />}
-                {role === 'verifier' && <VerifierRegister />}
              </VStack>
         )}
       </Container>
