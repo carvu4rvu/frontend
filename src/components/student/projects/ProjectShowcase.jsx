@@ -1,7 +1,8 @@
 import { Box, Text, Heading, VStack, HStack, Icon, Button, Image, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, useDisclosure, Tag, Link, SimpleGrid, Divider, useToast } from "@chakra-ui/react";
 import { FaExternalLinkAlt, FaGithub, FaStar, FaEye, FaHeart, FaUser } from "react-icons/fa";
 import { useState, useContext, useEffect } from "react";
-import { getFileUrl } from "../../../utils/fileUrl";
+import { getFileUrl } from "../../../utils/fileUrl"
+import { splitProjectSnaps, MAX_GALLERY_IMAGES } from "../../../utils/projectSnaps";
 import { StudentProfileContentRefContext } from "../StudentProfileLayout";
 import { ProjectService } from "../../../services/project.service";
 
@@ -229,11 +230,14 @@ export const ProjectShowcase = ({ projects = [], contentAreaRef, studentName }) 
                 </Box>
 
                 {(() => {
-                  const snaps = selectedProject.project_snaps || selectedProject.snaps || [];
-                  if (!snaps.length) return null;
+                  const { gallery } = splitProjectSnaps(
+                    selectedProject.project_snaps || selectedProject.snaps || []
+                  );
+                  if (!gallery.length) return null;
 
-                  // Always render 4 fixed tiles: first filled, remaining as either images or placeholders.
-                  const tiles = new Array(4).fill(null).map((_, i) => snaps[i] || null);
+                  const tiles = new Array(MAX_GALLERY_IMAGES)
+                    .fill(null)
+                    .map((_, i) => gallery[i] || null);
 
                   return (
                     <Box>
@@ -372,9 +376,9 @@ export const ProjectShowcase = ({ projects = [], contentAreaRef, studentName }) 
 
 
 const ShowcaseCard = ({ project, studentName, onView }) => {
-  const snaps = project.project_snaps || project.snaps || [];
-  const coverImage = snaps.length > 0 ? snaps[0] : null;
-  const gallerySnaps = snaps.slice(0, 4);
+  const { cover: coverImage, gallery: gallerySnaps } = splitProjectSnaps(
+    project.project_snaps || project.snaps || []
+  );
   const technologies = getTechnologies(project);
   const category = (project.genre || "Project").toUpperCase().replace(/\s+/g, " ");
   const priority = project.priority ?? 1;

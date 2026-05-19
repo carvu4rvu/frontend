@@ -36,6 +36,7 @@ import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaUser, FaH
 import { useNavigate } from 'react-router-dom';
 import { PlacementService } from '../services/placement.service';
 import { getFileUrl } from '../utils/fileUrl';
+import { splitProjectSnaps, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
 
 const PLAY_GREEN = '#01875f';
 const PLAY_GREEN_HOVER = '#01704f';
@@ -578,8 +579,7 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
             ) : (
               <VStack spacing={12} align="stretch">
                 {showcaseDisplayProjects.map((p) => {
-                  const icon = (p.project_snaps || [])[0];
-                  const screenshots = p.project_snaps || [];
+                  const { cover: icon, gallery: screenshots } = splitProjectSnaps(p.project_snaps || []);
                   const desc = p.full_description || p.one_line_description || 'No description.';
                   return (
                     <Box key={p.id} p={5} borderRadius={CARD_RADIUS} shadow={CARD_SHADOW} bg="white">
@@ -727,7 +727,7 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
 
                       {screenshots.length > 0 && (
                         <SimpleGrid columns={4} spacing={3} py={2}>
-                          {[0, 1, 2, 3].map((i) => {
+                          {Array.from({ length: MAX_GALLERY_IMAGES }, (_, i) => i).map((i) => {
                             const snap = screenshots[i] || null;
                             return (
                               <Box

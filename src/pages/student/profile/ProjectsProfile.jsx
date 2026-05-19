@@ -8,6 +8,11 @@ import { useProfileView } from "../../../context/ProfileViewContext"
 import { ProjectsForm } from "../../../components/student/forms/ProjectsForm"
 import { ProjectShowcase } from "../../../components/student/projects/ProjectShowcase"
 import { toSnakeCase } from "../../../utils/stringUtils"
+import {
+  normalizeProjectSnaps,
+  splitProjectSnaps,
+  buildProjectSnaps,
+} from "../../../utils/projectSnaps"
 import { AdminSectionLockControl } from "../../../components/student/AdminSectionLockControl"
 import { getProfileErrorMessage, parseApiError, mapIndexedFieldErrors } from "../../../utils/profileErrorHelper"
 
@@ -48,7 +53,11 @@ export const ProjectsProfile = () => {
     setLoading(true)
     try {
       const sectionData = await StudentProfileService.getSection(viewUsn, "projects")
-      const projects = Array.isArray(sectionData) ? sectionData : (sectionData?.projects || [])
+      const raw = Array.isArray(sectionData) ? sectionData : (sectionData?.projects || [])
+      const projects = raw.map((p) => ({
+        ...p,
+        project_snaps: normalizeProjectSnaps(p?.project_snaps ?? p?.projectSnaps),
+      }))
       setData(projects)
       initialDataRef.current = projects
     } catch (error) {
@@ -108,16 +117,24 @@ export const ProjectsProfile = () => {
             if (!project) continue
 
             const snapEntries = Object.entries(snapFiles)
-            const currentSnaps = Array.isArray(project.project_snaps) 
-              ? project.project_snaps 
-              : (project.project_snaps ? [project.project_snaps] : [])
+            let currentSnaps = normalizeProjectSnaps(project.project_snaps)
 
             for (const [snapIndexStr, file] of snapEntries) {
               try {
                 const result = await StudentProfileService.uploadFile(viewUsn, file, { folder: "projects" })
                 const url = result?.url || result?.path
                 if (url) {
-                  currentSnaps.push(url)
+                  const snapIndex = Number(snapIndexStr)
+                  if (snapIndex === 0) {
+                    const { gallery } = splitProjectSnaps(currentSnaps)
+                    currentSnaps = buildProjectSnaps(url, gallery)
+                  } else {
+                    const { cover, gallery } = splitProjectSnaps(currentSnaps)
+                    const gallerySlot = Math.max(0, snapIndex - 1)
+                    const nextGallery = [...gallery]
+                    nextGallery[gallerySlot] = url
+                    currentSnaps = buildProjectSnaps(cover, nextGallery.filter(Boolean))
+                  }
                 }
               } catch (e) {
                 const msg = getProfileErrorMessage(e)
@@ -137,12 +154,17 @@ export const ProjectsProfile = () => {
             }
           }
 
+          const normalizedData = updatedData.map((p) => ({
+            ...p,
+            project_snaps: normalizeProjectSnaps(p?.project_snaps),
+          }))
+
           // Convert to snake_case for DB saving
-          const snakeCaseProjects = toSnakeCase(updatedData)
+          const snakeCaseProjects = toSnakeCase(normalizedData)
 
           await StudentProfileService.saveSection(viewUsn, "projects", { projects: snakeCaseProjects })
-          setData(updatedData)
-          initialDataRef.current = updatedData
+          setData(normalizedData)
+          initialDataRef.current = normalizedData
           setPendingFiles({})
           setLastFieldErrors(null)
           toast({ title: "Changes saved successfully", status: "success" })
