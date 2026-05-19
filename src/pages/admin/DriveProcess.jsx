@@ -40,8 +40,10 @@ import { ArrowBackIcon, SearchIcon, DownloadIcon, AddIcon } from '@chakra-ui/ico
 import { MdAssignment, MdAdd, MdViewList, MdSave, MdBusiness, MdWork, MdCalendarToday, MdPeople, MdWarning, MdCardGiftcard } from 'react-icons/md';
 import JSZip from 'jszip';
 import { getFileUrl } from '../../utils/fileUrl';
+import { getCompanyLogoRaw } from '../../utils/companyLogo';
 import { PlacementService } from '../../services/placement.service';
 import AdminLayout from '../../components/AdminLayout';
+import { CompanyLogo } from '../../components/CompanyLogo';
 import AddStudentsToDrive from '../../components/placement/AddStudentsToDrive';
 import { getEffectiveRoundStatus, isVisibleOnRoundTab } from '../../utils/placementRoundProgression';
 import './DriveProcess.css';
@@ -73,6 +75,10 @@ function getRoundField(roundName) {
   if (!roundName || typeof roundName !== 'string') return null;
   const key = String(roundName).toLowerCase().trim();
   return ROUND_TO_FIELD[key] || null;
+}
+
+function hasText(value) {
+  return value != null && String(value).trim() !== '';
 }
 
 /**
@@ -829,29 +835,23 @@ const DriveProcess = () => {
                 {/* Company, Remarks & TPO (like placement drive table) */}
                 <Box className="col-company-remarks-tpo" minW="220px" flex="0 0 auto">
                   <Flex gap={3} align="flex-start">
-                    <Box
+                    <CompanyLogo
                       className="company-logo"
-                      w="44px"
-                      h="44px"
-                      minW="44px"
-                      borderRadius="lg"
-                      bg="#1e293b"
-                      color="white"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      fontWeight="bold"
-                      fontSize="1rem"
-                    >
-                      {(drive.company_name || 'C').charAt(0).toUpperCase()}
-                    </Box>
+                      src={getCompanyLogoRaw(drive)}
+                      name={drive.company_name}
+                      boxSize="44px"
+                      variant="square"
+                      flexShrink={0}
+                    />
                     <Flex flexDirection="column">
                       <Text className="company-name" fontSize="0.95rem" fontWeight="bold" color="gray.900" lineHeight="1.3">
                         {drive.company_name}
                       </Text>
-                      <Text className="company-remarks" fontSize="0.7rem" color="gray.500" fontStyle="italic" lineHeight="1.4" mt={1} noOfLines={2}>
-                        "{drive.company_remarks || ''}"
-                      </Text>
+                      {hasText(drive.company_remarks) && (
+                        <Text className="company-remarks" fontSize="0.7rem" color="gray.500" fontStyle="italic" lineHeight="1.4" mt={1} noOfLines={2}>
+                          &ldquo;{String(drive.company_remarks).trim()}&rdquo;
+                        </Text>
+                      )}
                       <Text className="company-tpo" fontSize="0.65rem" fontWeight="bold" color="blue.500" textTransform="uppercase" letterSpacing="0.02em" mt={1.5}>
                         TPO: {(drive.tpo || '').toUpperCase() || '—'}
                       </Text>
@@ -1311,7 +1311,7 @@ const DriveProcess = () => {
                                       </Badge>
                                     </Td>
                                     <Td px={4} py={3} fontSize="sm" color="gray.600" maxW="200px" isTruncated>
-                                      {process.remarks || '-'}
+                                      {hasText(process.remarks) ? String(process.remarks).trim() : null}
                                     </Td>
                                   </>
                                 ) : isAllRoundsView ? (

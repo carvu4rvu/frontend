@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box,
     Heading,
@@ -46,9 +46,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import './PlacementEvents.css';
 import AdminLayout from '../../components/AdminLayout';
+import { CompanyLogo } from '../../components/CompanyLogo';
 import DriveEligibilityModal from '../../components/placement/DriveEligibilityModal';
+import { EligibilityDisplay } from '../../components/placement/EligibilityDisplay';
+import {
+  getEligibilityGroupsFromDrive,
+  formatEligibilityGroupsPlain,
+} from '../../utils/eligibilityDisplay';
 import { PlacementService } from '../../services/placement.service';
 import { NotificationService } from '../../services/notification.service';
+import { buildCompanyLogoById, getCompanyLogoRaw } from '../../utils/companyLogo';
 
 /* Fixed columns matching placement_drive.html: Company/Remarks/TPO, Eligibility, Location & Description, Compensation, Important Dates, Openings/Reg, Actions */
 const TABLE_COLUMNS = [
@@ -186,16 +193,11 @@ const Events = () => {
     return avg || min || max || '-';
   };
 
-  /** Resolve eligibility display. Prefer eligibility_display (school - program pairs from process table).
-   * Fallback to eligibility_criteria or drive.school/program when no registrations yet. */
+  /** Resolve eligibility display (grouped by school). Fallback to criteria when no pairs yet. */
   const getEligibilityDisplay = (drive) => {
-    if (drive?.eligibility_display) {
-      return { display: drive.eligibility_display };
-    }
-    const pairs = drive?.school_program_pairs || [];
-    if (pairs.length > 0) {
-      const display = pairs.map((p) => `${p.school} - ${p.program}`).join(', ');
-      return { display };
+    const groups = getEligibilityGroupsFromDrive(drive);
+    if (groups.length > 0) {
+      return { display: formatEligibilityGroupsPlain(groups), groups };
     }
     const elig = drive?.placement_drive_eligibility;
     const schoolMap = (schoolList || []).reduce((acc, s) => {
@@ -261,6 +263,7 @@ const Events = () => {
   const [companyList, setCompanyList] = useState([]);
   const [schoolList, setSchoolList] = useState([]);
   const [programList, setProgramList] = useState([]);
+  const companyLogoById = useMemo(() => buildCompanyLogoById(companyList), [companyList]);
 
   // New Event Form State (Step 1 - no eligibility fields)
   const initialEventState = {
@@ -558,7 +561,14 @@ const Events = () => {
         return (
           <Box className="col-company-remarks-tpo">
             <Flex gap={3}>
-              <Box className="company-logo">{(drive.company_name || ' ')[0]}</Box>
+              <CompanyLogo
+                className="company-logo"
+                src={getCompanyLogoRaw(drive, companyLogoById)}
+                name={drive.company_name}
+                boxSize="44px"
+                variant="square"
+                flexShrink={0}
+              />
               <Flex flexDirection="column">
                 <Box className="company-name">{drive.company_name || '—'}</Box>
                 {drive.company_remarks && (
@@ -576,13 +586,11 @@ const Events = () => {
         if (elig?.min_cgpa) tooltipParts.push(`Min CGPA: ${elig.min_cgpa}`);
         if (elig?.max_active_backlogs != null) tooltipParts.push(`Max Backlogs: ${elig.max_active_backlogs}`);
         return (
-          <Tooltip label={tooltipParts.length ? tooltipParts.join('\n') : display} hasArrow placement="top">
-            <Box cursor="help" maxW="100%" minW={0} overflow="hidden" display="block">
-              <Badge fontSize="10px" colorScheme="gray" variant="subtle" fontWeight="bold" textTransform="uppercase" letterSpacing="tighter" px={2} py={1} borderRadius="md" whiteSpace="normal" maxW="100%" display="inline-block">
-                <Text as="span" noOfLines={2} wordBreak="break-word" overflowWrap="break-word">{display || '—'}</Text>
-              </Badge>
-            </Box>
-          </Tooltip>
+          <EligibilityDisplay
+            drive={drive}
+            fallback={display || '—'}
+            tooltipLabel={tooltipParts.filter(Boolean).join('\n')}
+          />
         );
       }
       case 'location_description':
@@ -1070,14 +1078,22 @@ const Events = () => {
                   >
                     <Flex justify="space-between" align="flex-start" mb={6}>
                       <Flex align="center" gap={3}>
-                        <Box w={12} h={12} borderRadius="xl" bg="#1e293b" color="white" display="flex" alignItems="center" justifyContent="center" fontWeight="bold" fontSize="lg" boxShadow="md">
-                          {(drive.company_name || '?')[0]}
-                        </Box>
+                        <CompanyLogo
+                          src={getCompanyLogoRaw(drive, companyLogoById)}
+                          name={drive.company_name}
+                          boxSize="48px"
+                          variant="square"
+                          boxShadow="md"
+                          flexShrink={0}
+                        />
                         <Box>
                           <Heading size="md" color="gray.900">{drive.company_name}</Heading>
-                          <Text fontSize="xs" fontWeight="bold" color="gray.400" textTransform="uppercase" letterSpacing="wider">
-                            {getEligibilityDisplay(drive).display || '—'}
-                          </Text>
+                          <EligibilityDisplay
+                            drive={drive}
+                            fallback={getEligibilityDisplay(drive).display || '—'}
+                            variant="inline"
+                            noOfLines={2}
+                          />
                         </Box>
                       </Flex>
                       <Badge bg="gray.100" color="gray.600" fontSize="10px" fontWeight="bold" px={3} py={1} borderRadius="full" textTransform="uppercase">{drive.job_type || drive.job_profile || '—'}</Badge>

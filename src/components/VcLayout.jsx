@@ -7,13 +7,13 @@ import {
   Text,
   Flex,
   Avatar,
-  Image,
   IconButton,
   Badge,
 } from '@chakra-ui/react';
 import { BellIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 import { PlacementService } from '../services/placement.service';
+import { CarvuBrand } from './CarvuBrand';
 
 const NAV_ACCENT = '#FDE74C';
 const HEADER_BG = '#20343c';
@@ -81,15 +81,7 @@ const VcLayout = ({ children }) => {
           onClick={() => navigate('/placement/dashboard')}
           _hover={{ opacity: 0.9 }}
         >
-          <Image
-            src="/logo.png"
-            alt="CarvU"
-            w={{ base: '160px', md: '220px' }}
-            maxH={{ base: '32px', md: '44px' }}
-            objectFit="contain"
-            mt={-1}
-            pointerEvents="none"
-          />
+          <CarvuBrand fontSize={{ base: 'xl', md: '2xl' }} pointerEvents="none" />
         </HStack>
 
         <HStack spacing={4} align="center">

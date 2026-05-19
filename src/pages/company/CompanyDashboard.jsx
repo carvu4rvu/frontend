@@ -34,7 +34,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearSca
 import { Doughnut, Bar } from 'react-chartjs-2';
 import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyService } from '../../services/company.service';
-import { getFileUrl } from '../../utils/fileUrl';
+import { resolveCompanyLogoUrl } from '../../utils/companyLogo';
 import './CompanyDashboard.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -207,7 +207,7 @@ const CompanyDashboard = () => {
     );
   }
 
-  const logoUrl = company?.company_logo_link ? getFileUrl(company.company_logo_link) : null;
+  const logoUrl = company?.company_logo_link ? resolveCompanyLogoUrl(company.company_logo_link) : null;
 
   return (
     <CompanyLayout>

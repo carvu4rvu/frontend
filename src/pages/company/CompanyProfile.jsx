@@ -56,7 +56,7 @@ import {
 } from 'react-icons/fa';
 import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyService } from '../../services/company.service';
-import { getFileUrl } from '../../utils/fileUrl';
+import { resolveCompanyLogoUrl } from '../../utils/companyLogo';
 
 const colors = {
   accent: '#d4a960',
@@ -258,7 +258,7 @@ const CompanyProfile = () => {
     }
   };
 
-  const logoUrl = profile?.company_logo_link ? getFileUrl(profile.company_logo_link) : null;
+  const logoUrl = profile?.company_logo_link ? resolveCompanyLogoUrl(profile.company_logo_link) : null;
 
   if (loading) {
     return (

@@ -314,14 +314,7 @@
   width: 44px;
   height: 44px;
   min-width: 44px;
-  border-radius: 10px;
-  background: #1e293b;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1rem;
+  flex-shrink: 0;
 }
 .col-company-remarks-tpo .company-name {
   font-size: 0.95rem;
@@ -357,12 +350,8 @@
   word-break: break-word;
   overflow-wrap: break-word;
   max-width: 100%;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  text-transform: none;
 }
 
 /* Card view grid */

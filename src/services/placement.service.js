@@ -606,6 +606,73 @@ export const PlacementService = {
     return response.data;
   },
 
+  generatePlacementReport: async (dateFrom, dateTo, options = {}) => {
+    const response = await apiFetch('/placement/reports/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        dateFrom,
+        dateTo,
+        reportName: options.reportName,
+        reportType: options.reportType || 'placement_summary',
+      }),
+    });
+    return response.data;
+  },
+
+  getPlacementReportHistory: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.reportType) params.set('reportType', filters.reportType);
+    if (filters.generatedBy) params.set('generatedBy', filters.generatedBy);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.historyFrom) params.set('historyFrom', filters.historyFrom);
+    if (filters.historyTo) params.set('historyTo', filters.historyTo);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.sort) params.set('sort', filters.sort);
+    const qs = params.toString();
+    const response = await apiFetch(`/placement/reports/history${qs ? `?${qs}` : ''}`);
+    return response.data;
+  },
+
+  viewPlacementReport: async (id) => {
+    const response = await apiFetch(`/placement/reports/${id}/view`);
+    return response.data;
+  },
+
+  downloadPlacementReport: async (id, fileName = 'placement-report.xlsx') => {
+    const rawUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').trim();
+    const API_URL = rawUrl.endsWith('/api') ? rawUrl : `${rawUrl.replace(/\/$/, '')}/api`;
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/placement/reports/${id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      let message = 'Download failed';
+      try {
+        const err = await response.json();
+        message = err.message || message;
+      } catch (_) {
+        /* ignore */
+      }
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  deletePlacementReport: async (id) => {
+    const response = await apiFetch(`/placement/reports/${id}`, { method: 'DELETE' });
+    return response.data;
+  },
+
   getAllPolicies: async () => {
     try {
       const response = await apiFetch('/placement/policies');

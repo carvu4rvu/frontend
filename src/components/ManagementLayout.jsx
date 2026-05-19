@@ -1,9 +1,10 @@
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import {
-  Box, HStack, Button, Text, Flex, Avatar, Container, Image
+  Box, HStack, Button, Text, Flex, Avatar, Container
 } from '@chakra-ui/react';
 import { ViewIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
+import { CarvuBrand } from './CarvuBrand';
 
 const ManagementLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -38,7 +39,7 @@ const ManagementLayout = ({ children }) => {
           <Flex justify="space-between" align="center" h={{ base: '60px', md: '72px' }}>
             <HStack spacing={{ base: 4, md: 8 }}>
               <HStack onClick={() => navigate('/management/dashboard')} cursor="pointer" spacing={3}>
-                <Image src="/logo.png" alt="Management Portal" w="220px" objectFit="contain" mt={-2} />
+                <CarvuBrand fontSize={{ base: 'xl', md: '2xl' }} />
                 <Text color="white" fontWeight="bold" fontSize="xl" mt={2}>Management Board</Text>
               </HStack>
 

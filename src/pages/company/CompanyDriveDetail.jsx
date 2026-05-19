@@ -30,6 +30,8 @@ import { ArrowBackIcon, SearchIcon } from '@chakra-ui/icons';
 import { MdAssignment, MdCardGiftcard, MdSave, MdWarning } from 'react-icons/md';
 import '../admin/DriveProcess.css';
 import CompanyLayout from '../../components/CompanyLayout';
+import { CompanyLogo } from '../../components/CompanyLogo';
+import { getCompanyLogoRaw } from '../../utils/companyLogo';
 import { CompanyService } from '../../services/company.service';
 
 const ROUND_TO_FIELD = {
@@ -418,22 +420,14 @@ const CompanyDriveDetail = () => {
               <Flex px={5} py={4} align="center" justify="space-between" flexWrap="wrap" gap={4}>
                 <Box className="col-company-remarks-tpo" minW="220px" flex="0 0 auto">
                   <Flex gap={3} align="flex-start">
-                    <Box
+                    <CompanyLogo
                       className="company-logo"
-                      w="44px"
-                      h="44px"
-                      minW="44px"
-                      borderRadius="lg"
-                      bg="#1e293b"
-                      color="white"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      fontWeight="bold"
-                      fontSize="1rem"
-                    >
-                      {(drive.company_name || drive.job_description || 'C').charAt(0).toUpperCase()}
-                    </Box>
+                      src={getCompanyLogoRaw(drive)}
+                      name={drive.company_name || drive.job_description}
+                      boxSize="44px"
+                      variant="square"
+                      flexShrink={0}
+                    />
                     <Flex flexDirection="column">
                       <Text className="company-name" fontSize="0.95rem" fontWeight="bold" color="gray.900" lineHeight="1.3">
                         {drive.company_name || drive.job_description || '—'}

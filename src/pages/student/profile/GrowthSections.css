@@ -83,6 +83,11 @@
   box-shadow: 0 2px 12px rgba(212, 169, 96, 0.08);
 }
 
+.growth-card--error {
+  border-color: #fca5a5;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.15);
+}
+
 .growth-card-header {
   padding: 0.875rem 1.25rem;
   display: flex;
@@ -190,6 +195,15 @@
 
 .growth-delete-btn {
   color: #ef4444 !important;
+}
+
+.growth-file-preview {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #fff7ed;
+  border: 1px dashed #fdba74;
+  border-radius: 0.5rem;
+  text-align: center;
 }
 
 .growth-error-text {

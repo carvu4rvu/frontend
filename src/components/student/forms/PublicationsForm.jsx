@@ -1,11 +1,59 @@
-import { Box, VStack, Heading, Button, HStack, Input, SimpleGrid, IconButton, Text, Card, CardBody, Collapse, Flex, Textarea, useColorModeValue, Link, Image, NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper } from "@chakra-ui/react"
+/**
+ * Publications — styled like Internships / Training (GrowthSections timeline).
+ */
+
+import {
+  Box,
+  VStack,
+  Heading,
+  Button,
+  Input,
+  SimpleGrid,
+  IconButton,
+  Text,
+  Collapse,
+  Flex,
+  Textarea,
+  Image,
+  Link,
+  Wrap,
+  WrapItem,
+  Badge,
+  Icon,
+  Center,
+  HStack,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+} from "@chakra-ui/react"
 import { Field } from "../../ui/field"
 import { StyledFileInput } from "../../ui/StyledFileInput"
 import { useState, useEffect, useRef } from "react"
-import { FaPlus, FaTrash, FaChevronDown, FaChevronUp } from "react-icons/fa"
+import {
+  FaPlus,
+  FaTrash,
+  FaChevronDown,
+  FaChevronUp,
+  FaBookOpen,
+  FaCalendarAlt,
+  FaUsers,
+  FaExternalLinkAlt,
+  FaExclamationCircle,
+  FaLink,
+} from "react-icons/fa"
 import { getFileUrl } from "../../../utils/fileUrl"
+import "../../../pages/student/profile/GrowthSections.css"
 
-/** Normalize date for type="date" input: YYYY-MM-DD only. */
+function getField(item, ...keys) {
+  for (const k of keys) {
+    const v = item?.[k]
+    if (v !== undefined && v !== null && v !== "") return v
+  }
+  return ""
+}
+
 function toDateValue(val) {
   if (val == null || val === "") return ""
   const s = String(val).trim().split("T")[0]
@@ -14,7 +62,6 @@ function toDateValue(val) {
 
 export const PublicationsForm = ({ data = {}, onUpdate, isEditing = false, onFileSelect, fieldErrors = null }) => {
   const items = Array.isArray(data) ? data : (data.publications || [])
-  const bg = useColorModeValue("white", "gray.700")
   const errorsByIndex = fieldErrors && typeof fieldErrors === "object" ? fieldErrors : {}
   const getErrorsForIndex = (index) => {
     const row = errorsByIndex[index] ?? errorsByIndex[String(index)]
@@ -41,89 +88,98 @@ export const PublicationsForm = ({ data = {}, onUpdate, isEditing = false, onFil
         skills: "",
         description: "",
         evidence_document: "",
-        _isNewEntry: true
-      }
+        _isNewEntry: true,
+      },
     ])
   }
 
   const handleDelete = (index) => {
-    const newItems = items.filter((_, i) => i !== index)
-    onUpdate(newItems)
+    onUpdate(items.filter((_, i) => i !== index))
   }
 
   return (
-    <Box bg={bg} p={8} borderRadius="xl" shadow="sm">
-      <Heading size="lg" mb={6} color="#20343c">Publications</Heading>
-      
-      <VStack spacing={6} align="stretch">
-        {items.map((item, index) => (
-          <PublicationItem 
-            key={index} 
-            index={index} 
-            item={item} 
-            onChange={handleChange} 
-            onDelete={handleDelete} 
-            isEditing={isEditing}
-            onFileSelect={onFileSelect ? (file) => onFileSelect(index, file) : undefined}
-            fieldErrors={getErrorsForIndex(index)}
-          />
-        ))}
-
+    <Box className="growth-profile-container" bg="white" p={{ base: 4, md: 6 }} borderRadius="xl" shadow="sm">
+      <Flex className="growth-header">
+        <Heading className="growth-title" size="md">
+          <Icon as={FaBookOpen} className="growth-title-icon" />
+          Publications
+        </Heading>
         {isEditing && (
-          <Button 
-            leftIcon={<FaPlus />} 
-            onClick={handleAdd}
-            variant="outline"
-            colorScheme="orange"
-            borderColor="#d4a960"
-            color="#d4a960"
-            _hover={{ bg: "#fff5e6" }}
-          >
+          <Button leftIcon={<FaPlus />} onClick={handleAdd} className="growth-add-btn" size="sm">
             Add Publication
           </Button>
         )}
+      </Flex>
 
-        {items.length === 0 && (
-          <Box p={8} textAlign="center" color="gray.700" border="1px dashed" borderColor="gray.300" borderRadius="xl">
-            No publications added yet.
-          </Box>
+      <Box className="growth-timeline">
+        {items.length === 0 ? (
+          <Center py={12} flexDirection="column" gap={4} border="2px dashed" borderColor="gray.100" borderRadius="xl">
+            <Icon as={FaBookOpen} boxSize={12} color="gray.200" />
+            <Text color="gray.500" fontWeight="500">
+              No publications added yet.
+            </Text>
+            {isEditing && (
+              <Button leftIcon={<FaPlus />} variant="outline" colorScheme="orange" onClick={handleAdd}>
+                Add your first publication
+              </Button>
+            )}
+          </Center>
+        ) : (
+          items.map((item, index) => (
+            <PublicationItem
+              key={index}
+              index={index}
+              item={item}
+              onChange={handleChange}
+              onDelete={handleDelete}
+              isEditing={isEditing}
+              onFileSelect={onFileSelect ? (file) => onFileSelect(index, file) : undefined}
+              fieldErrors={getErrorsForIndex(index)}
+            />
+          ))
         )}
-      </VStack>
+      </Box>
     </Box>
   )
 }
 
 const PublicationItem = ({ index, item, onChange, onDelete, isEditing, onFileSelect, fieldErrors = {} }) => {
+  const hasErrors = !!(fieldErrors && typeof fieldErrors === "object" && Object.keys(fieldErrors).length > 0)
   const isNewEntry = item?._isNewEntry === true
-  const [isOpen, setIsOpen] = useState(Object.keys(fieldErrors || {}).length > 0 || isNewEntry)
+  const [isOpen, setIsOpen] = useState(hasErrors || isNewEntry)
   const [pendingPreview, setPendingPreview] = useState(null)
   const lastProcessedFileRef = useRef(null)
   const hasProof = !!(item.evidence_document || item.evidenceDocument)
+
+  const getError = (field) => {
+    const msg =
+      fieldErrors[field] ||
+      fieldErrors[field.replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")]
+    return msg && String(msg).trim() ? String(msg).trim() : null
+  }
+
+  useEffect(() => {
+    if (hasErrors && !isOpen) setIsOpen(true)
+    if (isNewEntry && item._isNewEntry === true) {
+      onChange(index, "_isNewEntry", false)
+    }
+  }, [hasErrors, isNewEntry])
+
   useEffect(() => {
     if (hasProof && pendingPreview) {
       URL.revokeObjectURL(pendingPreview)
       setPendingPreview(null)
     }
-    // Clear the _isNewEntry flag after component mounts
-    if (isNewEntry && item._isNewEntry === true) {
-      onChange(index, "_isNewEntry", false)
-    }
-  }, [hasProof, isNewEntry])
-  useEffect(() => {
-    if (Object.keys(fieldErrors || {}).length > 0) setIsOpen(true)
-  }, [fieldErrors])
-
-  const getError = (field) => {
-    const msg = fieldErrors[field] || fieldErrors[field.replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")]
-    return msg && String(msg).trim() ? String(msg).trim() : null
-  }
+  }, [hasProof])
 
   const handleFileChange = (e) => {
     const file = e.target.files && e.target.files[0]
     if (!file) return
     if (file === lastProcessedFileRef.current) return
     lastProcessedFileRef.current = file
-    setTimeout(() => { lastProcessedFileRef.current = null }, 0)
+    setTimeout(() => {
+      lastProcessedFileRef.current = null
+    }, 0)
     if (pendingPreview) URL.revokeObjectURL(pendingPreview)
     if (file.type.startsWith("image/")) {
       setPendingPreview(URL.createObjectURL(file))
@@ -134,210 +190,353 @@ const PublicationItem = ({ index, item, onChange, onDelete, isEditing, onFileSel
     e.target.value = ""
   }
 
+  const title = getField(item, "title")
+  const pubName = getField(item, "publication_name", "publicationName")
+  const pubType = getField(item, "publication_type", "publicationType")
+  const pubDate = getField(item, "publication_date", "publicationDate")
+  const authorCount = item.author_count ?? item.authorCount
+  const mentorName = getField(item, "mentor_name", "mentorName")
+  const pubLink = getField(item, "link")
+  const evidenceUrl = getField(item, "evidence_document", "evidenceDocument")
+
+  const skillsList = (() => {
+    const val = getField(item, "skills")
+    return typeof val === "string" ? val.split(",").map((s) => s.trim()).filter(Boolean) : []
+  })()
+
   return (
-    <Card variant="outline" borderColor="gray.200">
-      <CardBody>
-        <Flex justify="space-between" align="center" mb={4}>
-          <HStack>
-            <IconButton 
-              icon={isOpen ? <FaChevronUp /> : <FaChevronDown />}
+    <Box className="growth-item-wrapper">
+      <Box className="growth-item-dot" />
+      <Box className={`growth-card ${isOpen ? "growth-card--expanded" : ""} ${hasErrors ? "growth-card--error" : ""}`}>
+        <Flex className="growth-card-header" onClick={() => setIsOpen(!isOpen)}>
+          <Box className="growth-card-title-group" flex={1}>
+            <Badge className="growth-badge">{pubType || "Publication"}</Badge>
+            <Heading className="growth-card-title" size="sm">
+              {title || `Publication #${index + 1}`}
+            </Heading>
+            <Flex className="growth-meta-info">
+              {pubName && (
+                <Box className="growth-meta-item">
+                  <Icon as={FaBookOpen} boxSize={3} />
+                  <Text noOfLines={1}>{pubName}</Text>
+                </Box>
+              )}
+              {pubDate && (
+                <Box className="growth-meta-item">
+                  <Icon as={FaCalendarAlt} boxSize={3} />
+                  <Text>{toDateValue(pubDate)}</Text>
+                </Box>
+              )}
+              {authorCount != null && authorCount !== "" && (
+                <Box className="growth-meta-item">
+                  <Icon as={FaUsers} boxSize={3} />
+                  <Text>{authorCount} author{Number(authorCount) !== 1 ? "s" : ""}</Text>
+                </Box>
+              )}
+            </Flex>
+          </Box>
+          <Flex align="center" gap={2}>
+            {hasErrors && <Icon as={FaExclamationCircle} color="red.500" boxSize={5} />}
+            {isEditing && (
+              <IconButton
+                size="sm"
+                variant="ghost"
+                colorScheme="red"
+                className="growth-delete-btn"
+                aria-label="Delete"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(index)
+                }}
+                icon={<FaTrash />}
+              />
+            )}
+            <IconButton
               size="sm"
               variant="ghost"
-              onClick={() => setIsOpen(!isOpen)}
               aria-label="Toggle"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsOpen(!isOpen)
+              }}
+              icon={isOpen ? <FaChevronUp /> : <FaChevronDown />}
             />
-            <Heading size="md" color="#20343c">
-              {item.title || `Publication ${index + 1}`}
-            </Heading>
-          </HStack>
-          {isEditing && (
-            <IconButton 
-              icon={<FaTrash />} 
-              colorScheme="red" 
-              variant="ghost" 
-              onClick={() => onDelete(index)}
-              aria-label="Delete"
-            />
-          )}
+          </Flex>
         </Flex>
 
         <Collapse in={isOpen}>
-          <VStack spacing={4} align="stretch">
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              <Field label="Paper/Article Title" required errorText={getError("title")}>
-                <Input 
-                  value={item.title || ""} 
-                  onChange={(e) => onChange(index, "title", e.target.value)}
-                  isDisabled={!isEditing}
-                  _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
-                  _placeholder={{ opacity: 0.7, color: "inherit" }}
-                />
-              </Field>
-              <Field label="Publication Name (Journal/Conf)" required errorText={getError("publication_name")}>
-                <Input 
-                  value={item.publication_name || ""} 
-                  onChange={(e) => onChange(index, "publication_name", e.target.value)}
-                  isDisabled={!isEditing}
-                  _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
-                  _placeholder={{ opacity: 0.7, color: "inherit" }}
-                />
-              </Field>
-            </SimpleGrid>
-
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <Field label="Type" required errorText={getError("publication_type")}>
-                    <Input 
-                        value={item.publication_type || ""}
+          <Box className="growth-card-body">
+            <VStack align="stretch" spacing={6}>
+              {isEditing ? (
+                <>
+                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                    <Field label="Paper/Article Title *" errorText={getError("title")}>
+                      <Input
+                        value={title}
+                        onChange={(e) => onChange(index, "title", e.target.value)}
+                        variant="flushed"
+                        placeholder="Title of your paper or article"
+                      />
+                    </Field>
+                    <Field label="Publication Name (Journal/Conf) *" errorText={getError("publication_name")}>
+                      <Input
+                        value={pubName}
+                        onChange={(e) => onChange(index, "publication_name", e.target.value)}
+                        variant="flushed"
+                        placeholder="e.g. IEEE Transactions"
+                      />
+                    </Field>
+                    <Field label="Type *" errorText={getError("publication_type")}>
+                      <Input
+                        value={pubType}
                         onChange={(e) => onChange(index, "publication_type", e.target.value)}
-                        isDisabled={!isEditing}
-                        _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
-                        placeholder="e.g. Journal, Conference, Article"
-                        _placeholder={{ opacity: 0.7, color: "inherit" }}
-                    />
-                </Field>
-                <Field label="Publication Date" errorText={getError("publication_date")}>
-                    <Input 
+                        variant="flushed"
+                        placeholder="e.g. Journal, Conference"
+                      />
+                    </Field>
+                    <Field label="Publication Date" errorText={getError("publication_date")}>
+                      <Input
                         type="date"
-                        value={toDateValue(item.publication_date)}
+                        value={toDateValue(pubDate)}
                         onChange={(e) => onChange(index, "publication_date", toDateValue(e.target.value))}
-                        isDisabled={!isEditing}
-                        _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
+                        variant="flushed"
                         min="1900-01-01"
                         max="2100-12-31"
-                    />
-                </Field>
-            </SimpleGrid>
-
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <Field label="Number of Authors" errorText={getError("author_count")}>
-                    <NumberInput 
-                        value={item.author_count ?? ""}
+                      />
+                    </Field>
+                    <Field label="Number of Authors" errorText={getError("author_count")}>
+                      <NumberInput
+                        value={authorCount ?? ""}
                         min={1}
                         allowMouseWheel
                         clampValueOnBlur={false}
                         onChange={(valueString, valueNumber) => {
-                            if (valueString === "" || valueString === undefined) {
-                                onChange(index, "author_count", "")
-                            } else {
-                                onChange(index, "author_count", valueNumber)
-                            }
+                          if (valueString === "" || valueString === undefined) {
+                            onChange(index, "author_count", "")
+                          } else {
+                            onChange(index, "author_count", valueNumber)
+                          }
                         }}
-                        isDisabled={!isEditing}
-                    >
-                        <NumberInputField _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }} />
+                      >
+                        <NumberInputField variant="flushed" />
                         <NumberInputStepper>
-                            <NumberIncrementStepper />
-                            <NumberDecrementStepper />
+                          <NumberIncrementStepper />
+                          <NumberDecrementStepper />
                         </NumberInputStepper>
-                    </NumberInput>
-                </Field>
-            </SimpleGrid>
-
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <Field label="Mentor Name" errorText={getError("mentor_name")}>
-                    <Input 
-                        value={item.mentor_name || ""}
+                      </NumberInput>
+                    </Field>
+                    <Field label="Mentor Name" errorText={getError("mentor_name")}>
+                      <Input
+                        value={mentorName}
                         onChange={(e) => onChange(index, "mentor_name", e.target.value)}
-                        isDisabled={!isEditing}
-                        _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
-                        _placeholder={{ opacity: 0.7, color: "inherit" }}
-                    />
-                </Field>
-                <Field label="Link (DOI/URL)" errorText={getError("link")}>
-                    <Input 
-                        value={item.link || ""}
+                        variant="flushed"
+                      />
+                    </Field>
+                    <Field label="Link (DOI/URL)" gridColumn={{ md: "span 2" }} errorText={getError("link")}>
+                      <Input
+                        value={pubLink}
                         onChange={(e) => onChange(index, "link", e.target.value)}
-                        isDisabled={!isEditing}
-                        _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
-                        _placeholder={{ opacity: 0.7, color: "inherit" }}
-                    />
-                </Field>
-            </SimpleGrid>
-
-            <Field label="Skills Used" errorText={getError("skills")}>
-                <Input 
-                    value={item.skills || ""}
-                    onChange={(e) => onChange(index, "skills", e.target.value)}
-                    isDisabled={!isEditing}
-                    _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
-                    placeholder="e.g. Research, Data Analysis"
-                    _placeholder={{ opacity: 0.7, color: "inherit" }}
-                />
-            </Field>
-
-            <Field label="Description" errorText={getError("description")}>
-              <Textarea 
-                value={item.description || ""} 
-                onChange={(e) => onChange(index, "description", e.target.value)}
-                isDisabled={!isEditing}
-                _disabled={{ opacity: 1, color: "gray.800", cursor: "default" }}
-                rows={3}
-                _placeholder={{ opacity: 0.7, color: "inherit" }}
-              />
-            </Field>
-
-            <Field label="Evidence Document" errorText={getError("evidence_document") || getError("evidenceDocument")}>
-                {isEditing && (
-                    <Box>
-                        <Text mb={2} fontWeight="medium" color="gray.700">Upload evidence (saved when you click Save changes)</Text>
+                        variant="flushed"
+                        placeholder="https://doi.org/..."
+                      />
+                    </Field>
+                    <Field label="Skills Used" gridColumn={{ md: "span 2" }} errorText={getError("skills")}>
+                      <Input
+                        value={getField(item, "skills")}
+                        onChange={(e) => onChange(index, "skills", e.target.value)}
+                        variant="flushed"
+                        placeholder="e.g. Research, Data Analysis"
+                      />
+                    </Field>
+                    <Field
+                      label="Evidence Document"
+                      gridColumn={{ md: "span 2" }}
+                      errorText={getError("evidence_document") || getError("evidenceDocument")}
+                    >
+                      <VStack align="stretch" spacing={2}>
+                        <Text fontSize="xs" color="gray.500">
+                          Select a file, then click Save changes to upload.
+                        </Text>
                         <StyledFileInput
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-                            onChange={handleFileChange}
-                            acceptLabel="PDF, JPG, PNG"
-                            mb={2}
+                          accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,image/*,.doc,.docx,.ppt,.pptx"
+                          onChange={handleFileChange}
+                          acceptLabel="PDF, JPG, PNG"
                         />
                         {pendingPreview && (
-                          <Box border="2px dashed" borderColor="orange.300" borderRadius="md" p={2} bg="orange.50" mb={2}>
-                            <Image src={pendingPreview} alt="Preview" maxH="200px" objectFit="contain" mx="auto" />
-                            <Text fontSize="xs" color="orange.600" mt={2} textAlign="center" fontWeight="bold">Pending (click Save changes to upload)</Text>
+                          <Box className="growth-file-preview">
+                            <Image src={pendingPreview} alt="Preview" maxH="120px" objectFit="contain" />
+                            <Text fontSize="xs" fontWeight="bold" color="orange.600" mt={1}>
+                              Pending (save to upload)
+                            </Text>
                           </Box>
                         )}
+                        {evidenceUrl && !pendingPreview && (
+                          <Box className="growth-view-document" mt={2}>
+                            <HStack>
+                              <Icon as={FaExternalLinkAlt} color="blue.500" />
+                              <Text fontSize="sm" fontWeight="600" color="blue.700">
+                                Current document
+                              </Text>
+                            </HStack>
+                            <Link
+                              href={getFileUrl(evidenceUrl)}
+                              isExternal
+                              fontSize="xs"
+                              color="blue.600"
+                              fontWeight="bold"
+                              textDecoration="underline"
+                            >
+                              VIEW DOCUMENT
+                            </Link>
+                          </Box>
+                        )}
+                      </VStack>
+                    </Field>
+                  </SimpleGrid>
+                  <Field label="Description" errorText={getError("description")}>
+                    <Textarea
+                      value={getField(item, "description")}
+                      onChange={(e) => onChange(index, "description", e.target.value)}
+                      variant="flushed"
+                      rows={3}
+                      placeholder="Brief summary of the publication"
+                    />
+                  </Field>
+                </>
+              ) : (
+                <Box>
+                  <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} className="growth-view-grid">
+                    <Box className="growth-view-item">
+                      <Text className="growth-view-label">Title</Text>
+                      <Text className="growth-view-value">{title || "—"}</Text>
                     </Box>
-                )}
-                
-                {(item.evidence_document || item.evidenceDocument) && (
-                  <Box mt={2}>
-                    {(item.evidence_document || item.evidenceDocument).match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                      <Box 
-                        border="1px solid" 
-                        borderColor="gray.200" 
-                        borderRadius="md" 
-                        p={2}
-                        bg="gray.50"
-                      >
-                        <Image 
-                          src={getFileUrl(item.evidence_document || item.evidenceDocument)} 
-                          alt="Publication Evidence" 
-                          maxH="150px" 
-                          objectFit="contain" 
-                        />
-                        <Link 
-                          href={getFileUrl(item.evidence_document || item.evidenceDocument)} 
-                          isExternal 
-                          color="blue.500" 
-                          fontSize="sm" 
-                          display="block" 
-                          mt={1}
+                    <Box className="growth-view-item">
+                      <Text className="growth-view-label">Publication Name</Text>
+                      <Text className="growth-view-value">{pubName || "—"}</Text>
+                    </Box>
+                    <Box className="growth-view-item">
+                      <Text className="growth-view-label">Type</Text>
+                      <Text className="growth-view-value">{pubType || "—"}</Text>
+                    </Box>
+                    <Box className="growth-view-item">
+                      <Text className="growth-view-label">Publication Date</Text>
+                      <Text className="growth-view-value">{pubDate ? toDateValue(pubDate) : "—"}</Text>
+                    </Box>
+                    <Box className="growth-view-item">
+                      <Text className="growth-view-label">Authors</Text>
+                      <Text className="growth-view-value">
+                        {authorCount != null && authorCount !== "" ? authorCount : "—"}
+                      </Text>
+                    </Box>
+                    <Box className="growth-view-item">
+                      <Text className="growth-view-label">Mentor</Text>
+                      <Text className="growth-view-value">{mentorName || "—"}</Text>
+                    </Box>
+                    <Box className="growth-view-item" gridColumn={{ md: "span 3" }}>
+                      <Text className="growth-view-label">Link</Text>
+                      {pubLink ? (
+                        <Link
+                          href={pubLink.startsWith("http") ? pubLink : `https://${pubLink}`}
+                          isExternal
+                          className="growth-view-value"
+                          color="blue.600"
+                          fontWeight="500"
+                          display="inline-flex"
+                          alignItems="center"
+                          gap={1}
                         >
-                          View Full Image
+                          <Icon as={FaLink} boxSize={3} />
+                          {pubLink}
                         </Link>
+                      ) : (
+                        <Text className="growth-view-value">—</Text>
+                      )}
+                    </Box>
+                    <Box className="growth-view-item" gridColumn={{ md: "span 3" }}>
+                      <Text className="growth-view-label">Skills</Text>
+                      {skillsList.length > 0 ? (
+                        <Wrap spacing={2} mt={1}>
+                          {skillsList.map((skill, i) => (
+                            <WrapItem key={i}>
+                              <Badge
+                                colorScheme="gray"
+                                variant="subtle"
+                                px={2}
+                                py={1}
+                                borderRadius="md"
+                                fontWeight="medium"
+                                textTransform="none"
+                              >
+                                {skill}
+                              </Badge>
+                            </WrapItem>
+                          ))}
+                        </Wrap>
+                      ) : (
+                        <Text className="growth-view-value">—</Text>
+                      )}
+                    </Box>
+                    {getField(item, "description") && (
+                      <Box className="growth-view-item" gridColumn={{ md: "span 3" }}>
+                        <Text className="growth-view-label">Description</Text>
+                        <Text className="growth-view-value">{getField(item, "description")}</Text>
                       </Box>
-                    ) : (
-                      <Link 
-                        href={getFileUrl(item.evidence_document || item.evidenceDocument)} 
-                        isExternal 
-                        color="blue.500"
-                      >
-                        View Evidence
-                      </Link>
                     )}
-                  </Box>
-                )}
-            </Field>
-
-          </VStack>
+                  </SimpleGrid>
+                  {hasProof && (
+                    <Box className="growth-view-document" mt={4}>
+                      <HStack>
+                        <Icon as={FaExternalLinkAlt} color="blue.500" />
+                        <Text fontSize="sm" fontWeight="600" color="blue.700">
+                          Evidence Document
+                        </Text>
+                      </HStack>
+                      {evidenceUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                        <Box mt={2}>
+                          <Image
+                            src={getFileUrl(evidenceUrl)}
+                            alt="Publication evidence"
+                            maxH="160px"
+                            objectFit="contain"
+                            borderRadius="md"
+                            onError={(e) => {
+                              e.target.style.display = "none"
+                            }}
+                          />
+                          <Link
+                            href={getFileUrl(evidenceUrl)}
+                            isExternal
+                            fontSize="xs"
+                            color="blue.600"
+                            fontWeight="bold"
+                            mt={2}
+                            display="inline-block"
+                          >
+                            VIEW FULL SIZE
+                          </Link>
+                        </Box>
+                      ) : (
+                        <Link
+                          href={getFileUrl(evidenceUrl)}
+                          isExternal
+                          fontSize="xs"
+                          color="blue.600"
+                          fontWeight="bold"
+                          textDecoration="underline"
+                          mt={2}
+                          display="inline-block"
+                        >
+                          VIEW DOCUMENT
+                        </Link>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </VStack>
+          </Box>
         </Collapse>
-      </CardBody>
-    </Card>
+      </Box>
+    </Box>
   )
 }

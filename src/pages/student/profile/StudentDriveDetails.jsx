@@ -24,6 +24,7 @@ import { useBackgroundRefresh } from "../../../hooks/useBackgroundRefresh"
 import { PlacementService } from "../../../services/placement.service"
 import { useAuth } from "../../../context/AuthContext"
 import { CompanyLogo } from "../../../components/CompanyLogo"
+import { getCompanyLogoRaw } from "../../../utils/companyLogo"
 import { FaBuilding, FaMapMarkerAlt, FaMoneyBillWave, FaClock, FaBriefcase, FaArrowLeft, FaCalendarAlt, FaUserTie, FaGlobe, FaLinkedin } from "react-icons/fa"
 
 const isRegistered = (app) => {
@@ -181,7 +182,7 @@ export const StudentDriveDetails = () => {
               <CardBody>
                 <HStack spacing={6} align="start" mb={6}>
                   <CompanyLogo
-                    src={drive.company?.company_logo_link || drive.company?.logo}
+                    src={getCompanyLogoRaw(drive)}
                     name={drive.company?.company_name ?? drive.company_name}
                     boxSize="80px"
                   />

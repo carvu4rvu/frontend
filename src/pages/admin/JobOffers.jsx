@@ -52,6 +52,17 @@ import * as XLSX from 'xlsx';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 
+/** Unique school acronym only — strips program suffixes like " - BTECH" or " (HONS)". */
+function normalizeSchoolName(school) {
+  if (!school || !String(school).trim()) return 'Other';
+  let name = String(school).trim();
+  const dashSep = name.indexOf(' - ');
+  if (dashSep !== -1) name = name.slice(0, dashSep).trim();
+  const parenSep = name.indexOf(' (');
+  if (parenSep !== -1) name = name.slice(0, parenSep).trim();
+  return name.toUpperCase();
+}
+
 const JobOffers = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -423,35 +434,16 @@ const JobOffers = () => {
     }
   };
 
-  // Master list of schools
-  const ALL_SCHOOLS = [
-    'SoB',
-    'SoCSE - BTech',
-    'SoB - PG',
-    'SoD - UG',
-    'SoCSE - BSc',
-    'SoB (Hons)',
-    'SoLAS',
-    'SoD - PG',
-    'SoE',
-    'SoFMA'
-  ];
-
-  // Stats for the School Filter Cards
+  // Unique school names only (aggregated from offers)
   const schoolStats = useMemo(() => {
-    const stats = ALL_SCHOOLS.reduce((acc, school) => {
-      acc[school] = 0;
-      return acc;
-    }, {});
-
-    offers.forEach(offer => {
-      const school = offer.school ? offer.school.trim() : 'Other';
-      stats[school] = (stats[school] || 0) + 1;
+    const counts = {};
+    offers.forEach((offer) => {
+      const key = normalizeSchoolName(offer.school);
+      counts[key] = (counts[key] || 0) + 1;
     });
-    
-    return Object.entries(stats)
+    return Object.entries(counts)
       .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }, [offers]);
 
   useEffect(() => {
@@ -731,10 +723,9 @@ const JobOffers = () => {
         const matchesCompany = selectedCompany ? offer.company_name === selectedCompany : true;
         const matchesJobType = selectedJobType ? offer.job_type === selectedJobType : true;
         const matchesBatch = selectedBatch ? String(offer.batch) === String(selectedBatch) : true;
-        const matchesSchool = selectedSchools.length > 0 ? selectedSchools.some(selected => {
-          const offerSchool = offer.school ? offer.school.trim() : 'Other';
-          return offerSchool === selected;
-        }) : true;
+        const matchesSchool = selectedSchools.length > 0
+          ? selectedSchools.includes(normalizeSchoolName(offer.school))
+          : true;
         
         return matchesSearch && matchesCompany && matchesJobType && matchesBatch && matchesSchool;
       }),

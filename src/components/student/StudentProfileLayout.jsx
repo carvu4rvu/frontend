@@ -1,5 +1,6 @@
 import { useState, useRef, createContext, useEffect } from "react"
-import { Box, Flex, VStack, Text, Icon, HStack, Image, Button, Spinner, Badge } from "@chakra-ui/react"
+import { Box, Flex, VStack, Text, Icon, HStack, Button, Spinner, Badge } from "@chakra-ui/react"
+import { CarvuBrand } from "../CarvuBrand"
 
 /** Context so modals (e.g. project detail) can render inside the main content area and not overlap the sidebar */
 export const StudentProfileContentRefContext = createContext(null)
@@ -215,7 +216,7 @@ export const StudentProfileLayout = ({ children, basePath = null, isAdminView = 
                 Back to Students
               </Button>
             ) : (
-              <Image src="/logo.png" alt="CarvU" w="220px" objectFit="contain" mt={-1} pointerEvents="none" />
+              <CarvuBrand fontSize={{ base: 'xl', md: '2xl' }} pointerEvents="none" />
             )}
           </HStack>
         </HStack>

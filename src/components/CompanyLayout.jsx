@@ -19,7 +19,8 @@ import {
 import { ChevronDownIcon, BellIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 import { CompanyService } from '../services/company.service';
-import { getFileUrl } from '../utils/fileUrl';
+import { resolveCompanyLogoUrl } from '../utils/companyLogo';
+import { CarvuBrand } from './CarvuBrand';
 
 // Same theme as AlumniLayout
 const NAV_ACCENT = '#FDE74C';
@@ -84,7 +85,7 @@ const CompanyLayout = ({ children }) => {
   };
 
   const displayName = companyProfile?.company_name || 'Company';
-  const logoUrl = companyProfile?.company_logo_link ? getFileUrl(companyProfile.company_logo_link) : null;
+  const logoUrl = companyProfile?.company_logo_link ? resolveCompanyLogoUrl(companyProfile.company_logo_link) : null;
   const companyType = companyProfile?.company_type;
   const shortName = displayName.length > 20 ? `${displayName.slice(0, 18)}…` : displayName;
 
@@ -111,15 +112,7 @@ const CompanyLayout = ({ children }) => {
           onClick={() => navigate('/company/dashboard')}
           _hover={{ opacity: 0.9 }}
         >
-          <Image
-            src="/logo.png"
-            alt="CarvU Company"
-            w={{ base: '160px', md: '220px' }}
-            maxH={{ base: '32px', md: '44px' }}
-            objectFit="contain"
-            mt={-1}
-            pointerEvents="none"
-          />
+          <CarvuBrand fontSize={{ base: 'xl', md: '2xl' }} pointerEvents="none" />
         </HStack>
 
         {/* Right: Nav items + Notifications + Logout + Profile menu */}

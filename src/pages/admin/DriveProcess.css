@@ -72,7 +72,8 @@
   letter-spacing: 0.02em;
 }
 .drive-process-page .company-logo {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0;
 }
 .drive-process-page .stat-card {
   transition: transform 0.15s ease, box-shadow 0.15s ease;

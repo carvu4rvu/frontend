@@ -240,6 +240,12 @@ function validateImportRows(rows, requiredKeys) {
   return { validRows, typeErrors };
 }
 
+function formatLpa(value) {
+  const n = Number(value);
+  if (value == null || value === '' || Number.isNaN(n)) return '—';
+  return n.toFixed(2);
+}
+
 // Placement Overview tab: table by school / program / year with batch strength and salary stats (exported for PlacementOverviewPage)
 export const PlacementOverviewTab = ({ rows, salaryStats, academicYears, selectedYear, onYearChange, loading }) => {
   const headerRowBg = '#fbeec8';
@@ -302,10 +308,10 @@ export const PlacementOverviewTab = ({ rows, salaryStats, academicYears, selecte
                   {isFirstOfSchool && (
                     <Td rowSpan={schoolRowCounts[key]} fontSize="sm" borderColor={border} textAlign="center" verticalAlign="middle" p={4}>
                       <SimpleGrid columns={2} spacingY={2} spacingX={4} textAlign="left" minW="140px">
-                        <Box><Text fontSize="xs" color="gray.500">Max</Text><Text fontWeight="bold" fontSize="md" color="green.600">{stats.max} LPA</Text></Box>
-                        <Box><Text fontSize="xs" color="gray.500">Avg</Text><Text fontWeight="bold" fontSize="md" color="blue.600">{stats.avg} LPA</Text></Box>
-                        <Box><Text fontSize="xs" color="gray.500">Median</Text><Text fontWeight="bold" fontSize="md" color="purple.600">{stats.median} LPA</Text></Box>
-                        <Box><Text fontSize="xs" color="gray.500">Min</Text><Text fontWeight="bold" fontSize="md" color="orange.600">{stats.min} LPA</Text></Box>
+                        <Box><Text fontSize="xs" color="gray.500">Max</Text><Text fontWeight="bold" fontSize="md" color="green.600">{formatLpa(stats.max)} LPA</Text></Box>
+                        <Box><Text fontSize="xs" color="gray.500">Avg</Text><Text fontWeight="bold" fontSize="md" color="blue.600">{formatLpa(stats.avg)} LPA</Text></Box>
+                        <Box><Text fontSize="xs" color="gray.500">Median</Text><Text fontWeight="bold" fontSize="md" color="purple.600">{formatLpa(stats.median)} LPA</Text></Box>
+                        <Box><Text fontSize="xs" color="gray.500">Min</Text><Text fontWeight="bold" fontSize="md" color="orange.600">{formatLpa(stats.min)} LPA</Text></Box>
                         <Box gridColumn="span 2" borderTop="1px dashed" borderColor="gray.200" pt={2}>
                           <HStack justify="space-between"><Text fontSize="xs" color="gray.500">Paid Internships</Text><Badge colorScheme="teal">{stats.paidInternships}</Badge></HStack>
                         </Box>

@@ -1,10 +1,11 @@
 import React from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import {
-  Box, HStack, Button, Text, Flex, Avatar, Container, Image, Tag
+  Box, HStack, Button, Text, Flex, Avatar, Container, Tag
 } from '@chakra-ui/react';
 import { ViewIcon, CopyIcon, CalendarIcon, InfoIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
+import { CarvuBrand } from './CarvuBrand';
 
 const ParentLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -42,7 +43,7 @@ const ParentLayout = ({ children }) => {
           <Flex justify="space-between" align="center" h={{ base: '60px', md: '72px' }}>
             <HStack spacing={{ base: 4, md: 8 }}>
               <HStack onClick={() => navigate('/parent/dashboard')} cursor="pointer" spacing={3}>
-                <Image src="/logo.png" alt="Parent Portal" w="220px" objectFit="contain" mt={-2} />
+                <CarvuBrand fontSize={{ base: 'xl', md: '2xl' }} />
                 <Text color="white" fontWeight="bold" fontSize="xl" mt={2}>
                   Parent Portal
                 </Text>

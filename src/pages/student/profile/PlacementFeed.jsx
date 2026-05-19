@@ -3,6 +3,7 @@ import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../../context/AuthContext"
 import { CompanyLogo } from "../../../components/CompanyLogo"
+import { getCompanyLogoRaw } from "../../../utils/companyLogo"
 import { usePlacementTrackPolicy } from "../../../context/PlacementTrackPolicyContext"
 import { useStudentDataCache } from "../../../context/StudentDataCacheContext"
 
@@ -119,7 +120,7 @@ export const PlacementFeed = () => {
     const totalApplied = drive.registered_count ?? drive.number_of_registrations ?? 0;
     const openings = drive.number_of_openings ?? null;
     const companyName = drive.company?.company_name ?? drive.company_name ?? "Company";
-    const companyLogo = drive.company?.company_logo_link ?? drive.company?.logo;
+    const companyLogo = getCompanyLogoRaw(drive);
     const jobType = drive.job_type ?? "—";
     const hiringType = drive.type_of_hiring ?? "—";
     const jobLocation = drive.job_location ?? "—";

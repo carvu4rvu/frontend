@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Image, Text } from '@chakra-ui/react';
+import { resolveCompanyLogoUrl } from '../utils/companyLogo';
 
 /**
  * Company logo with fallback when image fails to load (e.g. Clearbit blocked by ad blocker).
  */
 export function CompanyLogo({ src, name, boxSize = '80px', variant = 'circle', ...props }) {
   const [error, setError] = useState(false);
+  const resolvedSrc = useMemo(() => resolveCompanyLogoUrl(src), [src]);
   const fallback = (name || '?').substring(0, 2).toUpperCase();
   const isCircle = variant === 'circle';
   const fallbackBox = (
@@ -23,7 +25,7 @@ export function CompanyLogo({ src, name, boxSize = '80px', variant = 'circle', .
       </Text>
     </Box>
   );
-  if (!src || error) return fallbackBox;
+  if (!resolvedSrc || error) return fallbackBox;
   return (
     <Box
       boxSize={boxSize}
@@ -36,7 +38,7 @@ export function CompanyLogo({ src, name, boxSize = '80px', variant = 'circle', .
       {...props}
     >
       <Image
-        src={src}
+        src={resolvedSrc}
         alt={name || ''}
         objectFit="contain"
         maxH="60%"

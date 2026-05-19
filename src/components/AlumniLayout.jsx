@@ -6,6 +6,7 @@ import { BellIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 import { PlacementService } from '../services/placement.service';
 import { getFileUrl } from '../utils/fileUrl';
+import { CarvuBrand } from './CarvuBrand';
 
 const NAV_ACCENT = '#FDE74C';
 const HEADER_BG = '#20343c';
@@ -86,15 +87,7 @@ const AlumniLayout = ({ children }) => {
           onClick={() => navigate('/placement/alumni-dashboard')}
           _hover={{ opacity: 0.9 }}
         >
-          <Image
-            src="/logo.png"
-            alt="CarvU Alumni"
-            w={{ base: '160px', md: '220px' }}
-            maxH={{ base: '32px', md: '44px' }}
-            objectFit="contain"
-            mt={-1}
-            pointerEvents="none"
-          />
+          <CarvuBrand fontSize={{ base: 'xl', md: '2xl' }} pointerEvents="none" />
         </HStack>
 
         {/* Right: Nav items + Notifications + Profile menu */}

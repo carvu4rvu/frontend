@@ -28,6 +28,13 @@ import { MdCalendarToday, MdHourglassEmpty } from 'react-icons/md';
 import { ViewIcon } from '@chakra-ui/icons';
 import '../admin/PlacementEvents.css';
 import CompanyLayout from '../../components/CompanyLayout';
+import { CompanyLogo } from '../../components/CompanyLogo';
+import { getCompanyLogoRaw } from '../../utils/companyLogo';
+import { EligibilityDisplay } from '../../components/placement/EligibilityDisplay';
+import {
+  getEligibilityGroupsFromDrive,
+  formatEligibilityGroupsPlain,
+} from '../../utils/eligibilityDisplay';
 import { CompanyService } from '../../services/company.service';
 
 /* Same columns as admin placement drive table */
@@ -94,11 +101,9 @@ const CompanyDrives = () => {
     return derivePlacementStatusFromDates(drive.last_date_to_registration, drive.event_datetime);
   };
 
-  /** Use eligibility_display (school - program pairs) or fallback */
   const getEligibilityDisplay = (drive) => {
-    if (drive?.eligibility_display) return drive.eligibility_display;
-    const pairs = drive?.school_program_pairs || [];
-    if (pairs.length > 0) return pairs.map((p) => `${p.school} - ${p.program}`).join(', ');
+    const groups = getEligibilityGroupsFromDrive(drive);
+    if (groups.length > 0) return formatEligibilityGroupsPlain(groups);
     return [drive?.school, drive?.program].filter(Boolean).join(' • ') || '—';
   };
 
@@ -148,7 +153,14 @@ const CompanyDrives = () => {
         return (
           <Box className="col-company-remarks-tpo">
             <Flex gap={3}>
-              <Box className="company-logo">{(drive.company_name || drive.job_description || ' ')[0]}</Box>
+              <CompanyLogo
+                className="company-logo"
+                src={getCompanyLogoRaw(drive)}
+                name={drive.company_name || drive.job_description}
+                boxSize="44px"
+                variant="square"
+                flexShrink={0}
+              />
               <Flex flexDirection="column">
                 <Box className="company-name">{drive.company_name || '—'}</Box>
                 <Box className="company-remarks line-clamp-2">"{drive.company_remarks || ''}"</Box>
@@ -160,20 +172,11 @@ const CompanyDrives = () => {
       case 'eligibility': {
         const eligText = getEligibilityDisplay(drive);
         return (
-          <Badge
-            fontSize="10px"
-            colorScheme="gray"
-            variant="subtle"
-            fontWeight="bold"
-            textTransform="uppercase"
-            letterSpacing="tighter"
-            px={2}
-            py={1}
-            borderRadius="md"
-            title={eligText || undefined}
-          >
-            {eligText}
-          </Badge>
+          <EligibilityDisplay
+            drive={drive}
+            fallback={eligText}
+            tooltipLabel={eligText}
+          />
         );
       }
       case 'location_description':

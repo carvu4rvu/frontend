@@ -1,4 +1,5 @@
-import { Box, Flex, Button, Heading, Spacer, HStack, Link, Image } from "@chakra-ui/react"
+import { Box, Flex, Button, Spacer, HStack, Link } from "@chakra-ui/react"
+import { CarvuBrand } from "./CarvuBrand"
 import { Link as RouterLink, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 
@@ -26,13 +27,8 @@ export const Navbar = () => {
   return (
     <Box as="nav" bg="#20343c" color="white" py={6} px={8} position="sticky" top={0} zIndex={100} shadow="md" w="100%">
       <Flex w="full" alignItems="center" justifyContent="space-between">
-        <Box as={RouterLink} to="/">
-          <Image
-            src="/logo.png"
-            alt="CARVu logo"
-            h="50px"
-            objectFit="contain"
-          />
+        <Box as={RouterLink} to="/" _hover={{ opacity: 0.9 }}>
+          <CarvuBrand fontSize="2xl" />
         </Box>
         
           <Flex gap={6} alignItems="center">
