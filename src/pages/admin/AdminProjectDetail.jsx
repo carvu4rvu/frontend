@@ -63,7 +63,10 @@ import { FaExternalLinkAlt, FaGithub, FaUser, FaChevronLeft, FaChevronDown, FaTr
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
-import { getFileUrl } from '../../utils/fileUrl';
+import ProgressiveImage from '../../components/projects/ProgressiveImage';
+import { splitProjectSnaps, getProjectLightboxImages, getShowcaseGalleryStrip } from '../../utils/projectSnaps';
+import ProjectImageLightbox from '../../components/projects/ProjectImageLightbox';
+import { useProjectImageLightbox } from '../../hooks/useProjectImageLightbox';
 
 const BLUE_ACCENT = '#1a73e8';
 const CARD_RADIUS = '16px';
@@ -74,6 +77,7 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
   const location = useLocation();
   const toast = useToast();
   const navigate = useNavigate();
+  const { openProjectImages, lightboxProps } = useProjectImageLightbox();
   const isAlumni = variant === 'alumni';
   const isCompany = variant === 'company';
   const [project, setProject] = useState(null);
@@ -325,6 +329,9 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
   }
 
   const snaps = project.project_snaps || [];
+  const { cover: coverSnap } = splitProjectSnaps(snaps);
+  const gallerySnaps = getShowcaseGalleryStrip(project);
+  const lightboxImages = getProjectLightboxImages(project);
   const assets = project.assets || [];
   const reviews = project.reviews || [];
   const shareLinks = project.share_links || [];
@@ -349,9 +356,19 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
           <Box bg="white" borderRadius="2xl" borderWidth="1px" borderColor="gray.200" overflow="hidden" mb={6} boxShadow="sm">
             <Box h="140px" bgGradient="linear(to-r, blue.500, indigo.600)" position="relative">
               <Flex position="absolute" bottom="-36px" left={6} align="flex-end" gap={6}>
-                <Box w="120px" h="120px" bg="white" p={1.5} borderRadius="2xl" shadow="lg" flexShrink={0}>
-                  {snaps[0] ? (
-                    <Image src={getFileUrl(snaps[0])} w="100%" h="100%" objectFit="cover" borderRadius="xl" onError={(e) => { e.target.style.display = 'none'; }} />
+                <Box
+                  w="120px"
+                  h="120px"
+                  bg="white"
+                  p={1.5}
+                  borderRadius="2xl"
+                  shadow="lg"
+                  flexShrink={0}
+                  cursor={coverSnap ? 'zoom-in' : undefined}
+                  onClick={coverSnap ? () => openProjectImages(project, coverSnap) : undefined}
+                >
+                  {coverSnap ? (
+                    <ProgressiveImage src={coverSnap} project={project} profile="detail" priority={1} w="100%" h="100%" objectFit="cover" borderRadius="xl" />
                   ) : (
                     <Box w="100%" h="100%" bg="gray.100" borderRadius="xl" />
                   )}
@@ -454,13 +471,23 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
                         <Heading size="sm" mb={4} color="gray.900">Description</Heading>
                         <Text whiteSpace="pre-wrap" fontSize="sm" color="gray.700" lineHeight="tall">{project.description || project.short_description || '—'}</Text>
                       </Box>
-                      {snaps.length > 0 && (
+                      {gallerySnaps.length > 0 && (
                         <Box bg="white" p={6} borderRadius="2xl" borderWidth="1px" borderColor="gray.200" shadow="sm">
-                          <Heading size="sm" mb={4} color="gray.900">Screenshots</Heading>
-                          <SimpleGrid columns={{ base: 2, md: 3 }} spacing={4}>
-                            {snaps.map((url, i) => (
-                              <Box key={i} borderRadius="xl" overflow="hidden" border="1px solid" borderColor="gray.100" aspectRatio="16/9">
-                                <Image src={getFileUrl(url)} w="100%" h="100%" objectFit="cover" alt="" onError={(e) => { e.target.style.display = 'none'; }} />
+                          <Heading size="sm" mb={4} color="gray.900">Gallery</Heading>
+                          <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
+                            {gallerySnaps.map((url, i) => (
+                              <Box
+                                key={i}
+                                borderRadius="xl"
+                                overflow="hidden"
+                                border="1px solid"
+                                borderColor="gray.100"
+                                aspectRatio="16/9"
+                                cursor="zoom-in"
+                                onClick={() => openProjectImages(project, url)}
+                                _hover={{ opacity: 0.9 }}
+                              >
+                                <ProgressiveImage src={url} project={project} profile="galleryTile" priority={2} w="100%" h="100%" objectFit="cover" alt="" />
                               </Box>
                             ))}
                           </SimpleGrid>
@@ -559,13 +586,27 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
                               />
                             </Flex>
                             <Flex p={6} direction={{ base: 'column', md: 'row' }} gap={8}>
-                              <Box w={{ base: '100%', md: '256px' }} h="160px" bg="gray.100" borderRadius="xl" overflow="hidden" flexShrink={0} borderWidth="1px" borderColor="gray.200">
-                                <Image
-                                  src={getFileUrl(asset.original_url)}
+                              <Box
+                                w={{ base: '100%', md: '256px' }}
+                                h="160px"
+                                bg="gray.100"
+                                borderRadius="xl"
+                                overflow="hidden"
+                                flexShrink={0}
+                                borderWidth="1px"
+                                borderColor="gray.200"
+                                cursor={asset.original_url ? 'zoom-in' : undefined}
+                                onClick={asset.original_url ? () => openProjectImages(project, asset.original_url) : undefined}
+                                _hover={asset.original_url ? { opacity: 0.9 } : undefined}
+                              >
+                                <ProgressiveImage
+                                  src={asset.original_url}
+                                  project={project}
+                                  profile="detail"
+                                  priority={2}
                                   w="100%"
                                   h="100%"
                                   objectFit="contain"
-                                  onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                               </Box>
                               <Box flex={1} minW={0}>
@@ -874,6 +915,7 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
         </AlertDialogContent>
       </AlertDialog>
 
+      <ProjectImageLightbox {...lightboxProps} />
     </LayoutComponent>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Box,
   Container,
@@ -13,9 +13,12 @@ import {
   InputLeftElement,
 } from '@chakra-ui/react';
 import { SearchIcon, ChevronLeftIcon } from '@chakra-ui/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PlacementService } from '../services/placement.service';
 import TopChartsList from '../components/projects/TopChartsList';
+import { sortByTopChartsScore } from '../utils/projectShowcaseScoring';
+import ProjectImageLightbox from '../components/projects/ProjectImageLightbox';
+import { useProjectImageLightbox } from '../hooks/useProjectImageLightbox';
 
 const PLAY_GREEN = '#01875f';
 const PLAY_GREEN_HOVER = '#01704f';
@@ -33,11 +36,14 @@ export default function ProjectTopChartsPage({
   const Layout = LayoutComponent;
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const pageTopRef = useRef(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [likingId, setLikingId] = useState(null);
   const [favoritingId, setFavoritingId] = useState(null);
+  const { openProjectImages, lightboxProps } = useProjectImageLightbox();
 
   const projectsBase = projectBasePath
     ?? (variant === 'admin' ? '/placement/gallery' : variant === 'company' ? '/company/projects' : '/placement/alumni-projects');
@@ -61,6 +67,17 @@ export default function ProjectTopChartsPage({
     fetchProjects();
   }, [fetchProjects]);
 
+  const scrollPageToTop = useCallback(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    pageTopRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }, []);
+
+  useLayoutEffect(() => {
+    scrollPageToTop();
+  }, [location.pathname, location.key, scrollPageToTop]);
+
   const rankedProjects = useMemo(() => {
     let list = [...projects];
     if (search.trim()) {
@@ -72,8 +89,12 @@ export default function ProjectTopChartsPage({
         return `${title} ${usn} ${genre}`.includes(q);
       });
     }
-    return list.sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0));
+    return sortByTopChartsScore(list);
   }, [projects, search]);
+
+  useLayoutEffect(() => {
+    if (!loading) scrollPageToTop();
+  }, [loading, rankedProjects.length, scrollPageToTop]);
 
   const goToProjectDetail = (project, e) => {
     if (e) e.stopPropagation();
@@ -120,6 +141,7 @@ export default function ProjectTopChartsPage({
     <Layout>
       <Box bg="#f8fafc" minH="100vh" py={{ base: 6, md: 8 }}>
         <Container maxW="container.lg">
+          <Box ref={pageTopRef} scrollMarginTop="88px" aria-hidden />
           <Button
             variant="ghost"
             size="sm"
@@ -171,6 +193,7 @@ export default function ProjectTopChartsPage({
                 projects={rankedProjects}
                 mode="full"
                 onViewProject={goToProjectDetail}
+                onOpenProjectImages={openProjectImages}
                 onLike={handleLike}
                 onFavorite={handleFavorite}
                 likingId={likingId}
@@ -180,6 +203,7 @@ export default function ProjectTopChartsPage({
           )}
         </Container>
       </Box>
+      <ProjectImageLightbox {...lightboxProps} />
     </Layout>
   );
 }

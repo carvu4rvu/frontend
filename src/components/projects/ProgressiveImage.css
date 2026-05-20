@@ -1,0 +1,40 @@
+.progressive-image {
+  position: relative;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.progressive-image__layer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: inherit;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
+}
+
+.progressive-image__layer--base,
+.progressive-image__layer--overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.progressive-image__layer--base {
+  z-index: 0;
+}
+
+.progressive-image__layer--overlay {
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.progressive-image__layer--overlay.is-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressive-image__layer {
+    transition: none;
+  }
+}

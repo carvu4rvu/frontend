@@ -2,8 +2,8 @@
 import { Button, Icon, IconButton, Tooltip } from '@chakra-ui/react';
 import { ViewIcon } from '@chakra-ui/icons';
 import { FaHeart, FaRegHeart, FaBookmark, FaRegBookmark } from 'react-icons/fa';
-import { getFileUrl } from '../../utils/fileUrl';
-import { getShowcasePreviewImage } from '../../utils/projectSnaps';
+import { getProjectCoverImage } from '../../utils/projectSnaps';
+import ProgressiveImage from './ProgressiveImage';
 import './TopChartsList.css';
 
 function formatCount(n) {
@@ -13,15 +13,22 @@ function formatCount(n) {
   return String(num);
 }
 
-function PreviewHead({ project, rank }) {
-  const preview = getShowcasePreviewImage(project);
+function PreviewHead({ project, rank, onOpenProjectImages }) {
+  const preview = getProjectCoverImage(project);
   const rankClass = `top-charts-preview-card__rank${rank <= 3 ? ' top-charts-preview-card__rank--top3' : ''}`;
   return (
     <div className="top-charts-preview-card__head">
       <span className={rankClass}>{rank}</span>
-      <div className="top-charts-preview-card__thumb">
+      <div
+        className="top-charts-preview-card__thumb"
+        role={preview && onOpenProjectImages ? 'button' : undefined}
+        tabIndex={preview && onOpenProjectImages ? 0 : undefined}
+        style={preview && onOpenProjectImages ? { cursor: 'zoom-in' } : undefined}
+        onClick={preview && onOpenProjectImages ? (e) => { e.stopPropagation(); onOpenProjectImages(project, preview); } : undefined}
+        onKeyDown={preview && onOpenProjectImages ? (e) => { if (e.key === 'Enter') { e.stopPropagation(); onOpenProjectImages(project, preview); } } : undefined}
+      >
         {preview ? (
-          <img src={getFileUrl(preview)} alt="" onError={(e) => { e.target.style.display = 'none'; }} />
+          <ProgressiveImage src={preview} project={project} profile="icon" priority={2} as="native" alt="" w="100%" h="100%" />
         ) : null}
       </div>
       <div className="top-charts-preview-card__meta">
@@ -39,6 +46,7 @@ export default function TopChartsList({
   projects = [],
   mode = 'preview',
   onViewProject,
+  onOpenProjectImages,
   onLike,
   onFavorite,
   likingId,
@@ -58,7 +66,7 @@ export default function TopChartsList({
             role="button"
             tabIndex={0}
           >
-            <PreviewHead project={p} rank={i + 1} />
+            <PreviewHead project={p} rank={i + 1} onOpenProjectImages={onOpenProjectImages} />
             <span
               className="top-charts-preview-card__cta"
               onClick={(e) => {
@@ -79,7 +87,7 @@ export default function TopChartsList({
     <div className="top-charts-full-list">
       {projects.map((p, i) => {
         const rank = i + 1;
-        const preview = getShowcasePreviewImage(p);
+        const preview = getProjectCoverImage(p);
         const rankClass = `top-charts-full-row__rank${rank <= 3 ? ' top-charts-full-row__rank--top3' : ''}`;
         return (
           <article
@@ -91,9 +99,16 @@ export default function TopChartsList({
             tabIndex={0}
           >
             <span className={rankClass}>{rank}</span>
-            <div className="top-charts-full-row__thumb">
+            <div
+              className="top-charts-full-row__thumb"
+              role={preview && onOpenProjectImages ? 'button' : undefined}
+              tabIndex={preview && onOpenProjectImages ? 0 : undefined}
+              style={preview && onOpenProjectImages ? { cursor: 'zoom-in' } : undefined}
+              onClick={preview && onOpenProjectImages ? (e) => { e.stopPropagation(); onOpenProjectImages(p, preview); } : undefined}
+              onKeyDown={preview && onOpenProjectImages ? (e) => { if (e.key === 'Enter') { e.stopPropagation(); onOpenProjectImages(p, preview); } } : undefined}
+            >
               {preview ? (
-                <img src={getFileUrl(preview)} alt="" onError={(e) => { e.target.style.display = 'none'; }} />
+                <ProgressiveImage src={preview} project={p} profile="icon" priority={2} as="native" alt="" w="100%" h="100%" />
               ) : null}
             </div>
             <div className="top-charts-full-row__body">

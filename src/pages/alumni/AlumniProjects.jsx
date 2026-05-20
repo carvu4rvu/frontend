@@ -20,7 +20,6 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Image,
   Flex,
   Tag,
   Icon,
@@ -36,7 +35,7 @@ import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaHeart, Fa
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AlumniLayout from '../../components/AlumniLayout';
 import { PlacementService } from '../../services/placement.service';
-import { getFileUrl } from '../../utils/fileUrl';
+import ProgressiveImage from '../../components/projects/ProgressiveImage';
 
 const PLAY_GREEN = '#01875f';
 const PLAY_GREEN_HOVER = '#01704f';
@@ -364,14 +363,16 @@ const AlumniProjects = () => {
                       onClick={() => goToProjectDetail(p)}
                     >
                       {heroImg ? (
-                        <Image
-                          src={getFileUrl(heroImg)}
+                        <ProgressiveImage
+                          src={heroImg}
+                          project={p}
+                          profile="featuredHero"
+                          priority={1}
                           w="100%"
                           h="100%"
                           objectFit="cover"
                           borderRadius="2xl"
                           filter="brightness(0.75)"
-                          onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       ) : (
                         <Box w="100%" h="100%" aspectRatio="16/9" bg="gray.200" borderRadius="2xl" />
@@ -405,8 +406,11 @@ const AlumniProjects = () => {
                       <Box position="absolute" bottom={6} left={6} right={6} color="white" maxW="md">
                         <HStack align="flex-start" spacing={3} mb={2}>
                           {icon ? (
-                            <Image
-                              src={getFileUrl(icon)}
+                            <ProgressiveImage
+                              src={icon}
+                              project={p}
+                              profile="icon"
+                              priority={1}
                               w={10}
                               h={10}
                               borderRadius="lg"
@@ -414,7 +418,6 @@ const AlumniProjects = () => {
                               borderColor="whiteAlpha.300"
                               shadow="lg"
                               objectFit="cover"
-                              onError={(e) => { e.target.style.display = 'none'; }}
                             />
                           ) : (
                             <Box w={10} h={10} borderRadius="lg" bg="whiteAlpha.300" />
@@ -502,7 +505,7 @@ const AlumniProjects = () => {
                         </Text>
                         {icon ? (
                           <Box boxSize="64px" flexShrink={0} borderRadius="xl" overflow="hidden" border="1px solid" borderColor="gray.100">
-                            <Image src={getFileUrl(icon)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                            <ProgressiveImage src={icon} project={p} profile="icon" priority={2} w="100%" h="100%" objectFit="cover" />
                           </Box>
                         ) : (
                           <Box boxSize="64px" flexShrink={0} borderRadius="xl" bg="gray.100" />
@@ -595,7 +598,7 @@ const AlumniProjects = () => {
                         </Text>
                         {icon ? (
                           <Box boxSize="48px" flexShrink={0} borderRadius="lg" overflow="hidden" border="1px solid" borderColor="gray.100">
-                            <Image src={getFileUrl(icon)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                            <ProgressiveImage src={icon} project={p} profile="icon" priority={2} w="100%" h="100%" objectFit="cover" />
                           </Box>
                         ) : (
                           <Box boxSize="48px" flexShrink={0} borderRadius="lg" bg="gray.100" />
@@ -682,12 +685,14 @@ const AlumniProjects = () => {
                               border="1px solid"
                               borderColor="gray.100"
                             >
-                              <Image
-                                src={getFileUrl(icon)}
+                              <ProgressiveImage
+                                src={icon}
+                                project={p}
+                                profile="icon"
+                                priority={2}
                                 w="100%"
                                 h="100%"
                                 objectFit="cover"
-                                onError={(e) => { e.target.style.display = 'none'; }}
                               />
                             </Box>
                           ) : (
@@ -889,12 +894,14 @@ const AlumniProjects = () => {
                                 _hover={snap ? { opacity: 0.9 } : {}}
                               >
                                 {snap ? (
-                                  <Image
-                                    src={getFileUrl(snap)}
+                                  <ProgressiveImage
+                                    src={snap}
+                                    project={p}
+                                    profile="galleryTile"
+                                    priority={3}
                                     w="100%"
                                     h="100%"
                                     objectFit="contain"
-                                    onError={(e) => { e.target.style.display = 'none'; }}
                                   />
                                 ) : (
                                   <Box w="100%" h="100%" />
@@ -968,13 +975,15 @@ const AlumniProjects = () => {
                 {snaps.length > 0 && (
                   <Box>
                     <Box borderRadius="xl" overflow="hidden" bg={colors.cardBg} position="relative" aspectRatio="16/9">
-                      <Image
-                        src={getFileUrl(snaps[detailSnapIndex])}
+                      <ProgressiveImage
+                        src={snaps[detailSnapIndex]}
+                        project={selectedProject}
+                        profile="detail"
+                        priority={1}
                         w="100%"
                         h="100%"
                         objectFit="contain"
                         alt=""
-                        onError={(e) => { e.target.style.display = 'none'; }}
                       />
                     </Box>
                     {snaps.length > 1 && (
@@ -992,7 +1001,7 @@ const AlumniProjects = () => {
                             borderColor={i === detailSnapIndex ? colors.accent : 'transparent'}
                             onClick={() => setDetailSnapIndex(i)}
                           >
-                            <Image src={getFileUrl(s)} w="100%" h="100%" objectFit="cover" alt="" />
+                            <ProgressiveImage src={s} project={selectedProject} profile="galleryTile" priority={3} w="100%" h="100%" objectFit="cover" alt="" />
                           </Box>
                         ))}
                       </HStack>

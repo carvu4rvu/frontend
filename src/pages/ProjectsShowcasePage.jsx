@@ -12,7 +12,6 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Image,
   Flex,
   Tag,
   Icon,
@@ -28,9 +27,17 @@ import { ViewIcon, SearchIcon, StarIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaUser, FaHeart, FaRegHeart, FaBookmark, FaRegBookmark, FaLink, FaComment } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { PlacementService } from '../services/placement.service';
-import { getFileUrl } from '../utils/fileUrl';
-import { getShowcasePreviewImage, getShowcaseGalleryStrip, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
+import { getProjectCoverImage, getShowcaseHeroImage, getShowcaseGalleryStrip, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
 import TopChartsList from '../components/projects/TopChartsList';
+import ProgressiveImage from '../components/projects/ProgressiveImage';
+import ProjectImageLightbox from '../components/projects/ProjectImageLightbox';
+import { useProjectImageLightbox } from '../hooks/useProjectImageLightbox';
+import {
+  sortByAllProjectsScore,
+  sortByTopChartsScore,
+  getSeenProjectIds,
+  markProjectSeen,
+} from '../utils/projectShowcaseScoring';
 
 const PLAY_GREEN = '#01875f';
 const PLAY_GREEN_HOVER = '#01704f';
@@ -44,6 +51,17 @@ function formatCount(n) {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
   return String(num);
 }
+
+/** Trending score for featured carousel ordering (likes-weighted). */
+function projectTrendScore(p) {
+  const likes = Number(p.likes_count) || 0;
+  const views = Number(p.views_count) || 0;
+  const favs = Number(p.favorites_count) || 0;
+  const staff = Number(p.staff_favorite_count) || 0;
+  return likes * 3 + views + favs * 2 + staff * 10;
+}
+
+const FEATURED_CAROUSEL_MS = 5500;
 
 /**
  * Universal Projects Showcase page – same UI for admin (placement/gallery/showcase) and alumni (placement/alumni-projects).
@@ -61,6 +79,9 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
   const [favoritingId, setFavoritingId] = useState(null);
   const [shareLoadingId, setShareLoadingId] = useState(null);
   const heroCarouselRef = useRef(null);
+  const sessionSeedRef = useRef(Date.now());
+  const [heroPaused, setHeroPaused] = useState(false);
+  const { openProjectImages, openImages, lightboxProps } = useProjectImageLightbox();
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);
@@ -105,13 +126,58 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
     return list;
   }, [showcaseFilter, favoriteProjects, filteredProjects, visibilityFilter, variant]);
 
+  const allProjectsSorted = useMemo(() => {
+    const seenIds = getSeenProjectIds();
+    return sortByAllProjectsScore(showcaseDisplayProjects, {
+      seenIds,
+      sessionSeed: sessionSeedRef.current,
+    });
+  }, [showcaseDisplayProjects]);
+
   const publicCount = useMemo(
     () => projects.filter((p) => String(p.visibility || '').toUpperCase() === 'PUBLIC').length,
     [projects]
   );
-  const featuredProjects = useMemo(() => showcaseDisplayProjects.slice(0, 6), [showcaseDisplayProjects]);
+  const featuredProjects = useMemo(() => {
+    const sortTrending = (a, b) => {
+      const diff = projectTrendScore(b) - projectTrendScore(a);
+      if (diff !== 0) return diff;
+      return (b.likes_count || 0) - (a.likes_count || 0);
+    };
+    const isStaffPick = (p) => !!(p.is_staff_favorited || p.is_favorited);
+
+    if (variant === 'admin') {
+      const byId = new Map();
+      showcaseDisplayProjects.filter(isStaffPick).forEach((p) => byId.set(p.id, p));
+      return [...byId.values()].sort(sortTrending);
+    }
+
+    if (variant === 'alumni' || variant === 'company') {
+      const staffPicks = showcaseDisplayProjects.filter((p) => p.is_staff_favorited);
+      if (staffPicks.length) return [...staffPicks].sort(sortTrending);
+    }
+
+    return [...showcaseDisplayProjects].sort(sortTrending).slice(0, 6);
+  }, [showcaseDisplayProjects, variant]);
+
+  useEffect(() => {
+    if (heroPaused || featuredProjects.length <= 1) return undefined;
+    const timer = setInterval(() => {
+      const el = heroCarouselRef.current;
+      if (!el) return;
+      const gap = 16;
+      const step = el.clientWidth + gap;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft + step >= maxScroll - 4) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        el.scrollBy({ left: step, behavior: 'smooth' });
+      }
+    }, FEATURED_CAROUSEL_MS);
+    return () => clearInterval(timer);
+  }, [featuredProjects.length, heroPaused]);
   const topByLikes = useMemo(
-    () => [...showcaseDisplayProjects].sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0)).slice(0, 6),
+    () => sortByTopChartsScore(showcaseDisplayProjects).slice(0, 6),
     [showcaseDisplayProjects]
   );
   const scrollHero = (direction) => {
@@ -172,7 +238,12 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
         )
       );
     } catch (err) {
-      toast({ title: 'Failed to update like', status: 'error', isClosable: true });
+      toast({
+        title: 'Failed to update like',
+        description: err?.message || 'Please try again.',
+        status: 'error',
+        isClosable: true,
+      });
     } finally {
       setLikingId(null);
     }
@@ -184,6 +255,7 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
   const goToProjectDetail = (project, e) => {
     if (e) e.stopPropagation();
     if (project?.id) {
+      markProjectSeen(project.id);
       navigate(`${projectsBase}/project/${project.id}`);
     }
   };
@@ -309,32 +381,53 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
             </HStack>
           </Flex>
 
-          {/* Section 1: Featured Student Work (Carousel) */}
-          {featuredProjects.length > 0 && (
+          {/* Section 1: Featured — staff favorites (admin), auto-rotating, sorted by trending */}
+          {(variant === 'admin' || featuredProjects.length > 0) && (
             <Box mb={10}>
-              <Flex justify="space-between" align="center" mb={4}>
-                <Heading size="md" fontWeight="bold">
-                  Featured Student Work
-                </Heading>
-                <HStack gap={2}>
-                  <Button size="sm" variant="outline" borderRadius="full" borderColor="gray.200" onClick={() => scrollHero(-1)} _hover={{ bg: 'gray.50' }}>
-                    <Icon as={FaChevronLeft} boxSize={3} />
-                  </Button>
-                  <Button size="sm" variant="outline" borderRadius="full" borderColor="gray.200" onClick={() => scrollHero(1)} _hover={{ bg: 'gray.50' }}>
-                    <Icon as={FaChevronRight} boxSize={3} />
-                  </Button>
-                </HStack>
+              <Flex justify="space-between" align="flex-start" mb={4} gap={4} flexWrap="wrap">
+                <Box>
+                  <Heading size="md" fontWeight="bold">
+                    Featured Student Work
+                  </Heading>
+                  <Text fontSize="sm" color="gray.600" mt={1}>
+                    {variant === 'admin'
+                      ? 'Staff favorites (admin, VC & placement) — auto-rotating, ranked by likes & engagement'
+                      : 'Curated staff picks — ranked by trending'}
+                  </Text>
+                </Box>
+                {featuredProjects.length > 1 && (
+                  <HStack gap={2}>
+                    <Button size="sm" variant="outline" borderRadius="full" borderColor="gray.200" onClick={() => scrollHero(-1)} _hover={{ bg: 'gray.50' }}>
+                      <Icon as={FaChevronLeft} boxSize={3} />
+                    </Button>
+                    <Button size="sm" variant="outline" borderRadius="full" borderColor="gray.200" onClick={() => scrollHero(1)} _hover={{ bg: 'gray.50' }}>
+                      <Icon as={FaChevronRight} boxSize={3} />
+                    </Button>
+                  </HStack>
+                )}
               </Flex>
+              {featuredProjects.length === 0 ? (
+                <Box bg="white" borderRadius="2xl" p={8} textAlign="center" borderWidth="1px" borderColor="gray.100" shadow="sm">
+                  <Icon as={FaBookmark} boxSize={8} color="orange.300" mb={3} />
+                  <Text color="gray.600" fontSize="sm">
+                    No staff favorites yet. Bookmark projects below to showcase them here — they will rotate automatically, sorted by most liked and trending.
+                  </Text>
+                </Box>
+              ) : (
               <Flex
                 ref={heroCarouselRef}
                 overflowX="auto"
                 gap={4}
                 py={2}
+                onMouseEnter={() => setHeroPaused(true)}
+                onMouseLeave={() => setHeroPaused(false)}
+                onFocus={() => setHeroPaused(true)}
+                onBlur={() => setHeroPaused(false)}
                 sx={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}
               >
                 {featuredProjects.map((p) => {
-                  const heroImg = getShowcasePreviewImage(p);
-                  const icon = getShowcasePreviewImage(p);
+                  const icon = getProjectCoverImage(p);
+                  const heroImg = getShowcaseHeroImage(p);
                   const desc = p.one_line_description || p.full_description || '';
                   return (
                     <Box
@@ -346,21 +439,40 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                       aspectRatio="16/9"
                       borderRadius="2xl"
                       overflow="hidden"
-                      cursor="pointer"
-                      onClick={() => goToProjectDetail(p)}
                     >
                       {heroImg ? (
-                        <Image
-                          src={getFileUrl(heroImg)}
+                        <ProgressiveImage
+                          src={heroImg}
+                          project={p}
+                          profile="featuredHero"
+                          priority={1}
                           w="100%"
                           h="100%"
                           objectFit="cover"
                           borderRadius="2xl"
                           filter="brightness(0.75)"
-                          onError={(e) => { e.target.style.display = 'none'; }}
+                          cursor="zoom-in"
+                          onClick={(e) => { e.stopPropagation(); openProjectImages(p, heroImg); }}
                         />
                       ) : (
                         <Box w="100%" h="100%" aspectRatio="16/9" bg="gray.200" borderRadius="2xl" />
+                      )}
+                      {(p.is_staff_favorited || p.is_favorited) && (
+                        <Badge
+                          position="absolute"
+                          top={4}
+                          left={4}
+                          colorScheme="orange"
+                          variant="solid"
+                          fontSize="xs"
+                          px={2}
+                          py={0.5}
+                          borderRadius="md"
+                          zIndex={2}
+                        >
+                          <Icon as={FaBookmark} boxSize={2.5} mr={1} />
+                          Staff pick
+                        </Badge>
                       )}
                       <Box position="absolute" top={4} right={4} display="flex" gap={2}>
                         <Tooltip label={p.is_liked ? 'Unlike' : 'Like'}>
@@ -391,8 +503,11 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                       <Box position="absolute" bottom={{ base: 5, md: 8 }} left={{ base: 5, md: 8 }} right={6} color="white" maxW={{ base: 'sm', md: 'lg' }}>
                         <HStack align="flex-start" spacing={4} mb={3}>
                           {icon ? (
-                            <Image
-                              src={getFileUrl(icon)}
+                            <ProgressiveImage
+                              src={icon}
+                              project={p}
+                              profile="icon"
+                              priority={1}
                               w={{ base: 14, md: 16 }}
                               h={{ base: 14, md: 16 }}
                               borderRadius="xl"
@@ -401,7 +516,8 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                               shadow="xl"
                               objectFit="cover"
                               flexShrink={0}
-                              onError={(e) => { e.target.style.display = 'none'; }}
+                              cursor="zoom-in"
+                              onClick={(e) => { e.stopPropagation(); openProjectImages(p, icon); }}
                             />
                           ) : (
                             <Box w={{ base: 14, md: 16 }} h={{ base: 14, md: 16 }} borderRadius="xl" bg="whiteAlpha.300" flexShrink={0} />
@@ -436,6 +552,7 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                   );
                 })}
               </Flex>
+              )}
             </Box>
           )}
 
@@ -452,9 +569,14 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                 overflow="hidden"
               >
                 <Flex justify="space-between" align="center" mb={4}>
-                  <Heading size="md" fontWeight="bold">
-                    Top Charts
-                  </Heading>
+                  <Box>
+                    <Heading size="md" fontWeight="bold">
+                      Top Charts
+                    </Heading>
+                    <Text fontSize="xs" color="gray.500" mt={1}>
+                      Score = (likes×5 + favorites×8 + comments×10 + staff picks×20) × time decay
+                    </Text>
+                  </Box>
                   <Button
                     size="sm"
                     colorScheme="green"
@@ -469,20 +591,28 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                   projects={topByLikes}
                   mode="preview"
                   onViewProject={goToProjectDetail}
+                  onOpenProjectImages={openProjectImages}
                 />
               </Box>
             </Box>
           )}
 
-          {/* Section 3: Main feed */}
+          {/* Section 3: Main feed — ranked by engagement score */}
           <Box>
-            <Flex justify="space-between" align="center" mb={6}>
-              <Heading size="md" fontWeight="bold">
-                {showcaseFilter === 'favorites' ? 'My Favorites' : 'All Projects'}
-              </Heading>
+            <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={2}>
+              <Box>
+                <Heading size="md" fontWeight="bold">
+                  {showcaseFilter === 'favorites' ? 'My Favorites' : 'All Projects'}
+                </Heading>
+                {showcaseFilter === 'all' && (
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    Ranked by score: likes×4 + favorites×6 + comments×8 + freshness + variety − already viewed
+                  </Text>
+                )}
+              </Box>
             </Flex>
 
-            {showcaseDisplayProjects.length === 0 ? (
+            {allProjectsSorted.length === 0 ? (
               <Box bg="white" borderRadius={CARD_RADIUS} p={12} textAlign="center" shadow={CARD_SHADOW}>
                 <Text color="gray.500" fontSize="lg">
                   {showcaseFilter === 'favorites'
@@ -498,8 +628,8 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
               </Box>
             ) : (
               <VStack spacing={12} align="stretch">
-                {showcaseDisplayProjects.map((p) => {
-                  const icon = getShowcasePreviewImage(p);
+                {allProjectsSorted.map((p) => {
+                  const icon = getProjectCoverImage(p);
                   const screenshots = getShowcaseGalleryStrip(p);
                   const desc = p.full_description || p.one_line_description || 'No description.';
                   return (
@@ -507,8 +637,17 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                       <Flex direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ base: 'stretch', md: 'center' }} gap={4} flexWrap="wrap" mb={2}>
                         <HStack align="center" spacing={4} flex={1} minW={0}>
                           {icon ? (
-                            <Box boxSize="64px" flexShrink={0} borderRadius="lg" overflow="hidden" border="1px solid" borderColor="gray.100">
-                              <Image src={getFileUrl(icon)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                            <Box
+                              boxSize="64px"
+                              flexShrink={0}
+                              borderRadius="lg"
+                              overflow="hidden"
+                              border="1px solid"
+                              borderColor="gray.100"
+                              cursor="zoom-in"
+                              onClick={(e) => { e.stopPropagation(); openProjectImages(p, icon); }}
+                            >
+                              <ProgressiveImage src={icon} project={p} profile="icon" priority={2} w="100%" h="100%" objectFit="cover" />
                             </Box>
                           ) : (
                             <Box boxSize="64px" flexShrink={0} borderRadius="lg" bg="gray.100" />
@@ -676,12 +815,12 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
-                                cursor={snap ? 'pointer' : 'default'}
-                                onClick={snap ? (e) => { e.stopPropagation(); goToProjectDetail(p, e); } : undefined}
+                                cursor={snap ? 'zoom-in' : 'default'}
+                                onClick={snap ? (e) => { e.stopPropagation(); openProjectImages(p, snap); } : undefined}
                                 _hover={snap ? { opacity: 0.9 } : {}}
                               >
                                 {snap ? (
-                                  <Image src={getFileUrl(snap)} w="100%" h="100%" objectFit="contain" onError={(e) => { e.target.style.display = 'none'; }} />
+                                  <ProgressiveImage src={snap} project={p} profile="galleryTile" priority={3} w="100%" h="100%" objectFit="contain" />
                                 ) : (
                                   <Box w="100%" h="100%" />
                                 )}
@@ -699,6 +838,7 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
         </Container>
       </Box>
 
+      <ProjectImageLightbox {...lightboxProps} />
     </LayoutComponent>
   );
 }

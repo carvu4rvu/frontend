@@ -25,11 +25,12 @@ import {
   Flex,
   Spinner,
   Progress,
+  Icon,
 } from "@chakra-ui/react"
 import { Field } from "../../ui/field"
 import { StyledFileInput } from "../../ui/StyledFileInput"
 import { useState, useEffect, useRef } from "react"
-import { FaPlus, FaTrash, FaEdit, FaExternalLinkAlt, FaPlusCircle } from "react-icons/fa"
+import { FaPlus, FaTrash, FaEdit, FaExternalLinkAlt, FaPlusCircle, FaGripVertical } from "react-icons/fa"
 import { useAuth } from "../../../context/AuthContext"
 import { useProfileView } from "../../../context/ProfileViewContext"
 import { StudentProfileService } from "../../../services/studentProfile.service"
@@ -43,6 +44,8 @@ import {
   splitProjectSnaps,
   normalizeProjectSnaps,
 } from "../../../utils/projectSnaps"
+import ProjectImageLightbox from "../../projects/ProjectImageLightbox"
+import { useProjectImageLightbox } from "../../../hooks/useProjectImageLightbox"
 import { validateUrl } from "../../../utils/profileValidators"
 
 const IDLE_UPLOAD_UI = {
@@ -165,6 +168,7 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
   const [previewUrls, setPreviewUrls] = useState({ cover: null, gallery: [] })
   const openedForErrorsRef = useRef(null) // track which API error set we already auto-opened for
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure()
+  const { openProjectImages, openImages, lightboxProps } = useProjectImageLightbox()
   const errorsForEditingIndex = editingIndex != null && apiFieldErrors && apiFieldErrors[editingIndex] ? apiFieldErrors[editingIndex] : {}
   const mergedFieldErrors = { ...modalErrors, ...errorsForEditingIndex }
 
@@ -556,6 +560,7 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
               onEdit={() => openEditModal(index)}
               onDelete={() => handleDelete(index)}
               onShare={handleShareFromManage}
+              onOpenProjectImages={openProjectImages}
             />
           ))}
       </VStack>
@@ -599,6 +604,8 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
                 onModalErrors={setModalErrors}
                 isEditing={true}
                 fieldErrors={mergedFieldErrors}
+                onOpenProjectImages={openProjectImages}
+                onOpenGalleryImages={openImages}
               />
             )}
           </ModalBody>
@@ -619,13 +626,13 @@ export const ProjectsForm = ({ data = {}, onUpdate, isEditing = false, onFileSel
           </ModalFooter>
         </ModalContent>
       </Modal>
+      <ProjectImageLightbox {...lightboxProps} />
     </Box>
   )
 }
 
-function ProjectInventoryCard({ index, item, isEditing, onEdit, onDelete, onShare }) {
-  const snaps = item.project_snaps || []
-  const coverImg = snaps.length > 0 ? snaps[0] : null
+function ProjectInventoryCard({ index, item, isEditing, onEdit, onDelete, onShare, onOpenProjectImages }) {
+  const { cover: coverImg } = splitProjectSnaps(item.project_snaps || [])
   const visibility = (item.visibility || "PRIVATE").toUpperCase()
   const isPublic = visibility === "PUBLIC"
   const visibilityLabel = visibility === "PUBLIC" ? "PUBLIC" : "PRIVATE"
@@ -636,7 +643,14 @@ function ProjectInventoryCard({ index, item, isEditing, onEdit, onDelete, onShar
 
   return (
     <div className="projects-inventory-card">
-      <div className="projects-inventory-card-thumb">
+      <div
+        className="projects-inventory-card-thumb"
+        role={coverImg && onOpenProjectImages ? "button" : undefined}
+        tabIndex={coverImg && onOpenProjectImages ? 0 : undefined}
+        style={coverImg && onOpenProjectImages ? { cursor: "zoom-in" } : undefined}
+        onClick={coverImg && onOpenProjectImages ? (e) => { e.stopPropagation(); onOpenProjectImages(item, coverImg); } : undefined}
+        onKeyDown={coverImg && onOpenProjectImages ? (e) => { if (e.key === "Enter") { e.stopPropagation(); onOpenProjectImages(item, coverImg); } } : undefined}
+      >
         {coverImg ? (
           <img src={getFileUrl(coverImg)} alt="" />
         ) : (
@@ -773,6 +787,160 @@ function TechnologiesTagInput({ index, technologies = [], onChange, fieldErrors 
   )
 }
 
+function reorderGalleryItems(list, fromIndex, toIndex) {
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return list
+  const next = [...list]
+  const [moved] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, moved)
+  return next
+}
+
+/** Draggable gallery thumbnails for edit-project modal. */
+function GalleryImageReorderList({
+  galleryUrls = [],
+  coverUrl,
+  projectIndex,
+  onChange,
+  disabled = false,
+  onOpenGalleryImages,
+}) {
+  const [dragFrom, setDragFrom] = useState(null)
+  const [dragOver, setDragOver] = useState(null)
+
+  const applyOrder = (nextGallery) => {
+    onChange(projectIndex, "project_snaps", buildProjectSnaps(coverUrl, nextGallery))
+  }
+
+  const handleDrop = (toIndex) => {
+    if (dragFrom == null || dragFrom === toIndex) return
+    applyOrder(reorderGalleryItems(galleryUrls, dragFrom, toIndex))
+    setDragFrom(null)
+    setDragOver(null)
+  }
+
+  if (!galleryUrls.length) return null
+
+  const canReorder = !disabled && galleryUrls.length > 1
+
+  return (
+    <>
+      {galleryUrls.map((url, i) => (
+        <Box
+          key={url}
+          position="relative"
+          draggable={canReorder}
+          onDragStart={(e) => {
+            if (!canReorder) return
+            setDragFrom(i)
+            e.dataTransfer.effectAllowed = "move"
+            e.dataTransfer.setData("text/plain", String(i))
+          }}
+          onDragEnd={() => {
+            setDragFrom(null)
+            setDragOver(null)
+          }}
+          onDragOver={(e) => {
+            if (!canReorder || dragFrom == null) return
+            e.preventDefault()
+            e.dataTransfer.dropEffect = "move"
+            setDragOver(i)
+          }}
+          onDragLeave={() => {
+            if (dragOver === i) setDragOver(null)
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            handleDrop(i)
+          }}
+          opacity={dragFrom === i ? 0.45 : 1}
+          transform={dragOver === i && dragFrom !== i ? "scale(1.05)" : undefined}
+          transition="transform 0.15s ease, opacity 0.15s ease"
+          cursor={canReorder ? "grab" : "default"}
+          _active={canReorder ? { cursor: "grabbing" } : undefined}
+        >
+          <Box
+            boxSize="80px"
+            position="relative"
+            borderRadius="md"
+            overflow="hidden"
+            borderWidth="2px"
+            borderColor={dragOver === i && dragFrom !== i ? "#03C03C" : "gray.200"}
+            boxShadow={dragOver === i && dragFrom !== i ? "0 0 0 2px rgba(3, 192, 60, 0.35)" : undefined}
+          >
+            <img
+              src={getFileUrl(url)}
+              alt={`Gallery ${i + 1}`}
+              draggable={false}
+              style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
+            />
+            {canReorder && (
+              <Flex
+                position="absolute"
+                bottom={0}
+                left={0}
+                right={0}
+                bg="blackAlpha.700"
+                py={0.5}
+                justify="center"
+                align="center"
+                pointerEvents="none"
+              >
+                <Icon as={FaGripVertical} color="whiteAlpha.900" boxSize={3} />
+              </Flex>
+            )}
+            <Box
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              bottom={canReorder ? "18px" : 0}
+              cursor={onOpenGalleryImages ? "zoom-in" : "default"}
+              onClick={
+                onOpenGalleryImages
+                  ? (e) => {
+                      e.stopPropagation()
+                      onOpenGalleryImages(galleryUrls, i)
+                    }
+                  : undefined
+              }
+            />
+          </Box>
+          <Text
+            position="absolute"
+            top="4px"
+            left="4px"
+            fontSize="9px"
+            fontWeight="700"
+            color="white"
+            bg="blackAlpha.600"
+            px={1}
+            borderRadius="sm"
+            lineHeight="short"
+            pointerEvents="none"
+            zIndex={1}
+          >
+            {i + 1}
+          </Text>
+          <IconButton
+            icon={<FaTrash />}
+            size="xs"
+            colorScheme="red"
+            position="absolute"
+            top={0}
+            right={0}
+            aria-label={`Remove gallery image ${i + 1}`}
+            isDisabled={disabled}
+            onClick={() => {
+              const nextGallery = galleryUrls.filter((_, gi) => gi !== i)
+              applyOrder(nextGallery)
+            }}
+          />
+        </Box>
+      ))}
+    </>
+  )
+}
+
 function ImageUploadOverlay({ label, sublabel }) {
   return (
     <Flex
@@ -812,6 +980,8 @@ function EditProjectForm({
   onModalErrors,
   isEditing,
   fieldErrors = {},
+  onOpenProjectImages,
+  onOpenGalleryImages,
 }) {
   const setModalErrors = onModalErrors || (() => {})
   const { cover: coverUrl, gallery: galleryUrls } = splitProjectSnaps(item.project_snaps)
@@ -1060,7 +1230,20 @@ function EditProjectForm({
                     <img
                       src={coverDisplaySrc}
                       alt="Cover"
-                      style={{ width: "100%", height: "100%", objectFit: "cover", opacity: isCoverBusy ? 0.55 : 1 }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        opacity: isCoverBusy ? 0.55 : 1,
+                        cursor: !isCoverBusy && (coverUrl || previewUrls.cover) ? "zoom-in" : undefined,
+                      }}
+                      onClick={
+                        !isCoverBusy && coverUrl && onOpenProjectImages
+                          ? (e) => { e.stopPropagation(); onOpenProjectImages(item, coverUrl); }
+                          : !isCoverBusy && previewUrls.cover && onOpenGalleryImages
+                            ? (e) => { e.stopPropagation(); onOpenGalleryImages([previewUrls.cover], 0); }
+                            : undefined
+                      }
                     />
                   ) : (
                     <Flex boxSize="100%" bg="gray.100" align="center" justify="center" />
@@ -1114,32 +1297,20 @@ function EditProjectForm({
           <Text fontSize="xs" fontWeight="500" color="#64748b" mb={1}>
             Gallery images (optional, up to {MAX_GALLERY_IMAGES})
           </Text>
+          {galleryUrls.length > 1 && !isUploading && (
+            <Text fontSize="xs" color="#64748b" mb={2}>
+              Drag images to reorder. Order is saved when you save the project.
+            </Text>
+          )}
           <HStack spacing={2} align="flex-start" flexWrap="wrap" mb={2}>
-            {galleryUrls.map((url, i) => (
-              <Box key={`saved-${i}`} position="relative">
-                <Box boxSize="80px" borderRadius="md" overflow="hidden" borderWidth="1px" borderColor="gray.200">
-                  <img
-                    src={getFileUrl(url)}
-                    alt={`Gallery ${i + 1}`}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                </Box>
-                <IconButton
-                  icon={<FaTrash />}
-                  size="xs"
-                  colorScheme="red"
-                  position="absolute"
-                  top={0}
-                  right={0}
-                  aria-label={`Remove gallery image ${i + 1}`}
-                  isDisabled={isUploading}
-                  onClick={() => {
-                    const nextGallery = galleryUrls.filter((_, gi) => gi !== i)
-                    onChange(index, "project_snaps", buildProjectSnaps(coverUrl, nextGallery))
-                  }}
-                />
-              </Box>
-            ))}
+            <GalleryImageReorderList
+              galleryUrls={galleryUrls}
+              coverUrl={coverUrl}
+              projectIndex={index}
+              onChange={onChange}
+              disabled={isUploading}
+              onOpenGalleryImages={onOpenGalleryImages}
+            />
             {previewUrls.gallery.map((previewSrc, i) => (
               <Box key={`pending-${i}`} position="relative">
                 <Box
@@ -1179,7 +1350,7 @@ function EditProjectForm({
           <Text fontSize="xs" color="#64748b">
             {galleryUrls.length}/{MAX_GALLERY_IMAGES} gallery · {coverUrl ? 1 : 0}/1 cover ({MAX_TOTAL_PROJECT_IMAGES} max total).
             {previewUrls.gallery.length > 0 ? ` · ${previewUrls.gallery.length} uploading` : ""}
-            {" "}Cover is not shown in the gallery.
+            {" "}Cover is not shown in the gallery. Drag thumbnails to change gallery order.
           </Text>
         </Box>
       )}
@@ -1187,7 +1358,15 @@ function EditProjectForm({
       {!isEditing && (coverUrl || galleryUrls.length > 0) && (
         <HStack spacing={2} overflowX="auto" py={2} flexWrap="wrap">
           {coverUrl ? (
-            <Box boxSize="80px" borderRadius="md" overflow="hidden" borderWidth="2px" borderColor="#03C03C">
+            <Box
+              boxSize="80px"
+              borderRadius="md"
+              overflow="hidden"
+              borderWidth="2px"
+              borderColor="#03C03C"
+              cursor={onOpenProjectImages ? "zoom-in" : undefined}
+              onClick={onOpenProjectImages ? () => onOpenProjectImages(item, coverUrl) : undefined}
+            >
               <img
                 src={getFileUrl(coverUrl)}
                 alt="Cover"
@@ -1196,7 +1375,15 @@ function EditProjectForm({
             </Box>
           ) : null}
           {galleryUrls.map((snap, i) => (
-            <Box key={i} boxSize="80px" borderRadius="md" overflow="hidden" position="relative">
+            <Box
+              key={i}
+              boxSize="80px"
+              borderRadius="md"
+              overflow="hidden"
+              position="relative"
+              cursor={onOpenGalleryImages ? "zoom-in" : undefined}
+              onClick={onOpenGalleryImages ? () => onOpenGalleryImages(galleryUrls, i) : undefined}
+            >
               <img
                 src={getFileUrl(snap)}
                 alt={`Gallery ${i + 1}`}

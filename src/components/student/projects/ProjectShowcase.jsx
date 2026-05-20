@@ -1,8 +1,10 @@
 import { Box, Text, Heading, VStack, HStack, Icon, Button, Image, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, useDisclosure, Tag, Link, SimpleGrid, Divider, useToast } from "@chakra-ui/react";
 import { FaExternalLinkAlt, FaGithub, FaStar, FaEye, FaHeart, FaUser } from "react-icons/fa";
 import { useState, useContext, useEffect } from "react";
-import { getFileUrl } from "../../../utils/fileUrl"
 import { splitProjectSnaps, MAX_GALLERY_IMAGES } from "../../../utils/projectSnaps";
+import ProgressiveImage from "../../projects/ProgressiveImage";
+import ProjectImageLightbox from "../../projects/ProjectImageLightbox";
+import { useProjectImageLightbox } from "../../../hooks/useProjectImageLightbox";
 import { StudentProfileContentRefContext } from "../StudentProfileLayout";
 import { ProjectService } from "../../../services/project.service";
 
@@ -64,6 +66,7 @@ export const ProjectShowcase = ({ projects = [], contentAreaRef, studentName }) 
   const layoutContentRef = useContext(StudentProfileContentRefContext);
   const portalContainerRef = contentAreaRef || layoutContentRef;
   const toast = useToast();
+  const { openProjectImages, openImages, lightboxProps } = useProjectImageLightbox();
   const [shareLoading, setShareLoading] = useState(false);
   const [projectAspect, setProjectAspect] = useState("phone"); // 'phone' or 'laptop'
   const [aspectVotes, setAspectVotes] = useState({ phone: 0, laptop: 0 });
@@ -144,6 +147,8 @@ export const ProjectShowcase = ({ projects = [], contentAreaRef, studentName }) 
             project={project}
             studentName={studentName}
             onView={() => handleViewDetails(project)}
+            onOpenProjectImages={openProjectImages}
+            onOpenGalleryImages={openImages}
           />
         ))}
       </div>
@@ -171,17 +176,23 @@ export const ProjectShowcase = ({ projects = [], contentAreaRef, studentName }) 
           <ModalHeader pt={6} pb={4} borderBottom="1px solid" borderColor="#e2e8f0">
             <HStack align="flex-start" spacing={4}>
               {(() => {
-                const snaps = selectedProject?.project_snaps || selectedProject?.snaps || [];
-                const firstSnap = snaps.length > 0 ? snaps[0] : null;
-                return firstSnap ? (
-                  <Image
-                    src={getFileUrl(firstSnap)}
-                    boxSize="56px"
+                const { cover: coverSnap } = splitProjectSnaps(
+                  selectedProject?.project_snaps || selectedProject?.snaps || []
+                );
+                return coverSnap ? (
+                  <ProgressiveImage
+                    src={coverSnap}
+                    project={selectedProject}
+                    profile="icon"
+                    priority={1}
+                    w="56px"
+                    h="56px"
                     minW="56px"
                     borderRadius="lg"
                     objectFit="cover"
                     bg="#f1f5f9"
-                    onError={(e) => { e.target.style.display = "none"; }}
+                    cursor="zoom-in"
+                    onClick={(e) => { e.stopPropagation(); openProjectImages(selectedProject, coverSnap); }}
                   />
                 ) : (
                   <Box boxSize="56px" minW="56px" bg="#f1f5f9" borderRadius="lg" display="flex" alignItems="center" justifyContent="center">
@@ -259,11 +270,16 @@ export const ProjectShowcase = ({ projects = [], contentAreaRef, studentName }) 
                             bg={snap ? "#000" : "transparent"}
                           >
                             {snap ? (
-                              <Image
-                                src={getFileUrl(snap)}
+                              <ProgressiveImage
+                                src={snap}
+                                project={selectedProject}
+                                profile="galleryTile"
+                                priority={3}
                                 maxH="100%"
                                 maxW="100%"
                                 objectFit="contain"
+                                cursor="zoom-in"
+                                onClick={(e) => { e.stopPropagation(); openProjectImages(selectedProject, snap); }}
                                 onLoad={(e) => {
                                   if (!e?.target) return;
                                   const img = e.target;
@@ -369,13 +385,14 @@ export const ProjectShowcase = ({ projects = [], contentAreaRef, studentName }) 
           </ModalFooter>
         </ModalContent>
       </Modal>
+      <ProjectImageLightbox {...lightboxProps} />
     </Box>
   );
 };
 
 
 
-const ShowcaseCard = ({ project, studentName, onView }) => {
+const ShowcaseCard = ({ project, studentName, onView, onOpenProjectImages, onOpenGalleryImages }) => {
   const { cover: coverImage, gallery: gallerySnaps } = splitProjectSnaps(
     project.project_snaps || project.snaps || []
   );
@@ -401,9 +418,16 @@ const ShowcaseCard = ({ project, studentName, onView }) => {
       <div className="showcase-card-inner">
         {/* Left column: main image, tech tags, self-assessment */}
         <div className="showcase-card-left">
-          <div className="showcase-card-image">
+          <div
+            className="showcase-card-image"
+            role={coverImage && onOpenProjectImages ? "button" : undefined}
+            tabIndex={coverImage && onOpenProjectImages ? 0 : undefined}
+            style={coverImage && onOpenProjectImages ? { cursor: "zoom-in" } : undefined}
+            onClick={coverImage && onOpenProjectImages ? (e) => { e.stopPropagation(); onOpenProjectImages(project, coverImage); } : undefined}
+            onKeyDown={coverImage && onOpenProjectImages ? (e) => { if (e.key === "Enter") { e.stopPropagation(); onOpenProjectImages(project, coverImage); } } : undefined}
+          >
             {coverImage ? (
-              <img src={getFileUrl(coverImage)} alt={project.title || ""} onError={(e) => { e.target.style.display = "none"; }} />
+              <ProgressiveImage src={coverImage} project={project} profile="feedCard" priority={2} as="native" alt={project.title || ""} w="100%" h="100%" />
             ) : (
               <div className="showcase-card-image-placeholder">
                 <Icon as={FaStar} boxSize={12} />
@@ -458,13 +482,22 @@ const ShowcaseCard = ({ project, studentName, onView }) => {
                     className={`showcase-gallery-item showcase-gallery-item--${aspect}`}
                     style={{
                       aspectRatio: aspect === "laptop" ? 16 / 9 : 9 / 16,
+                      cursor: snap && onOpenGalleryImages ? "zoom-in" : undefined,
                     }}
+                    role={snap && onOpenGalleryImages ? "button" : undefined}
+                    tabIndex={snap && onOpenGalleryImages ? 0 : undefined}
+                    onClick={snap && onOpenProjectImages ? (e) => { e.stopPropagation(); onOpenProjectImages(project, snap); } : undefined}
+                    onKeyDown={snap && onOpenProjectImages ? (e) => { if (e.key === "Enter") { e.stopPropagation(); onOpenProjectImages(project, snap); } } : undefined}
                   >
                     {snap && (
-                      <img
-                        src={getFileUrl(snap)}
+                      <ProgressiveImage
+                        src={snap}
+                        project={project}
+                        profile="galleryTile"
+                        priority={3}
+                        as="native"
                         alt=""
-                        style={{ objectFit: "contain" }}
+                        style={{ objectFit: "contain", width: "100%", height: "100%" }}
                         onLoad={(e) => {
                           const img = e.target;
                           const w = img.naturalWidth || 0;

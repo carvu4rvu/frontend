@@ -28,7 +28,6 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
-  Image,
   Flex,
   Tag,
   Icon,
@@ -56,8 +55,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import ProjectsShowcasePage from '../ProjectsShowcasePage';
 import { PlacementService } from '../../services/placement.service';
-import { getFileUrl } from '../../utils/fileUrl';
-import { splitProjectSnaps, MAX_GALLERY_IMAGES } from '../../utils/projectSnaps';
+import { splitProjectSnaps, getProjectCoverImage, getShowcaseHeroImage, MAX_GALLERY_IMAGES } from '../../utils/projectSnaps';
+import ProgressiveImage from '../../components/projects/ProgressiveImage';
+import ProjectImageLightbox from '../../components/projects/ProjectImageLightbox';
+import { useProjectImageLightbox } from '../../hooks/useProjectImageLightbox';
 
 const PLAY_GREEN = '#01875f';
 const PLAY_GREEN_HOVER = '#01704f';
@@ -112,6 +113,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
   const highlightedProjectRef = useRef(null);
 
   const navigate = useNavigate();
+  const { openProjectImages, openImages, lightboxProps } = useProjectImageLightbox();
 
   // Edit/Modal State (Manage tab uses inline edits; modal kept for backward compat)
   const [editingProject, setEditingProject] = useState(null);
@@ -548,8 +550,8 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                       sx={{ scrollSnapType: 'x mandatory', scrollBehavior: 'smooth', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}
                     >
                       {featuredProjects.map((p) => {
-                        const heroImg = (p.project_snaps || [])[0];
-                        const icon = (p.project_snaps || [])[0];
+                        const icon = getProjectCoverImage(p);
+                        const heroImg = getShowcaseHeroImage(p);
                         const desc = p.one_line_description || p.full_description || '';
                         return (
                           <Box
@@ -565,14 +567,16 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                             onClick={() => goToProjectDetail(p)}
                           >
                             {heroImg ? (
-                              <Image
-                                src={getFileUrl(heroImg)}
+                              <ProgressiveImage
+                                src={heroImg}
+                                project={p}
+                                profile="featuredHero"
+                                priority={1}
                                 w="100%"
                                 h="100%"
                                 objectFit="cover"
                                 borderRadius="2xl"
                                 filter="brightness(0.75)"
-                                onError={(e) => { e.target.style.display = 'none'; }}
                               />
                             ) : (
                               <Box
@@ -619,8 +623,11 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                             >
                               <HStack align="flex-start" spacing={3} mb={2}>
                                 {icon ? (
-                                  <Image
-                                    src={getFileUrl(icon)}
+                                  <ProgressiveImage
+                                    src={icon}
+                                    project={p}
+                                    profile="icon"
+                                    priority={1}
                                     w={10}
                                     h={10}
                                     borderRadius="lg"
@@ -628,7 +635,6 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                     borderColor="whiteAlpha.300"
                                     shadow="lg"
                                     objectFit="cover"
-                                    onError={(e) => { e.target.style.display = 'none'; }}
                                   />
                                 ) : (
                                   <Box w={10} h={10} borderRadius="lg" bg="whiteAlpha.300" />
@@ -697,7 +703,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                         minW={0}
                       >
                       {topByLikes.map((p, i) => {
-                        const icon = (p.project_snaps || [])[0];
+                        const icon = getProjectCoverImage(p);
                         return (
                           <Flex
                             key={p.id}
@@ -723,12 +729,14 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                 border="1px solid"
                                 borderColor="gray.100"
                               >
-                                <Image
-                                  src={getFileUrl(icon)}
+                                <ProgressiveImage
+                                  src={icon}
+                                  project={p}
+                                  profile="icon"
+                                  priority={2}
                                   w="100%"
                                   h="100%"
                                   objectFit="cover"
-                                  onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                               </Box>
                             ) : (
@@ -803,7 +811,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                     <ModalBody pb={6} overflowY="auto">
                       <VStack align="stretch" spacing={2}>
                         {allRankedByLikes.map((p, i) => {
-                          const icon = (p.project_snaps || [])[0];
+                          const icon = getProjectCoverImage(p);
                           return (
                             <Flex
                               key={p.id}
@@ -822,7 +830,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                               </Text>
                               {icon ? (
                                 <Box boxSize="48px" flexShrink={0} borderRadius="lg" overflow="hidden" border="1px solid" borderColor="gray.100">
-                                  <Image src={getFileUrl(icon)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                  <ProgressiveImage src={icon} project={p} profile="icon" priority={2} w="100%" h="100%" objectFit="cover" />
                                 </Box>
                               ) : (
                                 <Box boxSize="48px" flexShrink={0} borderRadius="lg" bg="gray.100" />
@@ -880,7 +888,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                   ) : (
                     <VStack spacing={12} align="stretch">
                       {showcaseDisplayProjects.map((p) => {
-                        const icon = (p.project_snaps || [])[0];
+                        const icon = getProjectCoverImage(p);
                         const screenshots = p.project_snaps || [];
                         const desc = p.full_description || p.one_line_description || 'No description.';
                         return (
@@ -909,12 +917,14 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                     border="1px solid"
                                     borderColor="gray.100"
                                   >
-                                    <Image
-                                      src={getFileUrl(icon)}
+                                    <ProgressiveImage
+                                      src={icon}
+                                      project={p}
+                                      profile="icon"
+                                      priority={2}
                                       w="100%"
                                       h="100%"
                                       objectFit="cover"
-                                      onError={(e) => { e.target.style.display = 'none'; }}
                                     />
                                   </Box>
                                 ) : (
@@ -1130,12 +1140,14 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                       _hover={snap ? { opacity: 0.9 } : {}}
                                     >
                                       {snap ? (
-                                        <Image
-                                          src={getFileUrl(snap)}
+                                        <ProgressiveImage
+                                          src={snap}
+                                          project={p}
+                                          profile="galleryTile"
+                                          priority={3}
                                           w="100%"
                                           h="100%"
                                           objectFit="contain"
-                                          onError={(e) => { e.target.style.display = 'none'; }}
                                         />
                                       ) : (
                                         <Box w="100%" h="100%" />
@@ -1199,7 +1211,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                             <VStack spacing={6} align="stretch">
                               {manageFilteredProjects.map((p) => {
                                 const { cover, gallery: gallerySnaps } = splitProjectSnaps(p.project_snaps || []);
-                                const icon = cover || gallerySnaps[0] || null;
+                                const icon = cover || null;
                                 const screenshots = gallerySnaps;
                                 const edits = getProjectEdits(p);
                                 const isHighlighted = highlightedProjectId && Number(p.id) === Number(highlightedProjectId);
@@ -1227,9 +1239,21 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                   >
                                     <Flex direction={{ base: 'column', md: 'row' }} gap={6}>
                                       {/* Thumbnail */}
-                                      <Box w={{ base: '100%', md: '128px' }} h="128px" flexShrink={0} borderRadius="2xl" overflow="hidden" bg="gray.100" border="1px solid" borderColor="gray.100">
+                                      <Box
+                                        w={{ base: '100%', md: '128px' }}
+                                        h="128px"
+                                        flexShrink={0}
+                                        borderRadius="2xl"
+                                        overflow="hidden"
+                                        bg="gray.100"
+                                        border="1px solid"
+                                        borderColor="gray.100"
+                                        cursor={icon ? 'zoom-in' : undefined}
+                                        onClick={icon ? () => openProjectImages(p, icon) : undefined}
+                                        _hover={icon ? { opacity: 0.9 } : undefined}
+                                      >
                                         {icon ? (
-                                          <Image src={getFileUrl(icon)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                          <ProgressiveImage src={icon} project={p} profile="icon" priority={2} w="100%" h="100%" objectFit="cover" />
                                         ) : (
                                           <Box w="100%" h="100%" bg="gray.200" />
                                         )}
@@ -1391,13 +1415,13 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                                   borderRadius="lg"
                                                   overflow="hidden"
                                                   bg="gray.200"
-                                                  cursor={snap ? 'pointer' : 'default'}
-                                                  onClick={snap ? () => navigate(`/placement/gallery/project/${p.id}`, { replace: false }) : undefined}
+                                                  cursor={snap ? 'zoom-in' : 'default'}
+                                                  onClick={snap ? () => openProjectImages(p, snap) : undefined}
                                                   _hover={snap ? { opacity: 0.9 } : {}}
                                                   transition="opacity 0.2s"
                                                 >
                                                   {snap ? (
-                                                    <Image src={getFileUrl(snap)} w="100%" h="100%" objectFit="cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                    <ProgressiveImage src={snap} project={p} profile="galleryTile" priority={3} w="100%" h="100%" objectFit="cover" />
                                                   ) : null}
                                                 </Box>
                                               );
@@ -1451,12 +1475,16 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                         flexShrink={0}
                       >
                         {editingSnapsSplit.cover ? (
-                          <Image
-                            src={getFileUrl(editingSnapsSplit.cover)}
+                          <ProgressiveImage
+                            src={editingSnapsSplit.cover}
+                            project={editingProject}
+                            profile="detail"
+                            priority={2}
                             w="100%"
                             h="100%"
                             objectFit="cover"
-                            onError={(e) => { e.target.style.display = 'none'; }}
+                            cursor="zoom-in"
+                            onClick={() => editingProject && openProjectImages(editingProject, editingSnapsSplit.cover)}
                           />
                         ) : (
                           <Box w="100%" h="100%" bg="gray.100" />
@@ -1495,12 +1523,16 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                 justifyContent="center"
                               >
                                 {snap ? (
-                                  <Image
-                                    src={getFileUrl(snap)}
+                                  <ProgressiveImage
+                                    src={snap}
+                                    project={editingProject}
+                                    profile="galleryTile"
+                                    priority={3}
                                     w="100%"
                                     h="100%"
                                     objectFit="contain"
-                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                    cursor="zoom-in"
+                                    onClick={() => editingProject && openImages(editingSnapsSplit.gallery, i)}
                                   />
                                 ) : (
                                   <Box w="100%" h="100%" />
@@ -1638,13 +1670,18 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                           border="1px solid"
                           borderColor="gray.200"
                           bg="#000"
+                          cursor="zoom-in"
+                          onClick={() => selectedDetailProject && openProjectImages(selectedDetailProject, detailSnapsSplit.cover)}
+                          _hover={{ opacity: 0.9 }}
                         >
-                          <Image
-                            src={getFileUrl(detailSnapsSplit.cover)}
+                          <ProgressiveImage
+                            src={detailSnapsSplit.cover}
+                            project={selectedDetailProject}
+                            profile="detail"
+                            priority={2}
                             w="100%"
                             h="100%"
                             objectFit="contain"
-                            onError={(e) => { e.target.style.display = 'none'; }}
                           />
                         </Box>
                       </Box>
@@ -1670,13 +1707,17 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                               justifyContent="center"
                             >
                               {snap ? (
-                                <Image
-                                  src={getFileUrl(snap)}
+                                <ProgressiveImage
+                                  src={snap}
+                                  project={selectedDetailProject}
+                                  profile="galleryTile"
+                                  priority={3}
                                   w="100%"
                                   h="100%"
                                   objectFit="contain"
                                   alt=""
-                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                  cursor="zoom-in"
+                                  onClick={() => selectedDetailProject && openImages(detailSnapsSplit.gallery, i)}
                                 />
                               ) : (
                                 <Box w="100%" h="100%" />
@@ -1785,6 +1826,7 @@ const AdminProjects = ({ mode = 'showcase' }) => {
           </Modal>
         </Container>
       </Box>
+      <ProjectImageLightbox {...lightboxProps} />
     </AdminLayout>
   );
 };
