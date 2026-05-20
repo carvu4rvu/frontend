@@ -10,11 +10,13 @@ export function CompanyLogo({ src, name, boxSize = '80px', variant = 'circle', .
   const resolvedSrc = useMemo(() => resolveCompanyLogoUrl(src), [src]);
   const fallback = (name || '?').substring(0, 2).toUpperCase();
   const isCircle = variant === 'circle';
+  const isRounded = variant === 'rounded';
+  const borderRadius = isCircle ? 'full' : isRounded ? 'lg' : 'lg';
   const fallbackBox = (
     <Box
       boxSize={boxSize}
       bg="white"
-      borderRadius={isCircle ? 'full' : 'lg'}
+      borderRadius={borderRadius}
       display="flex"
       alignItems="center"
       justifyContent="center"
@@ -22,7 +24,7 @@ export function CompanyLogo({ src, name, boxSize = '80px', variant = 'circle', .
       borderColor="gray.200"
       {...props}
     >
-      <Text fontWeight="bold" fontSize="2xl" color="gray.500" fontFamily="serif">
+      <Text fontWeight="bold" fontSize={isRounded ? 'md' : '2xl'} color="gray.500" fontFamily="serif">
         {fallback}
       </Text>
     </Box>
@@ -32,7 +34,7 @@ export function CompanyLogo({ src, name, boxSize = '80px', variant = 'circle', .
     <Box
       boxSize={boxSize}
       bg="white"
-      borderRadius={isCircle ? 'full' : 'lg'}
+      borderRadius={borderRadius}
       overflow="hidden"
       display="flex"
       alignItems="center"

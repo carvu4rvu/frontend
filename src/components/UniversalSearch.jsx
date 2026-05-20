@@ -68,7 +68,6 @@ const UniversalSearch = () => {
     { name: 'Placement Overview', path: '/placement/overview', keywords: 'statistics, school, batch, salary, placement, overview' },
     { name: 'Students Directory', path: '/placement/students', keywords: 'list, database, search, students' },
     { name: 'Job Offers', path: '/placement/job-offers', keywords: 'placements, offers, results' },
-    { name: 'Events', path: '/events', keywords: 'events, upcoming, ongoing, schedule, add event' },
     { name: 'Events & Drives', path: '/placement/events', keywords: 'calendar, drives, placement' },
     { name: 'Alumni Network', path: '/placement/alumni', keywords: 'graduates, network, alumni' },
     { name: 'Companies & Partners', path: '/placement/companies', keywords: 'partners, recruiters, companies' },

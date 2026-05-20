@@ -1,0 +1,163 @@
+/* Student (and role-selected) registration form */
+
+.register-form {
+  --register-brand: #20343c;
+  --register-accent: #d4a960;
+  --register-muted: #64748b;
+
+  position: relative;
+  width: 100%;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.25rem;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(212, 169, 96, 0.12), transparent 50%),
+    linear-gradient(180deg, #f1f5f9 0%, #e8eef3 50%, #f8fafc 100%);
+}
+
+.register-form__card {
+  width: 100%;
+  max-width: 32rem;
+  padding: 2rem 2rem 1.75rem !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  border-top: 4px solid var(--register-brand) !important;
+  box-shadow:
+    0 4px 6px rgba(15, 23, 42, 0.04),
+    0 20px 40px rgba(15, 23, 42, 0.08) !important;
+  animation: register-form-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes register-form-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-form__back {
+  align-self: flex-start;
+  margin: -0.25rem 0 0.25rem !important;
+  padding-left: 0 !important;
+  font-size: 0.8125rem !important;
+  color: var(--register-muted) !important;
+  border-radius: 8px !important;
+}
+
+.register-form__back:hover {
+  background: #f1f5f9 !important;
+  color: var(--register-brand) !important;
+}
+
+.register-form__hero {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.register-form__title {
+  font-size: 1.375rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  color: var(--register-brand) !important;
+}
+
+.register-form__steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem !important;
+}
+
+.register-form__step {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  transition:
+    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.register-form__step--active {
+  width: 1.5rem;
+  background: linear-gradient(90deg, var(--register-accent), #e8c47a);
+  box-shadow: 0 0 0 2px rgba(212, 169, 96, 0.25);
+}
+
+.register-form__step--done {
+  background: var(--register-accent);
+}
+
+.register-form__step-heading {
+  font-size: 1.0625rem !important;
+  font-weight: 700 !important;
+  color: var(--register-brand) !important;
+  letter-spacing: -0.01em;
+}
+
+.register-form__step-lead {
+  color: var(--register-muted) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.55 !important;
+}
+
+.register-form__record-box {
+  padding: 1rem 1.125rem !important;
+  background: linear-gradient(135deg, #f8fafc 0%, #fff 100%) !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  border-left: 3px solid var(--register-accent) !important;
+}
+
+.register-form__complete-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--register-accent) 0%, #c49a4a 100%);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(212, 169, 96, 0.35);
+}
+
+.register-form__footer-link {
+  color: var(--register-accent) !important;
+  font-weight: 600 !important;
+  text-decoration: none;
+}
+
+.register-form__footer-link:hover {
+  color: #b8923d !important;
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .register-form {
+    padding: 1.5rem 1rem;
+    align-items: flex-start;
+  }
+
+  .register-form__card {
+    padding: 1.5rem 1.25rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .register-form__card {
+    animation: none;
+  }
+
+  .register-form__step {
+    transition: background 0.2s ease;
+  }
+}

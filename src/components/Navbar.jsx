@@ -35,11 +35,6 @@ export const Navbar = () => {
           <NavLink to="/">Home</NavLink>
           {!isAuthenticated ? (
             <>
-              <NavLink to="/about">About</NavLink>
-              <NavLink to="/companies">Companies</NavLink>
-              <NavLink to="/projects">Projects</NavLink>
-              <NavLink to="/contact">Contact</NavLink>
-              <NavLink to="/alumni/register">Alumni</NavLink>
               <Button
                 as={RouterLink}
                 to="/login"
@@ -64,7 +59,6 @@ export const Navbar = () => {
               {userRole?.toLowerCase() === "alumni" && (
                 <NavLink to="/placement/alumni-dashboard">Dashboard</NavLink>
               )}
-              <NavLink to="/projects">Projects</NavLink>
               <HStack gap={4}>
                 <Button
                   as={RouterLink}

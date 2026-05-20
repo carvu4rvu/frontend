@@ -13,6 +13,7 @@ import {
 import { Field } from "../components/ui/field"
 import { RoleCard } from "../components/RoleCard"
 import "./RegisterRoleSelect.css"
+import "./RegisterForm.css"
 import PixelCard from "../components/PixelCard"
 import { useAuth } from "../context/AuthContext"
 import { apiFetch } from "../services/api"
@@ -400,13 +401,13 @@ const StudentRegister = () => {
 
   const renderStep2 = () => (
     <VStack gap={6} align="stretch">
-      <Heading size="md" color="#20343c">Step 2: Confirm Academic Details</Heading>
-      <Text color="gray.600">
+      <Heading size="md" className="register-form__step-heading">Step 2: Confirm Academic Details</Heading>
+      <Text className="register-form__step-lead">
         Please confirm that the following details fetched from the university records are correct. 
         If anything looks wrong, do not proceed and contact the administration.
       </Text>
 
-      <Box p={4} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
+      <Box className="register-form__record-box" p={4} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
           <Box>
             <Text fontSize="xs" color="gray.500">USN</Text>
@@ -659,8 +660,8 @@ const StudentRegister = () => {
 
   const renderStep1 = () => (
     <VStack gap={6} align="stretch">
-      <Heading size="md" color="#20343c">Step 1: Student Verification</Heading>
-      <Text color="gray.600">Please enter your University Serial Number (USN) to verify your identity.</Text>
+      <Heading size="md" className="register-form__step-heading">Step 1: Student Verification</Heading>
+      <Text className="register-form__step-lead">Please enter your University Serial Number (USN) to verify your identity.</Text>
       
       <Field label="USN" errorText={!isUsnVerified ? error : null}>
         <Input 
@@ -677,7 +678,7 @@ const StudentRegister = () => {
 
       {isUsnVerified && (
         <VStack gap={4} align="stretch" animation="fadeIn 0.5s">
-            <Box p={4} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
+            <Box className="register-form__record-box" p={4} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
                 <Text fontWeight="bold" color="#20343c">Student Record Located</Text>
                 <SimpleGrid columns={1} gap={4} mt={2}>
                   <Box>
@@ -787,7 +788,7 @@ const StudentRegister = () => {
 
   const renderStep3 = () => (
     <VStack gap={4} align="stretch">
-      <Heading size="md" color="#20343c">Step 3: Personal Details</Heading>
+      <Heading size="md" className="register-form__step-heading">Step 3: Personal Details</Heading>
       
       <Flex gap={4}>
         <Field label="Date of Birth" errorText={dobError || null}>
@@ -924,7 +925,7 @@ const StudentRegister = () => {
 
   const renderStep4 = () => (
     <VStack gap={4} align="stretch">
-      <Heading size="md" color="#20343c">Step 4: Family Details</Heading>
+      <Heading size="md" className="register-form__step-heading">Step 4: Family Details</Heading>
       {error && (
         <Text fontSize="sm" color="red.600" bg="red.50" p={2} borderRadius="md" border="1px solid" borderColor="red.200">
           {error}
@@ -1035,7 +1036,7 @@ const StudentRegister = () => {
 
   const renderStep5 = () => (
     <VStack gap={6} align="stretch">
-      <Heading size="md" color="#20343c">Step 5: Set Password</Heading>
+      <Heading size="md" className="register-form__step-heading">Step 5: Set Password</Heading>
 
       {error && !error.includes("Password") && (
         <Text fontSize="sm" color="red.600" bg="red.50" p={2} borderRadius="md" border="1px solid" borderColor="red.200">
@@ -1101,17 +1102,18 @@ const StudentRegister = () => {
   return (
     <VStack gap={6} align="stretch">
       {/* Academic details confirmation removed */}
-      <Box textAlign="center" mb={4}>
-        <Heading color="#20343c">Student Registration</Heading>
+      <Box className="register-form__hero" mb={4}>
+        <Heading className="register-form__title">Student Registration</Heading>
         {!isCompleted && (
-          <Flex justify="center" gap={2} mt={2}>
+          <Flex className="register-form__steps" justify="center" gap={2} mt={2}>
             {[1, 2, 3, 4, 5].map((i) => (
-              <Box 
-                key={i} 
-                w={3} h={3} 
-                borderRadius="full" 
-                bg={step >= i ? "#d4a960" : "gray.200"} 
-                transition="all 0.3s"
+              <Box
+                key={i}
+                className={[
+                  'register-form__step',
+                  step === i ? 'register-form__step--active' : '',
+                  step > i ? 'register-form__step--done' : '',
+                ].filter(Boolean).join(' ')}
               />
             ))}
           </Flex>
@@ -1120,7 +1122,7 @@ const StudentRegister = () => {
       
       {isCompleted ? (
         <VStack gap={6} py={10}>
-          <Box bg="#d4a960" p={4} borderRadius="full" color="white">
+          <Box className="register-form__complete-icon">
             <Icon as={FaCheck} w={10} h={10} />
           </Box>
           <Heading size="lg" color="#20343c">Registration Complete!</Heading>
@@ -1144,7 +1146,7 @@ const StudentRegister = () => {
       {!isCompleted && step === 1 && (
         <Text textAlign="center" fontSize="sm" color="gray.600">
           Already have an account?{" "}
-          <RouterLink to="/login" style={{ color: "#d4a960", fontWeight: "bold" }}>
+          <RouterLink to="/login" className="register-form__footer-link">
             Login here
           </RouterLink>
         </Text>
@@ -1394,17 +1396,17 @@ export const Register = () => {
 
   return (
     <Box
-      py={role ? 10 : 0}
-      bg={role ? 'gray.50' : 'transparent'}
+      py={role ? 0 : 0}
+      bg="transparent"
       minH="90vh"
       display="flex"
       alignItems="center"
       justifyContent="center"
-      className={role ? undefined : 'register-role'}
+      className={role ? 'register-form' : 'register-role'}
     >
       <Container
         maxW={role ? 'md' : undefined}
-        className={role ? undefined : 'register-role__card'}
+        className={role ? 'register-form__card' : 'register-role__card'}
         bg={role ? 'white' : 'transparent'}
         p={role ? 8 : 0}
         borderRadius={role ? 'xl' : undefined}
@@ -1413,19 +1415,22 @@ export const Register = () => {
         borderTopColor={role ? '#20343c' : undefined}
       >
         {!role ? (
-            <VStack gap={0} align="stretch" w="full">
+            <div className="register-role__inner">
                 <header className="register-role__header">
+                    <p className="register-role__eyebrow">Carve You</p>
                     <h1 className="register-role__title">Join Our Platform</h1>
-                    <p className="register-role__subtitle">Select your role to continue</p>
+                    <p className="register-role__subtitle">Select your role to continue with registration</p>
                 </header>
                 <div className="register-role__grid">
                     <RoleCard
+                      variant="student"
                       title="Student"
                       description="Register with your college email and USN"
                       icon={FaUserGraduate}
                       onClick={() => setRole('student')}
                     />
                     <RoleCard
+                      variant="alumni"
                       title="Alumni"
                       description="Graduates joining the alumni network"
                       icon={FaUserTie}
@@ -1438,13 +1443,14 @@ export const Register = () => {
                         Login here
                     </RouterLink>
                 </p>
-            </VStack>
+            </div>
         ) : (
              <VStack align="stretch" gap={4}>
-                <Button 
-                    variant="ghost" 
-                    justifyContent="flex-start" 
-                    leftIcon={<Icon as={FaArrowLeft} />} 
+                <Button
+                    className="register-form__back"
+                    variant="ghost"
+                    justifyContent="flex-start"
+                    leftIcon={<Icon as={FaArrowLeft} />}
                     onClick={() => setRole(null)}
                     color="gray.500"
                     size="sm"

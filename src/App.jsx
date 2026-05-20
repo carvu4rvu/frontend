@@ -4,8 +4,6 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import PlacementNavigationTracker from './components/PlacementNavigationTracker';
 import { Home } from './pages/Home';
-import { About } from './pages/About';
-import Contact from './pages/Contact';
 import { Login } from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -46,7 +44,6 @@ import AdminProjectDetail from './pages/admin/AdminProjectDetail';
 import AdminHrRecommendations from './pages/admin/AdminHrRecommendations';
 import Violations from './pages/admin/Violations';
 import JobOffers from './pages/admin/JobOffers';
-import { Companies } from './pages/Companies';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { PersonalProfile } from './pages/student/profile/PersonalProfile';
 import { ContactProfile as ContactDetails } from './pages/student/profile/ContactProfile';
@@ -99,9 +96,7 @@ import CompanyContacts from './pages/company/CompanyContacts';
 import CompanyNotificationsPage from './pages/company/CompanyNotificationsPage';
 import { CompanyService } from './services/company.service';
 import { UniversalProjectShowcase } from './pages/UniversalProjectShowcase';
-import ProjectsShowcase from './pages/ProjectsShowcase';
 import ProjectSharePage from './pages/ProjectSharePage';
-import EventsPage from './pages/EventsPage';
 import './App.css';
 import { Flex, Box, Heading, Text, Button } from '@chakra-ui/react';
 import { AuthProvider } from './context/AuthContext';
@@ -139,11 +134,11 @@ const Layout = () => {
   // Hide Navbar on student pages, placement (admin) pages, alumni, company pages (they have their own layouts)
   const hideNavbar = isStudentDashboard || isStudentProfile || isAlumniPage || isCompanyPage || isAdminStudentDetail || isPlacementRoute;
 
-  // Show site footer only on admin/student dashboards (alumni portal has its own layout)
-  const isDashboard =
+  const publicFooterPaths = ['/', '/login', '/register', '/forgot-password', '/alumni/register'];
+  const showFooter =
+    publicFooterPaths.includes(location.pathname) ||
     location.pathname === '/placement/dashboard' ||
     location.pathname === '/student-dashboard';
-  const showFooter = isDashboard;
 
   return (
     <Flex direction="column" minH="100vh">
@@ -183,17 +178,14 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: "/", element: <Home /> },
-      { path: "/about", element: <About /> },
-      { path: "/companies", element: <Companies /> },
-      { path: "/contact", element: <Contact /> },
+      { path: "/about", element: <Navigate to="/" replace /> },
       { path: "/login", element: <Login /> },
       { path: "/register", element: <Register /> },
       { path: "/alumni/register", element: <AlumniRegistration /> },
       { path: "/forgot-password", element: <ForgotPassword /> },
       { path: "/showcase/:usn", element: <UniversalProjectShowcase /> },
-      { path: "/projects", element: <ProjectsShowcase /> },
       { path: "/projects/share/:token", element: <ProjectSharePage /> },
-      { path: "/events", element: <EventsPage /> },
+      { path: "/events", element: <Navigate to="/" replace /> },
       { 
         path: "/placement/dashboard", 
         element: (

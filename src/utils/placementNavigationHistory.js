@@ -28,7 +28,6 @@ const PATH_LABEL_RULES = [
   { test: (p) => p.startsWith('/placement/user-login'), label: 'Back to Login Settings' },
   { test: (p) => p.startsWith('/placement/hr-recommendations'), label: 'Back to HR Recommendations' },
   { test: (p) => p.startsWith('/placement/alumni-connect'), label: 'Back to Alumni Connect' },
-  { test: (p) => p.startsWith('/events'), label: 'Back to Events' },
 ];
 
 export function getBackLabelForPath(path) {

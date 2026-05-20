@@ -55,8 +55,8 @@ const AdminLayout = ({ children, fullWidth = false, compactTop = false }) => {
       bgColor: "#2a4d5c",
       textColor: "#fff",
       links: [
-        { label: "Placement Drives", path: "/placement/events", ariaLabel: "Placement Drives" },
         { label: "Companies", path: "/placement/companies", ariaLabel: "Companies" },
+        { label: "Placement Drives", path: "/placement/events", ariaLabel: "Placement Drives" },
         { label: "Job Offers", path: "/placement/job-offers", ariaLabel: "Job Offers" },
         { label: "Placement Violations", path: "/placement/violations", ariaLabel: "Eligibility logs, placement violations, disciplinary records" }
       ]
@@ -69,7 +69,7 @@ const AdminLayout = ({ children, fullWidth = false, compactTop = false }) => {
         { label: "View All Students", path: "/placement/students", ariaLabel: "View Students" },
         { label: "Showcase Projects", path: "/placement/gallery/showcase", ariaLabel: "Showcase Projects" },
         { label: "Manage Projects", path: "/placement/gallery/manage", ariaLabel: "Manage Projects" },
-        { label: "Events", path: "/events", ariaLabel: "Events" }
+        { label: "Calendar", path: "/placement/calendar", ariaLabel: "Calendar of Events" }
       ]
     },
     {

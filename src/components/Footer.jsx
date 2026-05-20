@@ -1,39 +1,89 @@
-import { Box, Grid, Heading, Text, Link, Stack } from "@chakra-ui/react"
+import { Box } from "@chakra-ui/react"
 import { Link as RouterLink } from "react-router-dom"
+import { CarvuBrand } from "./CarvuBrand"
+import "./Footer.css"
+
+const EXPLORE_LINKS = [
+  { to: "/", label: "Home" },
+  { to: "/#about", label: "About" },
+  { to: "/#recruiters", label: "Top Recruiters" },
+  { to: "/#stories", label: "Success Stories" },
+]
+
+const STUDENT_LINKS = [
+  { to: "/register", label: "Register" },
+  { to: "/login", label: "Login" },
+]
 
 export const Footer = () => {
-  return (
-    <Box bg="#20343c" color="gray.300" py={12} px={8} w="100%">
-      <Box w="full">
-        <Grid templateColumns={{ base: "1fr", md: "2fr 1fr 1fr" }} gap={8}>
-          <Box>
-            <Heading color="#d4a960" mb={4}>CarvU</Heading>
-            <Text mb={4} color="whiteAlpha.800">
-              Empowering students to achieve their career goals through world-class placement opportunities.
-            </Text>
-            <Text color="whiteAlpha.600">&copy; {new Date().getFullYear()} Carv U. All rights reserved.</Text>
-          </Box>
-          
-          <Box>
-            <Heading size="md" color="#d4a960" mb={4}>Quick Links</Heading>
-            <Stack gap={2}>
-              <Link as={RouterLink} to="/about" color="white" _hover={{ color: "#d4a960" }}>About Us</Link>
-              <Link as={RouterLink} to="/events" color="white" _hover={{ color: "#d4a960" }}>Placement Process</Link>
-              <Link as={RouterLink} to="/companies" color="white" _hover={{ color: "#d4a960" }}>Recruiters</Link>
-              <Link as={RouterLink} to="/contact" color="white" _hover={{ color: "#d4a960" }}>Contact Us</Link>
-            </Stack>
-          </Box>
+  const year = new Date().getFullYear()
 
-          <Box>
-            <Heading size="md" color="#d4a960" mb={4}>Contact</Heading>
-            <Stack gap={2} color="white">
-              <Text>Email: placements@carvu.edu</Text>
-              <Text>Phone: +91 98765 43210</Text>
-              <Text>Address: 123 Education Lane, Tech City</Text>
-            </Stack>
-          </Box>
-        </Grid>
-      </Box>
+  return (
+    <Box as="footer" className="site-footer" w="100%">
+      <div className="site-footer__inner">
+        <div className="site-footer__top">
+          <div className="site-footer__brand-block">
+            <CarvuBrand fontSize="xl" />
+            <p className="site-footer__tagline">
+              RV University&apos;s placement platform — connecting students with verified recruiters,
+              drives, and career support in one place.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="site-footer__col-title">Explore</h3>
+            <ul className="site-footer__links">
+              {EXPLORE_LINKS.map(({ to, label }) => (
+                <li key={to}>
+                  <RouterLink to={to} className="site-footer__link">
+                    {label}
+                  </RouterLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="site-footer__col-title">Students</h3>
+            <ul className="site-footer__links">
+              {STUDENT_LINKS.map(({ to, label }) => (
+                <li key={to}>
+                  <RouterLink to={to} className="site-footer__link">
+                    {label}
+                  </RouterLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="site-footer__col-title">Contact</h3>
+            <p className="site-footer__contact-item">
+              <span className="site-footer__contact-icon" aria-hidden>
+                ✉
+              </span>
+              <span>placements@rvu.edu.in</span>
+            </p>
+            <p className="site-footer__contact-item">
+              <span className="site-footer__contact-icon" aria-hidden>
+                ☎
+              </span>
+              <span>+91 80 1234 5678</span>
+            </p>
+            <p className="site-footer__contact-item">
+              <span className="site-footer__contact-icon" aria-hidden>
+                ⌖
+              </span>
+              <span>RV University, Bengaluru, Karnataka</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="site-footer__bottom">
+          <p className="site-footer__copy">&copy; {year} CarvU — RV University Placement Cell</p>
+          <p className="site-footer__meta">Placement &amp; Career Services</p>
+        </div>
+      </div>
     </Box>
   )
 }

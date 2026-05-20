@@ -265,7 +265,7 @@ const CalendarOfEvents = () => {
                                       bg={e.type === 'Placement' ? 'blue.500' : 'orange.500'}
                                       cursor="pointer"
                                       title={e.title}
-                                      onClick={() => e.type === 'Placement' ? navigate(`/placement/events/${e.id}/process`) : navigate('/events')}
+                                      onClick={() => e.type === 'Placement' && navigate(`/placement/events/${e.id}/process`)}
                                       _hover={{ transform: 'scale(1.3)' }}
                                     />
                                   ))}
@@ -300,7 +300,7 @@ const CalendarOfEvents = () => {
                           borderLeft="4px solid"
                           borderLeftColor={e.type === 'Placement' ? 'blue.500' : 'orange.500'}
                           cursor="pointer"
-                          onClick={() => e.type === 'Placement' ? navigate(`/placement/events/${e.id}/process`) : navigate('/events')}
+                          onClick={() => e.type === 'Placement' && navigate(`/placement/events/${e.id}/process`)}
                           _hover={{ bg: 'gray.50' }}
                         >
                           <Text fontWeight="bold" fontSize="sm" mb={1}>{e.title}</Text>
