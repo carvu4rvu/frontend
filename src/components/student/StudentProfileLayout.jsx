@@ -1,13 +1,14 @@
 import { useState, useRef, createContext, useEffect } from "react"
-import { Box, Flex, VStack, Text, Icon, HStack, Button, Spinner, Badge } from "@chakra-ui/react"
+import { Box, Flex, VStack, Text, Icon, HStack, Button, Spinner, Badge, Input, useToast, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from "@chakra-ui/react"
 import { CarvuBrand } from "../CarvuBrand"
 
 /** Context so modals (e.g. project detail) can render inside the main content area and not overlap the sidebar */
 export const StudentProfileContentRefContext = createContext(null)
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { resolveAdminStudentBack } from "../../utils/placementNavigationHistory"
 import StudentUniversalSearch from "./StudentUniversalSearch"
 import { useAuth } from "../../context/AuthContext"
+import { StudentProfileService } from "../../services/studentProfile.service"
 import { usePlacementTrackPolicy } from "../../context/PlacementTrackPolicyContext"
 import { ProfileViewProvider } from "../../context/ProfileViewContext"
 import { 
@@ -38,6 +39,7 @@ import {
   FaSun,
   FaBuilding,
   FaTachometerAlt,
+  FaTrash,
 } from "react-icons/fa"
 
 const navItems = [
@@ -70,11 +72,20 @@ const isPlacementTrackPath = (path) => PLACEMENT_TRACK_PATHS.some((p) => path ==
 export const StudentProfileLayout = ({ children, basePath = null, isAdminView = false }) => {
   const location = useLocation()
   const navigate = useNavigate()
+  const { usn: routeUsn } = useParams()
+  const toast = useToast()
   const { logout, user } = useAuth()
   const contentRef = useRef(null)
   const [open, setOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
+  const cancelDeleteRef = useRef(null)
   const { policy: trackPolicy, loading: trackPolicyLoading } = usePlacementTrackPolicy()
   const onPlacementTrackPath = isPlacementTrackPath(location.pathname)
+  const adminStudentUsn = isAdminView
+    ? String(routeUsn || (basePath ? decodeURIComponent(basePath.split("/").pop() || "") : "")).trim().toUpperCase()
+    : ""
 
   const adminBack = isAdminView
     ? resolveAdminStudentBack(location, "/placement/students")
@@ -97,6 +108,44 @@ export const StudentProfileLayout = ({ children, basePath = null, isAdminView = 
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const requiredDeletePhrase = adminStudentUsn ? `delete ${adminStudentUsn}` : ""
+
+  const handleDeleteStudent = async () => {
+    if (!adminStudentUsn) return
+    if (deleteConfirmText !== requiredDeletePhrase) {
+      toast({
+        title: "Confirmation required",
+        description: `Type "${requiredDeletePhrase}" exactly to confirm.`,
+        status: "warning",
+        isClosable: true,
+      })
+      return
+    }
+
+    setDeleteLoading(true)
+    try {
+      await StudentProfileService.deleteStudent(adminStudentUsn)
+      toast({
+        title: "Student deleted",
+        description: `${adminStudentUsn} and all related records were removed.`,
+        status: "success",
+        isClosable: true,
+      })
+      onDeleteClose()
+      setDeleteConfirmText("")
+      navigate("/placement/students")
+    } catch (err) {
+      toast({
+        title: "Delete failed",
+        description: err?.message || "Could not delete student.",
+        status: "error",
+        isClosable: true,
+      })
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const DottedDivider = () => (
@@ -239,6 +288,21 @@ export const StudentProfileLayout = ({ children, basePath = null, isAdminView = 
             )}
           </HStack>
         </HStack>
+
+        {isAdminView && adminStudentUsn && (
+          <Button
+            leftIcon={<Icon as={FaTrash} />}
+            variant="outline"
+            colorScheme="red"
+            size="sm"
+            color="red.200"
+            borderColor="red.400"
+            _hover={{ bg: "red.900", color: "white", borderColor: "red.300" }}
+            onClick={onDeleteOpen}
+          >
+            Delete Student
+          </Button>
+        )}
         
         {!isAdminView && (
         <HStack spacing={4} align="center">
@@ -500,6 +564,53 @@ export const StudentProfileLayout = ({ children, basePath = null, isAdminView = 
           </StudentProfileContentRefContext.Provider>
         </Box>
       </Flex>
+
+      <AlertDialog
+        isOpen={isDeleteOpen}
+        leastDestructiveRef={cancelDeleteRef}
+        onClose={() => {
+          if (deleteLoading) return
+          onDeleteClose()
+          setDeleteConfirmText("")
+        }}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete student permanently?
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              <Text mb={3}>
+                This will permanently delete <strong>{adminStudentUsn}</strong> and all related data:
+                profile, academics, projects, placements, offers, login, and alumni records (if any).
+              </Text>
+              <Text mb={2} fontSize="sm" color="gray.600">
+                Type <strong>{requiredDeletePhrase}</strong> to confirm:
+              </Text>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={requiredDeletePhrase}
+                autoFocus
+              />
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={cancelDeleteRef} onClick={onDeleteClose} isDisabled={deleteLoading}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={handleDeleteStudent}
+                ml={3}
+                isLoading={deleteLoading}
+                isDisabled={deleteConfirmText !== requiredDeletePhrase}
+              >
+                Delete permanently
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   )
 }

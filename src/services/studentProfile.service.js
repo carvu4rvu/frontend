@@ -340,6 +340,17 @@ export const StudentProfileService = {
     await apiFetch(url, { method: 'DELETE' });
   },
 
+  /**
+   * Permanently delete a student and all related records (admin).
+   * @param {string} usn
+   */
+  deleteStudent: async (usn) => {
+    const response = await apiFetch(`/student/students/${encodeURIComponent(usn)}`, {
+      method: 'DELETE',
+    });
+    return response.data;
+  },
+
   createMinor: async (data) => {
     const response = await apiFetch('/student/minors', {
       method: 'POST',

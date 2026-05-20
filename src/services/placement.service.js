@@ -509,8 +509,11 @@ export const PlacementService = {
     return response.data;
   },
 
-  deleteCompany: async (id) => {
-    await apiFetch(`/placement/companies/${id}`, { method: 'DELETE' });
+  deleteCompany: async (id, { offersAction = 'delete' } = {}) => {
+    await apiFetch(`/placement/companies/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ offersAction }),
+    });
   },
 
   getCompanyContacts: async (id) => {

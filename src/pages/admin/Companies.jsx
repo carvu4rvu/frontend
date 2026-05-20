@@ -39,12 +39,6 @@ import {
   MenuList,
   MenuItem,
   Portal,
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogContent,
-  AlertDialogOverlay,
 } from '@chakra-ui/react';
 import { SearchIcon, AddIcon, DeleteIcon, ViewIcon, EditIcon, AttachmentIcon } from '@chakra-ui/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -52,6 +46,7 @@ import AdminLayout from '../../components/AdminLayout';
 import VcLayout from '../../components/VcLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import { StyledFileInput } from '../../components/ui/StyledFileInput';
+import CompanyDeleteDialog from '../../components/placement/CompanyDeleteDialog';
 import { PlacementService } from '../../services/placement.service';
 import { useAuth } from '../../context/AuthContext';
 
@@ -111,6 +106,9 @@ const Companies = () => {
   const [newLogo, setNewLogo] = useState(null);
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteOffersAction, setDeleteOffersAction] = useState('delete');
+  const [deletePreview, setDeletePreview] = useState({ drives: 0, contacts: 0, offers: 0 });
+  const [deletePreviewLoading, setDeletePreviewLoading] = useState(false);
 
   useEffect(() => {
     fetchCompanies();
@@ -238,6 +236,31 @@ const Companies = () => {
     setContextMenu({ ...contextMenu, isOpen: false });
   };
 
+  const loadDeletePreview = async (companyId) => {
+    setDeletePreviewLoading(true);
+    setDeletePreview({ drives: 0, contacts: 0, offers: 0 });
+    try {
+      const [contactsData, drivesData, offersData] = await Promise.all([
+        PlacementService.getCompanyContacts(companyId),
+        PlacementService.getCompanyDrives(companyId),
+        PlacementService.getCompanyOffers(companyId),
+      ]);
+      setDeletePreview({
+        drives: Array.isArray(drivesData) ? drivesData.length : 0,
+        contacts: Array.isArray(contactsData) ? contactsData.length : 0,
+        offers: Array.isArray(offersData) ? offersData.length : 0,
+      });
+    } catch (err) {
+      toast({
+        title: 'Could not load delete preview',
+        description: err.message,
+        status: 'warning',
+      });
+    } finally {
+      setDeletePreviewLoading(false);
+    }
+  };
+
   const handleAction = (action) => {
     const { company } = contextMenu;
     closeContextMenu();
@@ -257,7 +280,9 @@ const Companies = () => {
         break;
       case 'delete':
         setSelectedCompany(company);
+        setDeleteOffersAction('delete');
         onDeleteOpen();
+        loadDeletePreview(company.id);
         break;
       default:
         break;
@@ -286,15 +311,22 @@ const Companies = () => {
     if (!selectedCompany) return;
     setIsDeleting(true);
     try {
-      await PlacementService.deleteCompany(selectedCompany.id);
+      await PlacementService.deleteCompany(selectedCompany.id, { offersAction: deleteOffersAction });
       toast({ title: 'Company deleted', status: 'success' });
-      onDeleteClose();
+      handleDeleteClose();
       fetchCompanies();
     } catch (err) {
       toast({ title: 'Error deleting company', description: err.message, status: 'error' });
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDeleteClose = () => {
+    setDeleteOffersAction('delete');
+    setDeletePreview({ drives: 0, contacts: 0, offers: 0 });
+    setDeletePreviewLoading(false);
+    onDeleteClose();
   };
 
   const handleContactChange = (index, field, value) => {
@@ -824,34 +856,18 @@ const Companies = () => {
           </Portal>
         )}
 
-        {/* Delete Confirmation Alert */}
-        <AlertDialog
+        <CompanyDeleteDialog
           isOpen={isDeleteOpen}
-          leastDestructiveRef={cancelRef}
-          onClose={onDeleteClose}
-        >
-          <AlertDialogOverlay>
-            <AlertDialogContent borderRadius="xl">
-              <AlertDialogHeader fontSize="lg" fontWeight="bold">
-                Delete Company
-              </AlertDialogHeader>
-
-              <AlertDialogBody>
-                Are you sure you want to delete <strong>{selectedCompany?.company_name}</strong>? 
-                This will also remove all associated contacts and records. This action cannot be undone.
-              </AlertDialogBody>
-
-              <AlertDialogFooter>
-                <Button ref={cancelRef} onClick={onDeleteClose}>
-                  Cancel
-                </Button>
-                <Button colorScheme="red" onClick={handleDeleteCompany} ml={3} isLoading={isDeleting}>
-                  Delete
-                </Button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialogOverlay>
-        </AlertDialog>
+          onClose={handleDeleteClose}
+          cancelRef={cancelRef}
+          companyName={selectedCompany?.company_name}
+          counts={deletePreview}
+          countsLoading={deletePreviewLoading}
+          offersAction={deleteOffersAction}
+          onOffersActionChange={setDeleteOffersAction}
+          onConfirm={handleDeleteCompany}
+          isDeleting={isDeleting}
+        />
 
         {/* Edit Logo Modal */}
         <Modal isOpen={isImageOpen} onClose={onImageClose}>

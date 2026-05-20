@@ -60,6 +60,7 @@ import { useAuth } from '../../context/AuthContext';
 import PlacementDrivesTable from '../../components/placement/PlacementDrivesTable';
 import JobOffersDataTable, { COMPANY_PAGE_OFFER_COLUMNS } from '../../components/placement/JobOffersDataTable';
 import JobOfferEditModal from '../../components/placement/JobOfferEditModal';
+import CompanyDeleteDialog from '../../components/placement/CompanyDeleteDialog';
 import { buildCompanyLogoById } from '../../utils/companyLogo';
 import {
   buildDriveNotificationContent,
@@ -110,6 +111,7 @@ const CompanyDetails = () => {
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
   const [newLogo, setNewLogo] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteOffersAction, setDeleteOffersAction] = useState('delete');
   const [currentContactIndex, setCurrentContactIndex] = useState(0);
   const [selectedContact, setSelectedContact] = useState(emptyContact());
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
@@ -261,15 +263,21 @@ const CompanyDetails = () => {
   const handleDeleteCompany = async () => {
     setIsDeleting(true);
     try {
-      await PlacementService.deleteCompany(id);
+      await PlacementService.deleteCompany(id, { offersAction: deleteOffersAction });
       toast({ title: 'Company deleted', status: 'success' });
       onDeleteClose();
+      setDeleteOffersAction('delete');
       navigate('/placement/companies');
     } catch (err) {
       toast({ title: 'Error deleting company', description: err.message, status: 'error' });
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDeleteClose = () => {
+    setDeleteOffersAction('delete');
+    onDeleteClose();
   };
 
   const nextContact = () => {
@@ -546,20 +554,30 @@ const CompanyDetails = () => {
                 </Box>
               </Flex>
               {!isVc && (
-                <IconButton
-                  icon={<EditIcon />}
-                  size="sm"
-                  colorScheme="blue"
-                  variant="ghost"
-                  position="absolute"
-                  bottom="4"
-                  right="4"
-                  onClick={openEdit}
-                  aria-label="Edit company details"
-                  borderRadius="full"
-                  _hover={{ bg: 'blue.50', transform: 'scale(1.1)' }}
-                  transition="all 0.2s"
-                />
+                <HStack position="absolute" bottom="4" right="4" spacing={2}>
+                  <IconButton
+                    icon={<EditIcon />}
+                    size="sm"
+                    colorScheme="blue"
+                    variant="ghost"
+                    onClick={openEdit}
+                    aria-label="Edit company details"
+                    borderRadius="full"
+                    _hover={{ bg: 'blue.50', transform: 'scale(1.1)' }}
+                    transition="all 0.2s"
+                  />
+                  <IconButton
+                    icon={<DeleteIcon />}
+                    size="sm"
+                    colorScheme="red"
+                    variant="ghost"
+                    onClick={onDeleteOpen}
+                    aria-label="Delete company"
+                    borderRadius="full"
+                    _hover={{ bg: 'red.50', transform: 'scale(1.1)' }}
+                    transition="all 0.2s"
+                  />
+                </HStack>
               )}
             </CardBody>
           </Card>
@@ -1044,33 +1062,21 @@ const CompanyDetails = () => {
             </ModalContent>
           </Modal>
 
-          <AlertDialog
+          <CompanyDeleteDialog
             isOpen={isDeleteOpen}
-            leastDestructiveRef={cancelRef}
-            onClose={onDeleteClose}
-          >
-            <AlertDialogOverlay>
-              <AlertDialogContent borderRadius="xl">
-                <AlertDialogHeader fontSize="lg" fontWeight="bold">
-                  Delete Company
-                </AlertDialogHeader>
-
-                <AlertDialogBody>
-                  Are you sure you want to delete <strong>{company?.company_name}</strong>?
-                  This will also remove all associated contacts and records. This action cannot be undone.
-                </AlertDialogBody>
-
-                <AlertDialogFooter>
-                  <Button ref={cancelRef} onClick={onDeleteClose}>
-                    Cancel
-                  </Button>
-                  <Button colorScheme="red" onClick={handleDeleteCompany} ml={3} isLoading={isDeleting}>
-                    Delete
-                  </Button>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialogOverlay>
-          </AlertDialog>
+            onClose={handleDeleteClose}
+            cancelRef={cancelRef}
+            companyName={company?.company_name}
+            counts={{
+              drives: drives.length,
+              contacts: contacts.length,
+              offers: offers.length,
+            }}
+            offersAction={deleteOffersAction}
+            onOffersActionChange={setDeleteOffersAction}
+            onConfirm={handleDeleteCompany}
+            isDeleting={isDeleting}
+          />
 
           <AlertDialog
             isOpen={isContactDeleteOpen}
