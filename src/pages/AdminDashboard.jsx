@@ -378,22 +378,31 @@ const AdminDashboard = () => {
     : placementTableData;
 
   // Calculate Aggregates
-  const aggregatedStats = selectedSchools.length > 0 ? {
-    offers: {
-      total: filteredData.reduce((sum, row) => sum + row.totalOffers, 0),
-      percent: ((filteredData.reduce((sum, row) => sum + row.totalOffers, 0) / filteredData.reduce((sum, row) => sum + row.total, 0)) * 100).toFixed(2) + '%',
-      placed: filteredData.reduce((sum, row) => sum + row.placed, 0),
-      placedPercent: ((filteredData.reduce((sum, row) => sum + row.placed, 0) / filteredData.reduce((sum, row) => sum + row.total, 0)) * 100).toFixed(2) + '%'
-    },
-    breakdown: {
-      fullTime: filteredData.reduce((sum, row) => sum + row.fullTime, 0),
-      fullTimePercent: ((filteredData.reduce((sum, row) => sum + row.fullTime, 0) / filteredData.reduce((sum, row) => sum + row.total, 0)) * 100).toFixed(2) + '%',
-      internships: filteredData.reduce((sum, row) => sum + row.internship, 0),
-      internshipsPercent: ((filteredData.reduce((sum, row) => sum + row.internship, 0) / filteredData.reduce((sum, row) => sum + row.total, 0)) * 100).toFixed(2) + '%',
-      internshipCumFulltime: filteredData.reduce((sum, row) => sum + row.ppo, 0), 
-      internshipCumFulltimePercent: ((filteredData.reduce((sum, row) => sum + row.ppo, 0) / filteredData.reduce((sum, row) => sum + row.total, 0)) * 100).toFixed(2) + '%'
-    }
-  } : stats; // Use default stats if no filter
+  const aggregatedStats = selectedSchools.length > 0 ? (() => {
+    const totalOffers = filteredData.reduce((sum, row) => sum + row.totalOffers, 0);
+    const totalSeeking = filteredData.reduce((sum, row) => sum + row.total, 0);
+    const placed = filteredData.reduce((sum, row) => sum + row.placed, 0);
+    const fullTime = filteredData.reduce((sum, row) => sum + row.fullTime, 0);
+    const internships = filteredData.reduce((sum, row) => sum + row.internship, 0);
+    const internshipCumFulltime = filteredData.reduce((sum, row) => sum + row.ppo, 0);
+
+    return {
+      offers: {
+        total: totalOffers,
+        percent: totalSeeking > 0 ? ((totalOffers / totalSeeking) * 100).toFixed(2) + '%' : '0%',
+        placed,
+        placedPercent: totalSeeking > 0 ? ((placed / totalSeeking) * 100).toFixed(2) + '%' : '0%',
+      },
+      breakdown: {
+        fullTime,
+        fullTimePercent: placed > 0 ? ((fullTime / placed) * 100).toFixed(2) + '%' : '0%',
+        internships,
+        internshipsPercent: placed > 0 ? ((internships / placed) * 100).toFixed(2) + '%' : '0%',
+        internshipCumFulltime,
+        internshipCumFulltimePercent: placed > 0 ? ((internshipCumFulltime / placed) * 100).toFixed(2) + '%' : '0%',
+      },
+    };
+  })() : stats; // Use default stats if no filter
 
   const handlePartnerClick = (partner) => {
     setSelectedCompany(partner);

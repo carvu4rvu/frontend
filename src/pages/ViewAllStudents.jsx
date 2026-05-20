@@ -297,7 +297,7 @@ export const PlacementOverviewTab = ({ rows, salaryStats, academicYears, selecte
             {sortedRows.map((row, index) => {
               const key = row.school || 'Unknown';
               const isFirstOfSchool = index === 0 || (sortedRows[index - 1].school || 'Unknown') !== key;
-              const stats = (salaryStats && salaryStats[key]) || { max: 0, min: 0, avg: 0, median: 0, paidInternships: 0 };
+              const stats = (salaryStats && salaryStats[key]) || { max: 0, min: 0, avg: 0, median: 0 };
               return (
                 <Tr key={`${row.school}-${row.course}-${row.currentYear}-${index}`} bg={getRowBg(row.school)}>
                   <Td fontSize="sm" fontWeight="bold" textAlign="center" borderColor={border}>{row.school}</Td>
@@ -312,9 +312,6 @@ export const PlacementOverviewTab = ({ rows, salaryStats, academicYears, selecte
                         <Box><Text fontSize="xs" color="gray.500">Avg</Text><Text fontWeight="bold" fontSize="md" color="blue.600">{formatLpa(stats.avg)} LPA</Text></Box>
                         <Box><Text fontSize="xs" color="gray.500">Median</Text><Text fontWeight="bold" fontSize="md" color="purple.600">{formatLpa(stats.median)} LPA</Text></Box>
                         <Box><Text fontSize="xs" color="gray.500">Min</Text><Text fontWeight="bold" fontSize="md" color="orange.600">{formatLpa(stats.min)} LPA</Text></Box>
-                        <Box gridColumn="span 2" borderTop="1px dashed" borderColor="gray.200" pt={2}>
-                          <HStack justify="space-between"><Text fontSize="xs" color="gray.500">Paid Internships</Text><Badge colorScheme="teal">{stats.paidInternships}</Badge></HStack>
-                        </Box>
                       </SimpleGrid>
                     </Td>
                   )}
