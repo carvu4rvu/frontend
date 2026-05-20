@@ -155,20 +155,20 @@ const UniversalSearch = () => {
 
       <Modal initialFocusRef={initialRef} isOpen={isOpen} onClose={onClose} size="xl" motionPreset="slideInBottom">
         <ModalOverlay backdropFilter="blur(8px)" bg="blackAlpha.700" />
-        <ModalContent 
-          bg="#166534" 
-          color="white" 
-          borderRadius="2xl" 
-          overflow="hidden" 
-          boxShadow="dark-lg" 
-          border="1px solid" 
-          borderColor="whiteAlpha.200"
+        <ModalContent
+          bg="#2d4454"
+          color="gray.200"
+          borderRadius="xl"
+          overflow="hidden"
+          boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.35)"
+          border="1px solid"
+          borderColor="#3d5a6a"
           mt={16}
         >
-          <Box p={4} borderBottom="1px solid" borderColor="whiteAlpha.100">
+          <Box p={4} borderBottom="1px solid" borderColor="#3d5a6a" bg="#243b47">
             <InputGroup size="lg">
               <InputLeftElement pointerEvents="none" h="100%">
-                <Icon as={FiSearch} color="gray.400" boxSize={5} />
+                <Icon as={FiSearch} color="#90cdf4" boxSize={5} />
               </InputLeftElement>
               <Input
                 ref={initialRef}
@@ -176,112 +176,154 @@ const UniversalSearch = () => {
                 variant="unstyled"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                color="white"
+                color="gray.100"
                 fontSize="lg"
-                _placeholder={{ color: 'whiteAlpha.400' }}
+                _placeholder={{ color: 'gray.400' }}
                 pl={12}
                 h="48px"
               />
             </InputGroup>
           </Box>
-          
-          <ModalBody p={0} maxH="60vh" overflowY="auto" css={{
-            '&::-webkit-scrollbar': { width: '4px' },
-            '&::-webkit-scrollbar-track': { width: '6px' },
-            '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '24px' },
-          }}>
+
+          <ModalBody
+            p={0}
+            maxH="60vh"
+            overflowY="auto"
+            bg="#2d4454"
+            css={{
+              '&::-webkit-scrollbar': { width: '6px' },
+              '&::-webkit-scrollbar-track': { background: 'transparent' },
+              '&::-webkit-scrollbar-thumb': { background: '#4a6578', borderRadius: '24px' },
+            }}
+          >
             {query && (
               <List spacing={0} pb={2}>
-                {/* Pages */}
                 {results.pages.length > 0 && (
-                   <Box>
-                     <Text px={6} py={3} fontSize="xs" fontWeight="bold" color="whiteAlpha.500" textTransform="uppercase" letterSpacing="wider">Pages</Text>
-                     {results.pages.map((page, idx) => (
-                       <ListItem 
-                         key={`p-${idx}`} 
-                         px={6} py={3} 
-                         cursor="pointer" 
-                         _hover={{ bg: 'whiteAlpha.100', borderLeftColor: '#4FD1C5' }}
-                         borderLeft="3px solid transparent"
-                         onClick={() => handleSelect(page.path)}
-                         display="flex"
-                         alignItems="center"
-                         transition="all 0.2s"
-                       >
-                         <Icon as={FiFile} mr={4} color="teal.300" boxSize={5} />
-                         <Text flex={1} fontWeight="medium">{page.name}</Text>
-                         <Icon as={FiChevronRight} color="whiteAlpha.300" />
-                       </ListItem>
-                     ))}
-                   </Box>
+                  <Box>
+                    <Text px={6} py={3} fontSize="xs" fontWeight="bold" color="gray.400" textTransform="uppercase" letterSpacing="wider">
+                      Pages
+                    </Text>
+                    {results.pages.map((page, idx) => (
+                      <ListItem
+                        key={`p-${idx}`}
+                        px={6}
+                        py={3}
+                        cursor="pointer"
+                        _hover={{ bg: 'whiteAlpha.100', borderLeftColor: '#63b3ed' }}
+                        borderLeft="3px solid transparent"
+                        onClick={() => handleSelect(page.path)}
+                        display="flex"
+                        alignItems="center"
+                        transition="all 0.15s"
+                      >
+                        <Icon as={FiFile} mr={4} color="#90cdf4" boxSize={5} />
+                        <Text flex={1} fontWeight="medium" color="gray.100">
+                          {page.name}
+                        </Text>
+                        <Icon as={FiChevronRight} color="gray.500" />
+                      </ListItem>
+                    ))}
+                  </Box>
                 )}
 
-                {/* Companies */}
                 {results.companies.length > 0 && (
-                   <Box>
-                     <Text px={6} py={3} fontSize="xs" fontWeight="bold" color="whiteAlpha.500" textTransform="uppercase" letterSpacing="wider" mt={2}>Companies</Text>
-                     {results.companies.map((comp, idx) => (
-                       <ListItem 
-                         key={`c-${idx}`} 
-                         px={6} py={3} 
-                         cursor="pointer" 
-                         _hover={{ bg: 'whiteAlpha.100', borderLeftColor: '#F6AD55' }}
-                         borderLeft="3px solid transparent"
-                         onClick={() => handleSelect('/placement/companies')}
-                         display="flex"
-                         alignItems="center"
-                         transition="all 0.2s"
-                       >
-                         <Icon as={FiBriefcase} mr={4} color="orange.300" boxSize={5} />
-                         <Box flex={1}>
-                           <Text fontWeight="medium">{comp.company_name}</Text>
-                           <Text fontSize="xs" color="whiteAlpha.600">{comp.company_type}</Text>
-                         </Box>
-                         <Badge colorScheme="orange" variant="subtle" fontSize="xx-small" borderRadius="full" px={2} bg="orange.900" color="orange.200">COMPANY</Badge>
-                       </ListItem>
-                     ))}
-                   </Box>
+                  <Box>
+                    <Text px={6} py={3} fontSize="xs" fontWeight="bold" color="gray.400" textTransform="uppercase" letterSpacing="wider" mt={2}>
+                      Companies
+                    </Text>
+                    {results.companies.map((comp, idx) => (
+                      <ListItem
+                        key={`c-${idx}`}
+                        px={6}
+                        py={3}
+                        cursor="pointer"
+                        _hover={{ bg: 'whiteAlpha.100', borderLeftColor: '#63b3ed' }}
+                        borderLeft="3px solid transparent"
+                        onClick={() => handleSelect('/placement/companies')}
+                        display="flex"
+                        alignItems="center"
+                        transition="all 0.15s"
+                      >
+                        <Icon as={FiBriefcase} mr={4} color="#90cdf4" boxSize={5} />
+                        <Box flex={1}>
+                          <Text fontWeight="medium" color="gray.100">
+                            {comp.company_name}
+                          </Text>
+                          <Text fontSize="xs" color="gray.400">
+                            {comp.company_type}
+                          </Text>
+                        </Box>
+                        <Badge
+                          fontSize="xx-small"
+                          borderRadius="full"
+                          px={2}
+                          bg="#3d5a6a"
+                          color="gray.200"
+                          border="1px solid"
+                          borderColor="#4a6578"
+                        >
+                          COMPANY
+                        </Badge>
+                      </ListItem>
+                    ))}
+                  </Box>
                 )}
 
-                {/* Students */}
                 {results.students.length > 0 && (
-                   <Box>
-                     <Text px={6} py={3} fontSize="xs" fontWeight="bold" color="whiteAlpha.500" textTransform="uppercase" letterSpacing="wider" mt={2}>Students</Text>
-                     {results.students.map((student, idx) => (
-                       <ListItem 
-                         key={`s-${idx}`} 
-                         px={6} py={3} 
-                         cursor="pointer" 
-                         _hover={{ bg: 'whiteAlpha.100', borderLeftColor: '#68D391' }}
-                         borderLeft="3px solid transparent"
-                         onClick={() => handleSelect('/placement/students')}
-                         display="flex"
-                         alignItems="center"
-                         transition="all 0.2s"
-                       >
-                         <Icon as={FiUser} mr={4} color="green.300" boxSize={5} />
-                         <Box flex={1}>
-                           <Text fontWeight="medium">{student.name}</Text>
-                           <Text fontSize="xs" color="whiteAlpha.600">{student.usn} • {student.school}</Text>
-                         </Box>
-                         <Badge colorScheme="green" variant="subtle" fontSize="xx-small" borderRadius="full" px={2} bg="green.900" color="green.200">STUDENT</Badge>
-                       </ListItem>
-                     ))}
-                   </Box>
+                  <Box>
+                    <Text px={6} py={3} fontSize="xs" fontWeight="bold" color="gray.400" textTransform="uppercase" letterSpacing="wider" mt={2}>
+                      Students
+                    </Text>
+                    {results.students.map((student, idx) => (
+                      <ListItem
+                        key={`s-${idx}`}
+                        px={6}
+                        py={3}
+                        cursor="pointer"
+                        _hover={{ bg: 'whiteAlpha.100', borderLeftColor: '#63b3ed' }}
+                        borderLeft="3px solid transparent"
+                        onClick={() => handleSelect('/placement/students')}
+                        display="flex"
+                        alignItems="center"
+                        transition="all 0.15s"
+                      >
+                        <Icon as={FiUser} mr={4} color="#90cdf4" boxSize={5} />
+                        <Box flex={1}>
+                          <Text fontWeight="medium" color="gray.100">
+                            {student.name}
+                          </Text>
+                          <Text fontSize="xs" color="gray.400">
+                            {student.usn} • {student.school}
+                          </Text>
+                        </Box>
+                        <Badge
+                          fontSize="xx-small"
+                          borderRadius="full"
+                          px={2}
+                          bg="#3d5a6a"
+                          color="gray.200"
+                          border="1px solid"
+                          borderColor="#4a6578"
+                        >
+                          STUDENT
+                        </Badge>
+                      </ListItem>
+                    ))}
+                  </Box>
                 )}
-                
-                {query && Object.values(results).every(r => r.length === 0) && (
-                    <Box p={8} textAlign="center" color="whiteAlpha.600">
-                        <Text>No results found for "{query}"</Text>
-                    </Box>
+
+                {query && Object.values(results).every((r) => r.length === 0) && (
+                  <Box p={8} textAlign="center" color="gray.400">
+                    <Text>No results found for &ldquo;{query}&rdquo;</Text>
+                  </Box>
                 )}
               </List>
             )}
             {!query && (
-                <Box p={10} textAlign="center" color="whiteAlpha.500">
-                    <Icon as={FiSearch} boxSize={8} mb={3} opacity={0.5} />
-                    <Text fontSize="sm">Type to search for students, companies, or pages</Text>
-                </Box>
+              <Box p={10} textAlign="center" color="gray.400">
+                <Icon as={FiSearch} boxSize={8} mb={3} color="#4a6578" />
+                <Text fontSize="sm">Type to search for students, companies, or pages</Text>
+              </Box>
             )}
           </ModalBody>
         </ModalContent>

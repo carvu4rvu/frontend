@@ -177,18 +177,46 @@ const JobOffers = () => {
   });
 
   const [formMetaLoading, setFormMetaLoading] = useState(false);
-  const [students, setStudents] = useState([]);
   const [studentSearch, setStudentSearch] = useState('');
+  const [studentSearchResults, setStudentSearchResults] = useState([]);
+  const [studentSearchLoading, setStudentSearchLoading] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [allCompanies, setAllCompanies] = useState([]);
   const [formDrives, setFormDrives] = useState([]);
   const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
+  const [driveSearchQuery, setDriveSearchQuery] = useState('');
+  const [isDriveDropdownOpen, setIsDriveDropdownOpen] = useState(false);
   const [driveRegistrations, setDriveRegistrations] = useState({});
-  const [studentDriveMap, setStudentDriveMap] = useState({});
-  const [studentProcessLoadingUsns, setStudentProcessLoadingUsns] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const studentBoxRef = useRef(null);
+  const driveBoxRef = useRef(null);
+  const studentSearchAbortRef = useRef(null);
+
+  const modalDropdownListSx = {
+    position: 'absolute',
+    zIndex: 20,
+    top: '100%',
+    left: 0,
+    right: 0,
+    mt: 1,
+    bg: 'white',
+    border: '1px solid',
+    borderColor: 'gray.200',
+    borderRadius: 'md',
+    boxShadow: 'lg',
+    maxH: '240px',
+    overflowY: 'auto',
+  };
+
+  const modalComboboxInputSx = {
+    bg: 'white',
+    border: '1px solid',
+    borderColor: 'gray.300',
+    borderRadius: 'md',
+    _hover: { borderColor: 'gray.400' },
+    _focus: { borderColor: 'blue.500', boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)' },
+  };
 
   // Load prefill data when component mounts
   useEffect(() => {
@@ -377,6 +405,10 @@ const JobOffers = () => {
     });
     setSelectedStudents([]);
     setStudentSearch('');
+    setStudentSearchResults([]);
+    setDriveSearchQuery('');
+    setIsDriveDropdownOpen(false);
+    setIsStudentDropdownOpen(false);
   };
 
   // Edit offer functions
@@ -489,12 +521,10 @@ const JobOffers = () => {
   const fetchFormMeta = async () => {
     setFormMetaLoading(true);
     try {
-      const [studentsRes, companiesData, drivesData] = await Promise.all([
-        PlacementService.getAllStudents({ page: 1, page_size: 100 }),
+      const [companiesData, drivesData] = await Promise.all([
         PlacementService.getAllCompanies(),
         PlacementService.getAllDrives(),
       ]);
-      setStudents(studentsRes?.students ?? []);
       setAllCompanies(companiesData || []);
       setFormDrives(drivesData || []);
     } catch (error) {
@@ -512,50 +542,49 @@ const JobOffers = () => {
 
   const handleOpenAddOffer = () => {
     onOpen();
-    if (!formMetaLoading && students.length === 0 && allCompanies.length === 0 && formDrives.length === 0) {
+    if (!formMetaLoading && allCompanies.length === 0 && formDrives.length === 0) {
       fetchFormMeta();
     }
   };
 
-  const filteredStudentsForModal = useMemo(() => {
-    const driveId = newOffer.placement_drive_id;
-    let list = Array.isArray(students) ? students : [];
-    if (driveId && driveRegistrations[driveId]) {
-      const allowedUsns = new Set(driveRegistrations[driveId].map(r => r.usn));
-      list = list.filter(s => allowedUsns.has(s.usn));
-    }
-    if (!studentSearch) {
-      return list.slice(0, 50);
-    }
-    const q = studentSearch.toLowerCase().trim();
-    const filtered = list.filter(s => {
-      const name = (s.name || s.student_name || '').toLowerCase();
-      const usn = (s.usn || '').toLowerCase();
-      const email = (s.email || s.college_email || '').toLowerCase();
-      return name.includes(q) || usn.includes(q) || email.includes(q);
-    });
-    return filtered.slice(0, 50);
-  }, [students, studentSearch, newOffer.placement_drive_id, driveRegistrations]);
+  const formatDriveLabel = (drive) => {
+    if (!drive) return '';
+    return `${drive.id} — ${drive.company_name || 'Unknown'} (${drive.job_type || 'N/A'})`;
+  };
 
   const filteredDrivesForModal = useMemo(() => {
     if (!Array.isArray(formDrives) || formDrives.length === 0) return [];
-    if (selectedStudents.length === 0) return formDrives;
-    const usns = selectedStudents.map(s => s.usn).filter(Boolean);
-    const someMissing = usns.some(usn => !studentDriveMap[usn]);
-    if (someMissing) return formDrives;
-    const driveIdSets = usns.map(usn => new Set(studentDriveMap[usn] || []));
-    const filtered = formDrives.filter(drive => {
-      const id = drive.id;
-      if (!id) return false;
-      return driveIdSets.every(set => set.has(id));
-    });
-    // If filtered is empty but we have a pre-selected drive (e.g. from process page), show all so it displays
-    const preSelectedId = newOffer.placement_drive_id ? String(newOffer.placement_drive_id) : null;
-    if (filtered.length === 0 && preSelectedId && formDrives.some(d => String(d.id) === preSelectedId)) {
-      return formDrives;
-    }
-    return filtered;
-  }, [formDrives, selectedStudents, studentDriveMap, newOffer.placement_drive_id]);
+    const q = driveSearchQuery.trim().toLowerCase();
+    if (!q) return formDrives.slice(0, 50);
+    return formDrives
+      .filter((drive) => {
+        const label = formatDriveLabel(drive).toLowerCase();
+        const company = (drive.company_name || '').toLowerCase();
+        const jobType = (drive.job_type || '').toLowerCase();
+        const id = String(drive.id || '');
+        return label.includes(q) || company.includes(q) || jobType.includes(q) || id.includes(q);
+      })
+      .slice(0, 50);
+  }, [formDrives, driveSearchQuery]);
+
+  const selectPlacementDrive = (drive) => {
+    if (!drive?.id) return;
+    const value = String(drive.id);
+    setNewOffer((prev) => ({
+      ...prev,
+      placement_drive_id: value,
+      company_name: drive.company_name || prev.company_name,
+      company_id: drive.company_id || prev.company_id,
+    }));
+    setDriveSearchQuery(formatDriveLabel(drive));
+    setIsDriveDropdownOpen(false);
+    loadDriveRegistrations(value);
+  };
+
+  const clearPlacementDrive = () => {
+    setNewOffer((prev) => ({ ...prev, placement_drive_id: '' }));
+    setDriveSearchQuery('');
+  };
 
   const isStudentSelected = (usn) => {
     return selectedStudents.some(s => s.usn === usn);
@@ -576,39 +605,67 @@ const JobOffers = () => {
       if (isStudentDropdownOpen && studentBoxRef.current && !studentBoxRef.current.contains(event.target)) {
         setIsStudentDropdownOpen(false);
       }
+      if (isDriveDropdownOpen && driveBoxRef.current && !driveBoxRef.current.contains(event.target)) {
+        setIsDriveDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isStudentDropdownOpen]);
+  }, [isStudentDropdownOpen, isDriveDropdownOpen]);
 
   useEffect(() => {
-    const usns = selectedStudents.map(s => s.usn).filter(Boolean);
-    const missing = usns.filter(usn => !studentDriveMap[usn] && !studentProcessLoadingUsns.includes(usn));
-    if (!missing.length) return;
-    setStudentProcessLoadingUsns(prev => [...prev, ...missing]);
-    missing.forEach(async (usn) => {
-      try {
-        const processes = await PlacementService.getStudentProcess(usn);
-        const driveIds = Array.isArray(processes)
-          ? processes.map(p => p.placement_drive_id).filter(Boolean)
-          : [];
-        setStudentDriveMap(prev => ({
-          ...prev,
-          [usn]: Array.from(new Set(driveIds))
-        }));
-      } catch (error) {
-        console.error('Error loading student process', error);
-        setStudentDriveMap(prev => ({
-          ...prev,
-          [usn]: []
-        }));
-      } finally {
-        setStudentProcessLoadingUsns(prev => prev.filter(x => x !== usn));
+    const q = studentSearch.trim();
+    if (q.length < 2) {
+      setStudentSearchResults([]);
+      setStudentSearchLoading(false);
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      if (studentSearchAbortRef.current) {
+        studentSearchAbortRef.current.abort();
       }
-    });
-  }, [selectedStudents, studentDriveMap, studentProcessLoadingUsns]);
+      const ac = new AbortController();
+      studentSearchAbortRef.current = ac;
+      setStudentSearchLoading(true);
+      try {
+        const data = await PlacementService.getAllStudents(
+          { search: q, page: 1, page_size: 30 },
+          { signal: ac.signal }
+        );
+        if (!ac.signal.aborted) {
+          setStudentSearchResults(data?.students ?? []);
+        }
+      } catch (error) {
+        if (error?.name !== 'AbortError' && error?.code !== 'ABORT_ERR' && !ac.signal.aborted) {
+          console.error('Error searching students', error);
+          setStudentSearchResults([]);
+        }
+      } finally {
+        if (!ac.signal.aborted) {
+          setStudentSearchLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      if (studentSearchAbortRef.current) {
+        studentSearchAbortRef.current.abort();
+        studentSearchAbortRef.current = null;
+      }
+    };
+  }, [studentSearch]);
+
+  useEffect(() => {
+    if (!newOffer.placement_drive_id || !formDrives.length) return;
+    const drive = formDrives.find((d) => String(d.id) === String(newOffer.placement_drive_id));
+    if (drive && !driveSearchQuery) {
+      setDriveSearchQuery(formatDriveLabel(drive));
+    }
+  }, [newOffer.placement_drive_id, formDrives]);
 
   const fetchOffers = async () => {
     setLoading(true);
@@ -1296,87 +1353,109 @@ const JobOffers = () => {
                   <VStack spacing={4} align="stretch">
                     <FormControl isRequired>
                       <FormLabel>Students</FormLabel>
+                      <Text fontSize="xs" color="gray.500" mb={2}>
+                        Type at least 2 characters (name or USN) to search and add students.
+                      </Text>
                       <Box position="relative" ref={studentBoxRef}>
-                        <HStack spacing={2} flexWrap="wrap" mb={2}>
-                          {selectedStudents.map(student => (
-                            <HStack
-                              key={student.usn}
-                              spacing={1}
-                              p={1}
-                              borderRadius="md"
-                              border="1px solid"
-                              borderColor="gray.200"
-                              bg="gray.50"
-                            >
-                              <Badge colorScheme="blue">
-                                {student.usn}
-                              </Badge>
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                onClick={() => toggleStudentSelection(student)}
+                        {selectedStudents.length > 0 && (
+                          <HStack spacing={2} flexWrap="wrap" mb={2}>
+                            {selectedStudents.map((student) => (
+                              <HStack
+                                key={student.usn}
+                                spacing={1}
+                                px={2}
+                                py={1}
+                                borderRadius="md"
+                                border="1px solid"
+                                borderColor="blue.200"
+                                bg="blue.50"
                               >
-                                Remove
-                              </Button>
-                            </HStack>
-                          ))}
-                        </HStack>
-                        <Input
-                          placeholder="Type name or USN"
-                          value={studentSearch}
-                          onChange={(e) => {
-                            setStudentSearch(e.target.value);
-                            setIsStudentDropdownOpen(true);
-                          }}
-                          onFocus={() => setIsStudentDropdownOpen(true)}
-                          bg="white"
-                          border="1px solid"
-                          borderColor="blue.300"
-                          _focus={{ bg: "white", borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
-                          _hover={{ borderColor: "blue.400" }}
-                        />
-                        {isStudentDropdownOpen && (
-                          <Box
-                            position="absolute"
-                            zIndex={10}
-                            bg="white"
-                            border="1px solid"
-                            borderColor="gray.200"
-                            borderRadius="md"
-                            mt={1}
-                            maxH="260px"
-                            overflowY="auto"
-                            w="100%"
-                          >
-                            {filteredStudentsForModal.length === 0 ? (
-                              <Box p={3}>
+                                <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
+                                  {student.name || student.student_name || student.usn}
+                                </Text>
+                                <Badge colorScheme="blue" fontSize="xs">
+                                  {student.usn}
+                                </Badge>
+                                <Button
+                                  size="xs"
+                                  variant="ghost"
+                                  colorScheme="red"
+                                  onClick={() => toggleStudentSelection(student)}
+                                >
+                                  ×
+                                </Button>
+                              </HStack>
+                            ))}
+                          </HStack>
+                        )}
+                        <InputGroup>
+                          <InputLeftElement pointerEvents="none">
+                            <SearchIcon color="gray.400" />
+                          </InputLeftElement>
+                          <Input
+                            pl={10}
+                            placeholder="Search by name or USN…"
+                            value={studentSearch}
+                            onChange={(e) => {
+                              setStudentSearch(e.target.value);
+                              setIsStudentDropdownOpen(true);
+                            }}
+                            onFocus={() => {
+                              if (studentSearch.trim().length >= 2) {
+                                setIsStudentDropdownOpen(true);
+                              }
+                            }}
+                            {...modalComboboxInputSx}
+                          />
+                        </InputGroup>
+                        {isStudentDropdownOpen && studentSearch.trim().length >= 2 && (
+                          <Box {...modalDropdownListSx}>
+                            {studentSearchLoading ? (
+                              <Flex justify="center" py={4}>
+                                <Spinner size="sm" />
+                              </Flex>
+                            ) : studentSearchResults.length === 0 ? (
+                              <Box px={3} py={3}>
                                 <Text fontSize="sm" color="gray.500">No students found</Text>
                               </Box>
                             ) : (
-                              filteredStudentsForModal.map((student) => (
-                                <Box
-                                  key={student.usn}
-                                  px={3}
-                                  py={3}
-                                  _hover={{ bg: "gray.100" }}
-                                  cursor="pointer"
-                                  onMouseDown={() => {
-                                    toggleStudentSelection(student);
-                                  }}
-                                >
-                                  <HStack spacing={3}>
-                                    <Text fontWeight="semibold">
-                                      {student.name || student.student_name}
-                                    </Text>
-                                    <Badge colorScheme="blue">
-                                      {student.usn}
-                                    </Badge>
-                                    <Text color="gray.600">
-                                      {student.school || 'School N/A'}
-                                    </Text>
-                                  </HStack>
-                                </Box>
-                              ))
+                              studentSearchResults.map((student) => {
+                                const selected = isStudentSelected(student.usn);
+                                return (
+                                  <Box
+                                    key={student.usn}
+                                    px={3}
+                                    py={2.5}
+                                    borderBottom="1px solid"
+                                    borderColor="gray.100"
+                                    bg={selected ? 'blue.50' : 'white'}
+                                    _hover={{ bg: selected ? 'blue.100' : 'gray.50' }}
+                                    cursor="pointer"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      toggleStudentSelection(student);
+                                      setStudentSearch('');
+                                      setStudentSearchResults([]);
+                                      setIsStudentDropdownOpen(false);
+                                    }}
+                                  >
+                                    <Flex justify="space-between" align="center" gap={2}>
+                                      <Box minW={0}>
+                                        <Text fontWeight="semibold" fontSize="sm" noOfLines={1}>
+                                          {student.name || student.student_name || '—'}
+                                        </Text>
+                                        <Text fontSize="xs" color="gray.600" noOfLines={1}>
+                                          {student.school || 'School N/A'}
+                                          {student.program ? ` · ${student.program}` : ''}
+                                        </Text>
+                                      </Box>
+                                      <Badge colorScheme={selected ? 'green' : 'blue'} flexShrink={0}>
+                                        {student.usn}
+                                      </Badge>
+                                    </Flex>
+                                  </Box>
+                                );
+                              })
                             )}
                           </Box>
                         )}
@@ -1385,18 +1464,86 @@ const JobOffers = () => {
 
                     <FormControl>
                       <FormLabel>Placement Drive (optional)</FormLabel>
-                      <Select
-                        name="placement_drive_id"
-                        placeholder="Select drive or leave unlinked"
-                        value={newOffer.placement_drive_id != null ? String(newOffer.placement_drive_id) : ''}
-                        onChange={handleInputChange}
-                      >
-                        {filteredDrivesForModal.map((drive) => (
-                          <option key={drive.id} value={String(drive.id)}>
-                            {drive.id} - {drive.company_name} - {drive.job_type}
-                          </option>
-                        ))}
-                      </Select>
+                      <Box position="relative" ref={driveBoxRef}>
+                        <InputGroup position="relative">
+                          <InputLeftElement pointerEvents="none">
+                            <SearchIcon color="gray.400" />
+                          </InputLeftElement>
+                          <Input
+                            pl={10}
+                            pr={newOffer.placement_drive_id ? 10 : 4}
+                            placeholder="Search or type to select a drive…"
+                            value={driveSearchQuery}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setDriveSearchQuery(next);
+                              setIsDriveDropdownOpen(true);
+                              if (newOffer.placement_drive_id) {
+                                const selected = formDrives.find(
+                                  (d) => String(d.id) === String(newOffer.placement_drive_id)
+                                );
+                                if (!selected || formatDriveLabel(selected) !== next) {
+                                  setNewOffer((prev) => ({ ...prev, placement_drive_id: '' }));
+                                }
+                              }
+                            }}
+                            onFocus={() => setIsDriveDropdownOpen(true)}
+                            {...modalComboboxInputSx}
+                          />
+                          {newOffer.placement_drive_id ? (
+                            <Button
+                              position="absolute"
+                              right={1}
+                              top="50%"
+                              transform="translateY(-50%)"
+                              size="xs"
+                              variant="ghost"
+                              zIndex={1}
+                              onClick={clearPlacementDrive}
+                              aria-label="Clear placement drive"
+                            >
+                              ×
+                            </Button>
+                          ) : null}
+                        </InputGroup>
+                        {isDriveDropdownOpen && (
+                          <Box {...modalDropdownListSx}>
+                            {filteredDrivesForModal.length === 0 ? (
+                              <Box px={3} py={3}>
+                                <Text fontSize="sm" color="gray.500">No drives found</Text>
+                              </Box>
+                            ) : (
+                              filteredDrivesForModal.map((drive) => {
+                                const isSelected =
+                                  String(newOffer.placement_drive_id) === String(drive.id);
+                                return (
+                                  <Box
+                                    key={drive.id}
+                                    px={3}
+                                    py={2.5}
+                                    borderBottom="1px solid"
+                                    borderColor="gray.100"
+                                    bg={isSelected ? 'green.50' : 'white'}
+                                    _hover={{ bg: isSelected ? 'green.100' : 'gray.50' }}
+                                    cursor="pointer"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      selectPlacementDrive(drive);
+                                    }}
+                                  >
+                                    <Text fontWeight="semibold" fontSize="sm">
+                                      {drive.company_name || 'Unknown company'}
+                                    </Text>
+                                    <Text fontSize="xs" color="gray.600">
+                                      Drive #{drive.id} · {drive.job_type || 'N/A'}
+                                    </Text>
+                                  </Box>
+                                );
+                              })
+                            )}
+                          </Box>
+                        )}
+                      </Box>
                     </FormControl>
 
                     <FormControl isRequired>

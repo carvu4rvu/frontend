@@ -1186,6 +1186,45 @@ export const PlacementService = {
     return response.data;
   },
 
+  updateEligibilityDecisionLog: async (id, data) => {
+    const response = await apiFetch(`/placement/violations/eligibility-logs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data;
+  },
+
+  deleteEligibilityDecisionLog: async (id) => {
+    const response = await apiFetch(`/placement/violations/eligibility-logs/${id}`, { method: 'DELETE' });
+    return response.data;
+  },
+
+  updatePlacementViolation: async (id, data) => {
+    const response = await apiFetch(`/placement/violations/placement-violations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data;
+  },
+
+  deletePlacementViolation: async (id) => {
+    const response = await apiFetch(`/placement/violations/placement-violations/${id}`, { method: 'DELETE' });
+    return response.data;
+  },
+
+  updateDisciplinaryRecord: async (id, data) => {
+    const response = await apiFetch(`/placement/violations/disciplinary-records/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data;
+  },
+
+  deleteDisciplinaryRecord: async (id) => {
+    const response = await apiFetch(`/placement/violations/disciplinary-records/${id}`, { method: 'DELETE' });
+    return response.data;
+  },
+
   /** Alumni: Create connection request */
   createAlumniConnectionRequest: async (data) => {
     const response = await apiFetch('/placement/alumni/connect', {

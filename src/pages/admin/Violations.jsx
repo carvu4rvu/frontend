@@ -44,8 +44,15 @@ import {
   CheckboxGroup,
   Stack,
   VStack,
+  IconButton,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
 } from '@chakra-ui/react';
-import { AddIcon, SearchIcon } from '@chakra-ui/icons';
+import { AddIcon, SearchIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 
@@ -80,6 +87,8 @@ const Violations = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const cancelDeleteRef = React.useRef();
   const [eligibilityLogs, setEligibilityLogs] = useState([]);
   const [placementViolations, setPlacementViolations] = useState([]);
   const [disciplinaryRecords, setDisciplinaryRecords] = useState([]);
@@ -93,6 +102,10 @@ const Violations = () => {
   const [searching, setSearching] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [modalType, setModalType] = useState(''); // 'eligibility', 'placement', 'disciplinary'
+  const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit'
+  const [editingRow, setEditingRow] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type, row }
+  const [deleting, setDeleting] = useState(false);
   const [drives, setDrives] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [mainTabIndex, setMainTabIndex] = useState(0);
@@ -107,6 +120,7 @@ const Violations = () => {
     penalty_type: 'WARNING',
     penalty_days: '',
     remarks: '',
+    is_active: true,
   });
   const [disciplinaryForm, setDisciplinaryForm] = useState({
     violation_type: 'CHEATING',
@@ -114,6 +128,7 @@ const Violations = () => {
     description: '',
     start_date: new Date().toISOString().slice(0, 10),
     end_date: '',
+    is_active: true,
   });
 
   const fetchEligibilityLogs = useCallback(async () => {
@@ -180,13 +195,113 @@ const Violations = () => {
     setSearchQuery('');
     setSearchResults([]);
     setSelectedStudent(null);
+    setEditingRow(null);
+    setModalMode('add');
     setModalType(type);
     setEligibilityForm({ placement_drive_id: '', is_eligible: true, rejection_reasons: [] });
-    setPlacementForm({ placement_drive_id: '', violation_type: 'OFFER_REJECTED', penalty_type: 'WARNING', penalty_days: '', remarks: '' });
-    setDisciplinaryForm({ violation_type: 'CHEATING', severity: 'MINOR', description: '', start_date: new Date().toISOString().slice(0, 10), end_date: '' });
+    setPlacementForm({ placement_drive_id: '', violation_type: 'OFFER_REJECTED', penalty_type: 'WARNING', penalty_days: '', remarks: '', is_active: true });
+    setDisciplinaryForm({ violation_type: 'CHEATING', severity: 'MINOR', description: '', start_date: new Date().toISOString().slice(0, 10), end_date: '', is_active: true });
     PlacementService.getAllDrives().then((d) => setDrives(Array.isArray(d) ? d : []));
     onOpen();
   };
+
+  const toDateInput = (d) => {
+    if (!d) return '';
+    try {
+      return new Date(d).toISOString().slice(0, 10);
+    } catch {
+      return '';
+    }
+  };
+
+  const handleOpenEditModal = (type, row) => {
+    setEditingRow(row);
+    setModalMode('edit');
+    setModalType(type);
+    setSelectedStudent({ usn: row.usn });
+    PlacementService.getAllDrives().then((d) => setDrives(Array.isArray(d) ? d : []));
+    if (type === 'eligibility') {
+      setEligibilityForm({
+        placement_drive_id: row.placement_drive_id != null ? String(row.placement_drive_id) : '',
+        is_eligible: Boolean(row.is_eligible),
+        rejection_reasons: Array.isArray(row.rejection_reasons) ? row.rejection_reasons : [],
+      });
+    } else if (type === 'placement') {
+      setPlacementForm({
+        placement_drive_id: row.placement_drive_id != null ? String(row.placement_drive_id) : '',
+        violation_type: row.violation_type || 'OFFER_REJECTED',
+        penalty_type: row.penalty_type || 'WARNING',
+        penalty_days: row.penalty_days != null ? String(row.penalty_days) : '',
+        remarks: row.remarks || '',
+        is_active: row.is_active !== false,
+      });
+    } else if (type === 'disciplinary') {
+      setDisciplinaryForm({
+        violation_type: row.violation_type || 'CHEATING',
+        severity: row.severity || 'MINOR',
+        description: row.description || '',
+        start_date: toDateInput(row.start_date) || new Date().toISOString().slice(0, 10),
+        end_date: toDateInput(row.end_date),
+        is_active: row.is_active !== false,
+      });
+    }
+    onOpen();
+  };
+
+  const handleOpenDeleteConfirm = (type, row) => {
+    setDeleteTarget({ type, row });
+    onDeleteOpen();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?.row?.id) return;
+    setDeleting(true);
+    try {
+      const { type, row } = deleteTarget;
+      if (type === 'eligibility') {
+        await PlacementService.deleteEligibilityDecisionLog(row.id);
+        toast({ title: 'Eligibility log deleted', status: 'success' });
+        fetchEligibilityLogs();
+      } else if (type === 'placement') {
+        await PlacementService.deletePlacementViolation(row.id);
+        toast({ title: 'Placement violation deleted', status: 'success' });
+        fetchPlacementViolations();
+      } else if (type === 'disciplinary') {
+        await PlacementService.deleteDisciplinaryRecord(row.id);
+        toast({ title: 'Disciplinary record deleted', status: 'success' });
+        fetchDisciplinaryRecords();
+      }
+      onDeleteClose();
+      setDeleteTarget(null);
+    } catch (err) {
+      toast({ title: err?.message || 'Failed to delete record', status: 'error' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const renderRowActions = (type, row) => (
+    <Td borderColor={borderColor} onClick={(e) => e.stopPropagation()}>
+      <HStack spacing={1}>
+        <IconButton
+          aria-label="Edit"
+          icon={<EditIcon />}
+          size="xs"
+          variant="ghost"
+          colorScheme="blue"
+          onClick={() => handleOpenEditModal(type, row)}
+        />
+        <IconButton
+          aria-label="Delete"
+          icon={<DeleteIcon />}
+          size="xs"
+          variant="ghost"
+          colorScheme="red"
+          onClick={() => handleOpenDeleteConfirm(type, row)}
+        />
+      </HStack>
+    </Td>
+  );
 
   const handleSearchStudents = useCallback(async (query) => {
     const q = typeof query === 'string' ? String(query).trim() : searchQuery.trim();
@@ -213,8 +328,9 @@ const Violations = () => {
     setSelectedStudent(student);
   };
 
-  const handleAddViolationSubmit = async () => {
-    if (!selectedStudent?.usn) return;
+  const handleModalSubmit = async () => {
+    const usn = selectedStudent?.usn || editingRow?.usn;
+    if (!usn) return;
     setSubmitting(true);
     try {
       if (modalType === 'eligibility') {
@@ -223,44 +339,73 @@ const Violations = () => {
           setSubmitting(false);
           return;
         }
-        await PlacementService.createEligibilityDecisionLog({
-          usn: selectedStudent.usn,
+        const payload = {
           placement_drive_id: eligibilityForm.placement_drive_id,
           is_eligible: eligibilityForm.is_eligible,
           rejection_reasons: eligibilityForm.is_eligible ? null : eligibilityForm.rejection_reasons,
-        });
-        toast({ title: 'Eligibility decision log added', status: 'success' });
+        };
+        if (modalMode === 'edit' && editingRow?.id) {
+          await PlacementService.updateEligibilityDecisionLog(editingRow.id, payload);
+          toast({ title: 'Eligibility decision log updated', status: 'success' });
+        } else {
+          await PlacementService.createEligibilityDecisionLog({ usn, ...payload });
+          toast({ title: 'Eligibility decision log added', status: 'success' });
+        }
         fetchEligibilityLogs();
       } else if (modalType === 'placement') {
-        await PlacementService.createPlacementViolation({
-          usn: selectedStudent.usn,
+        const payload = {
           placement_drive_id: placementForm.placement_drive_id || null,
           violation_type: placementForm.violation_type,
           penalty_type: placementForm.penalty_type,
           penalty_days: placementForm.penalty_type === 'TEMP_BAN' ? placementForm.penalty_days || null : null,
           remarks: placementForm.remarks || null,
-        });
-        toast({ title: 'Placement violation added', status: 'success' });
+        };
+        if (modalMode === 'edit' && editingRow?.id) {
+          await PlacementService.updatePlacementViolation(editingRow.id, {
+            ...payload,
+            is_active: placementForm.is_active,
+          });
+          toast({ title: 'Placement violation updated', status: 'success' });
+        } else {
+          await PlacementService.createPlacementViolation({ usn, ...payload });
+          toast({ title: 'Placement violation added', status: 'success' });
+        }
         fetchPlacementViolations();
       } else if (modalType === 'disciplinary') {
-        await PlacementService.createDisciplinaryRecord({
-          usn: selectedStudent.usn,
+        const payload = {
           violation_type: disciplinaryForm.violation_type,
           severity: disciplinaryForm.severity,
           description: disciplinaryForm.description || null,
           start_date: disciplinaryForm.start_date,
           end_date: disciplinaryForm.end_date || null,
-        });
-        toast({ title: 'Disciplinary record added', status: 'success' });
+        };
+        if (modalMode === 'edit' && editingRow?.id) {
+          await PlacementService.updateDisciplinaryRecord(editingRow.id, {
+            ...payload,
+            is_active: disciplinaryForm.is_active,
+          });
+          toast({ title: 'Disciplinary record updated', status: 'success' });
+        } else {
+          await PlacementService.createDisciplinaryRecord({ usn, ...payload });
+          toast({ title: 'Disciplinary record added', status: 'success' });
+        }
         fetchDisciplinaryRecords();
       }
       onClose();
     } catch (err) {
-      toast({ title: err?.message || 'Failed to add record', status: 'error' });
+      toast({ title: err?.message || `Failed to ${modalMode === 'edit' ? 'update' : 'add'} record`, status: 'error' });
     } finally {
       setSubmitting(false);
     }
   };
+
+  const modalTitles = {
+    eligibility: { add: 'Add Eligibility Decision Log', edit: 'Edit Eligibility Decision Log' },
+    placement: { add: 'Add Placement Violation', edit: 'Edit Placement Violation' },
+    disciplinary: { add: 'Add Disciplinary Record', edit: 'Edit Disciplinary Record' },
+  };
+
+  const showModalForm = modalMode === 'edit' || selectedStudent;
 
   return (
     <AdminLayout>
@@ -275,17 +420,39 @@ const Violations = () => {
             </Text>
           </Box>
 
+          <AlertDialog
+            isOpen={isDeleteOpen}
+            leastDestructiveRef={cancelDeleteRef}
+            onClose={onDeleteClose}
+          >
+            <AlertDialogOverlay>
+              <AlertDialogContent borderRadius="xl">
+                <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                  Delete record?
+                </AlertDialogHeader>
+                <AlertDialogBody>
+                  This will permanently delete the {deleteTarget?.type === 'eligibility' ? 'eligibility log' : deleteTarget?.type === 'placement' ? 'placement violation' : 'disciplinary record'} for{' '}
+                  <strong>{deleteTarget?.row?.usn}</strong>. This cannot be undone.
+                </AlertDialogBody>
+                <AlertDialogFooter>
+                  <Button ref={cancelDeleteRef} onClick={onDeleteClose}>Cancel</Button>
+                  <Button colorScheme="red" onClick={handleDeleteConfirm} isLoading={deleting} ml={3}>
+                    Delete
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialogOverlay>
+          </AlertDialog>
+
           <Modal isOpen={isOpen} onClose={onClose} size="xl" scrollBehavior="inside">
             <ModalOverlay />
             <ModalContent maxH="90vh">
               <ModalHeader>
-                {modalType === 'eligibility' && 'Add Eligibility Decision Log'}
-                {modalType === 'placement' && 'Add Placement Violation'}
-                {modalType === 'disciplinary' && 'Add Disciplinary Record'}
+                {modalTitles[modalType]?.[modalMode] || 'Record'}
               </ModalHeader>
               <ModalCloseButton />
               <ModalBody pb={6}>
-                {!selectedStudent ? (
+                {modalMode === 'add' && !selectedStudent ? (
                   <>
                     <Text fontSize="sm" color="gray.600" mb={3}>
                       All students shown below. Type to filter by USN, email, or name.
@@ -333,11 +500,18 @@ const Violations = () => {
                 ) : (
                   <>
                     <Box mb={4} p={3} bg="blue.50" borderRadius="md">
-                      <Text fontSize="sm" fontWeight="medium">{selectedStudent.full_name || selectedStudent.name}</Text>
-                      <Text fontSize="sm" color="gray.600">{selectedStudent.usn} · {selectedStudent.college_email}</Text>
-                      <Button size="xs" variant="link" mt={1} onClick={() => setSelectedStudent(null)}>
-                        Change student
-                      </Button>
+                      {selectedStudent?.full_name || selectedStudent?.name ? (
+                        <Text fontSize="sm" fontWeight="medium">{selectedStudent.full_name || selectedStudent.name}</Text>
+                      ) : null}
+                      <Text fontSize="sm" color="gray.600">
+                        {selectedStudent?.usn}
+                        {selectedStudent?.college_email ? ` · ${selectedStudent.college_email}` : ''}
+                      </Text>
+                      {modalMode === 'add' && (
+                        <Button size="xs" variant="link" mt={1} onClick={() => setSelectedStudent(null)}>
+                          Change student
+                        </Button>
+                      )}
                     </Box>
 
                     {/* Eligibility Decision Log Form */}
@@ -447,6 +621,18 @@ const Violations = () => {
                             rows={2}
                           />
                         </FormControl>
+                        {modalMode === 'edit' && (
+                          <FormControl>
+                            <FormLabel>Active</FormLabel>
+                            <Select
+                              value={placementForm.is_active ? 'yes' : 'no'}
+                              onChange={(e) => setPlacementForm((f) => ({ ...f, is_active: e.target.value === 'yes' }))}
+                            >
+                              <option value="yes">Yes</option>
+                              <option value="no">No</option>
+                            </Select>
+                          </FormControl>
+                        )}
                       </VStack>
                     )}
 
@@ -500,18 +686,34 @@ const Violations = () => {
                             onChange={(e) => setDisciplinaryForm((f) => ({ ...f, end_date: e.target.value }))}
                           />
                         </FormControl>
+                        {modalMode === 'edit' && (
+                          <FormControl>
+                            <FormLabel>Active</FormLabel>
+                            <Select
+                              value={disciplinaryForm.is_active ? 'yes' : 'no'}
+                              onChange={(e) => setDisciplinaryForm((f) => ({ ...f, is_active: e.target.value === 'yes' }))}
+                            >
+                              <option value="yes">Yes</option>
+                              <option value="no">No</option>
+                            </Select>
+                          </FormControl>
+                        )}
                       </VStack>
                     )}
                   </>
                 )}
               </ModalBody>
-              {selectedStudent && (
+              {showModalForm && (
                 <ModalFooter>
                   <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
-                  <Button colorScheme="blue" onClick={handleAddViolationSubmit} isLoading={submitting}>
-                    {modalType === 'eligibility' && 'Add Log'}
-                    {modalType === 'placement' && 'Add Violation'}
-                    {modalType === 'disciplinary' && 'Add Record'}
+                  <Button colorScheme="blue" onClick={handleModalSubmit} isLoading={submitting}>
+                    {modalMode === 'edit' ? 'Save changes' : (
+                      <>
+                        {modalType === 'eligibility' && 'Add Log'}
+                        {modalType === 'placement' && 'Add Violation'}
+                        {modalType === 'disciplinary' && 'Add Record'}
+                      </>
+                    )}
                   </Button>
                 </ModalFooter>
               )}
@@ -594,7 +796,7 @@ const Violations = () => {
                             <Th color={headerColor} borderColor={borderColor}>Eligible</Th>
                             <Th color={headerColor} borderColor={borderColor} minW="240px">Rejection Reasons</Th>
                             <Th color={headerColor} borderColor={borderColor}>Evaluated At</Th>
-                            <Th color={headerColor} borderColor={borderColor}>Evaluated By</Th>
+                            <Th color={headerColor} borderColor={borderColor} w="90px">Actions</Th>
                           </Tr>
                         </Thead>
                         <Tbody>
@@ -618,7 +820,7 @@ const Violations = () => {
                                   : '—'}
                               </Td>
                               <Td borderColor={borderColor}>{formatDate(row.evaluated_at)}</Td>
-                              <Td borderColor={borderColor}>{row.evaluated_by || '—'}</Td>
+                              {renderRowActions('eligibility', row)}
                             </Tr>
                           ))}
                         </Tbody>
@@ -660,6 +862,7 @@ const Violations = () => {
                             <Th color={headerColor} borderColor={borderColor}>Active</Th>
                             <Th color={headerColor} borderColor={borderColor}>Remarks</Th>
                             <Th color={headerColor} borderColor={borderColor}>Created At</Th>
+                            <Th color={headerColor} borderColor={borderColor} w="90px">Actions</Th>
                           </Tr>
                         </Thead>
                         <Tbody>
@@ -695,6 +898,7 @@ const Violations = () => {
                                 {row.remarks || '—'}
                               </Td>
                               <Td borderColor={borderColor}>{formatDate(row.created_at)}</Td>
+                              {renderRowActions('placement', row)}
                             </Tr>
                           ))}
                         </Tbody>
@@ -737,6 +941,7 @@ const Violations = () => {
                             <Th color={headerColor} borderColor={borderColor}>Start</Th>
                             <Th color={headerColor} borderColor={borderColor}>End</Th>
                             <Th color={headerColor} borderColor={borderColor}>Created At</Th>
+                            <Th color={headerColor} borderColor={borderColor} w="90px">Actions</Th>
                           </Tr>
                         </Thead>
                         <Tbody>
@@ -770,6 +975,7 @@ const Violations = () => {
                               <Td borderColor={borderColor}>{formatDateOnly(row.start_date)}</Td>
                               <Td borderColor={borderColor}>{formatDateOnly(row.end_date)}</Td>
                               <Td borderColor={borderColor}>{formatDate(row.created_at)}</Td>
+                              {renderRowActions('disciplinary', row)}
                             </Tr>
                           ))}
                         </Tbody>
