@@ -53,7 +53,6 @@ import {
   FaInstagram,
   FaDownload,
 } from 'react-icons/fa';
-import AlumniLayout from '../../components/AlumniLayout';
 import { PlacementService } from '../../services/placement.service';
 import { getFileUrl } from '../../utils/fileUrl';
 
@@ -299,36 +298,32 @@ const AlumniViewStudent = () => {
 
   if (loading) {
     return (
-      <AlumniLayout>
-        <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg}>
-          <VStack spacing={4}>
-            <Spinner size="xl" color={colors.accent} thickness="4px" />
-            <Text color={colors.secondary} fontSize="sm" fontWeight="500">Loading profile...</Text>
-          </VStack>
-        </Flex>
-      </AlumniLayout>
+      <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg}>
+        <VStack spacing={4}>
+          <Spinner size="xl" color={colors.accent} thickness="4px" />
+          <Text color={colors.secondary} fontSize="sm" fontWeight="500">Loading profile...</Text>
+        </VStack>
+      </Flex>
     );
   }
 
   if (!profile) {
     return (
-      <AlumniLayout>
-        <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg} direction="column" gap={6} px={4}>
-          <Text color={colors.secondary} fontSize="lg" fontWeight="500">Student not found.</Text>
-          <Button
-            leftIcon={<ChevronLeftIcon />}
-            onClick={() => navigate('/placement/alumni-projects')}
-            bg={colors.accent}
-            color="white"
-            fontWeight="600"
-            borderRadius="xl"
-            px={6}
-            _hover={{ bg: colors.accentHover }}
-          >
-            Back to Projects
-          </Button>
-        </Flex>
-      </AlumniLayout>
+      <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg} direction="column" gap={6} px={4}>
+        <Text color={colors.secondary} fontSize="lg" fontWeight="500">Student not found.</Text>
+        <Button
+          leftIcon={<ChevronLeftIcon />}
+          onClick={() => navigate('/placement/alumni-projects')}
+          bg={colors.accent}
+          color="white"
+          fontWeight="600"
+          borderRadius="xl"
+          px={6}
+          _hover={{ bg: colors.accentHover }}
+        >
+          Back to Projects
+        </Button>
+      </Flex>
     );
   }
 
@@ -359,8 +354,8 @@ const AlumniViewStudent = () => {
   }
 
   return (
-    <AlumniLayout>
-      <Box bg={colors.pageBg} minH="100vh" py={{ base: 6, md: 10 }} px={{ base: 4, md: 6 }}>
+    <>
+    <Box bg={colors.pageBg} minH="100vh" py={{ base: 6, md: 10 }} px={{ base: 4, md: 6 }}>
         <Container maxW="960px" px={{ base: 0, md: 4 }}>
           {/* Back Button */}
           <Button
@@ -1141,7 +1136,7 @@ const AlumniViewStudent = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </AlumniLayout>
+    </>
   );
 };
 

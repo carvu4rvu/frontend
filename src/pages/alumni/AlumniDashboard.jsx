@@ -13,7 +13,6 @@ import {
 import { CalendarIcon, ChevronRightIcon, BellIcon, ViewIcon } from '@chakra-ui/icons';
 import { FaUsers, FaBriefcase, FaGraduationCap } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import AlumniLayout from '../../components/AlumniLayout';
 import { useAuth } from '../../context/AuthContext';
 import { PlacementService } from '../../services/placement.service';
 import { getFileUrl } from '../../utils/fileUrl';
@@ -169,8 +168,7 @@ const AlumniDashboard = () => {
   ].filter(Boolean);
 
   return (
-    <AlumniLayout>
-      <div className="alumni-dash">
+    <div className="alumni-dash">
         <header className="alumni-dash__hero">
           <div className="alumni-dash__hero-top">
             <div>
@@ -546,7 +544,6 @@ const AlumniDashboard = () => {
           </aside>
         </div>
       </div>
-    </AlumniLayout>
   );
 };
 

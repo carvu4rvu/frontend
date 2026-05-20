@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react';
 import { SearchIcon, ChevronLeftIcon } from '@chakra-ui/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import PassThroughLayout from '../components/PassThroughLayout';
 import { PlacementService } from '../services/placement.service';
 import TopChartsList from '../components/projects/TopChartsList';
 import { sortByTopChartsScore } from '../utils/projectShowcaseScoring';
@@ -33,7 +34,7 @@ export default function ProjectTopChartsPage({
   fetchProjects: fetchProjectsFn,
   projectBasePath,
 }) {
-  const Layout = LayoutComponent;
+  const Layout = LayoutComponent ?? PassThroughLayout;
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();

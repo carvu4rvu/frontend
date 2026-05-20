@@ -33,7 +33,6 @@ import {
 import { ViewIcon, SearchIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaHeart, FaRegHeart, FaUser, FaBookmark, FaRegBookmark, FaLink, FaComment } from 'react-icons/fa';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import AlumniLayout from '../../components/AlumniLayout';
 import { PlacementService } from '../../services/placement.service';
 import ProgressiveImage from '../../components/projects/ProgressiveImage';
 
@@ -248,19 +247,12 @@ const AlumniProjects = () => {
     return [];
   }, [selectedProject]);
 
-  if (loading && projects.length === 0) {
-    return (
-      <AlumniLayout>
-        <Box py={16} display="flex" justifyContent="center" alignItems="center">
-          <Spinner size="xl" color={PLAY_GREEN} thickness="3px" />
-        </Box>
-      </AlumniLayout>
-    );
-  }
-
-  return (
-    <AlumniLayout>
-      <Box bg="#f0f0f0" minH="100vh" py={6} color="gray.800">
+  const pageContent = loading && projects.length === 0 ? (
+    <Box py={16} display="flex" justifyContent="center" alignItems="center">
+      <Spinner size="xl" color={PLAY_GREEN} thickness="3px" />
+    </Box>
+  ) : (
+    <Box bg="#f0f0f0" minH="100vh" py={6} color="gray.800">
         <Container maxW="6xl">
           <Heading size="lg" mb={6} color="gray.800" fontFamily="inherit">
             Showcase Projects
@@ -1134,8 +1126,10 @@ const AlumniProjects = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </AlumniLayout>
+    </Box>
   );
+
+  return pageContent;
 };
 
 export default AlumniProjects;

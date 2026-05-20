@@ -22,7 +22,6 @@ import {
 } from '@chakra-ui/react';
 import { ChevronLeftIcon, EmailIcon, PhoneIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import { FaLinkedin, FaGlobe } from 'react-icons/fa';
-import AlumniLayout from '../../components/AlumniLayout';
 import { PlacementService } from '../../services/placement.service';
 
 const colors = {
@@ -74,44 +73,39 @@ const AlumniViewAlumni = () => {
 
   if (loading) {
     return (
-      <AlumniLayout>
-        <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg}>
-          <VStack spacing={4}>
-            <Spinner size="xl" color={colors.accent} thickness="4px" />
-            <Text color={colors.secondary} fontSize="sm" fontWeight="500">Loading profile...</Text>
-          </VStack>
-        </Flex>
-      </AlumniLayout>
+      <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg}>
+        <VStack spacing={4}>
+          <Spinner size="xl" color={colors.accent} thickness="4px" />
+          <Text color={colors.secondary} fontSize="sm" fontWeight="500">Loading profile...</Text>
+        </VStack>
+      </Flex>
     );
   }
 
   if (!alumni) {
     return (
-      <AlumniLayout>
-        <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg} direction="column" gap={6} px={4}>
-          <Text color={colors.secondary} fontSize="lg" fontWeight="500">Alumni not found.</Text>
-          <Button
-            leftIcon={<ChevronLeftIcon />}
-            onClick={() => navigate('/placement/alumni-directory')}
-            bg={colors.accent}
-            color="white"
-            fontWeight="600"
-            borderRadius="xl"
-            px={6}
-            _hover={{ bg: colors.accentHover }}
-          >
-            Back to Directory
-          </Button>
-        </Flex>
-      </AlumniLayout>
+      <Flex justify="center" align="center" minH="calc(100vh - 72px)" bg={colors.pageBg} direction="column" gap={6} px={4}>
+        <Text color={colors.secondary} fontSize="lg" fontWeight="500">Alumni not found.</Text>
+        <Button
+          leftIcon={<ChevronLeftIcon />}
+          onClick={() => navigate('/placement/alumni-directory')}
+          bg={colors.accent}
+          color="white"
+          fontWeight="600"
+          borderRadius="xl"
+          px={6}
+          _hover={{ bg: colors.accentHover }}
+        >
+          Back to Directory
+        </Button>
+      </Flex>
     );
   }
 
   const usn = alumni.student_id || alumni.usn;
 
   return (
-    <AlumniLayout>
-      <Box bg={colors.pageBg} minH="100vh" py={{ base: 6, md: 10 }} px={{ base: 4, md: 6 }}>
+    <Box bg={colors.pageBg} minH="100vh" py={{ base: 6, md: 10 }} px={{ base: 4, md: 6 }}>
         <Container maxW="960px" px={{ base: 0, md: 4 }}>
           <Button
             variant="ghost"
@@ -281,7 +275,6 @@ const AlumniViewAlumni = () => {
           </Box>
         </Container>
       </Box>
-    </AlumniLayout>
   );
 };
 

@@ -37,7 +37,6 @@ import {
   FaListAlt,
   FaPlusCircle,
 } from 'react-icons/fa';
-import AlumniLayout from '../../components/AlumniLayout';
 import { PlacementService } from '../../services/placement.service';
 import './ReferralForm.css';
 
@@ -261,8 +260,7 @@ const ReferralForm = () => {
   const getInitial = (str) => (str && str.trim() ? str.trim().charAt(0).toUpperCase() : '?');
 
   return (
-    <AlumniLayout>
-      <Box className="referral-page" bg={colors.pageBg} minH="100vh" py={{ base: 4, md: 8 }}>
+    <Box className="referral-page" bg={colors.pageBg} minH="100vh" py={{ base: 4, md: 8 }}>
         <Container maxW="4xl">
           {/* Header - match admin/student: size lg, subtitle sm */}
           <Flex
@@ -697,7 +695,6 @@ const ReferralForm = () => {
           </Box>
         </Container>
       </Box>
-    </AlumniLayout>
   );
 };
 

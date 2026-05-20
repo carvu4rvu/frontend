@@ -26,6 +26,7 @@ import {
 import { ViewIcon, SearchIcon, StarIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaUser, FaHeart, FaRegHeart, FaBookmark, FaRegBookmark, FaLink, FaComment } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import PassThroughLayout from '../components/PassThroughLayout';
 import { PlacementService } from '../services/placement.service';
 import { getProjectCoverImage, getShowcaseHeroImage, getShowcaseGalleryStrip, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
 import TopChartsList from '../components/projects/TopChartsList';
@@ -68,6 +69,7 @@ const FEATURED_CAROUSEL_MS = 5500;
  * Pass LayoutComponent (AdminLayout or AlumniLayout), variant ('admin' | 'alumni'), and fetchProjects (async () => projects[]).
  */
 export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin', fetchProjects: fetchProjectsFn, projectBasePath, hideViewStudent = false }) {
+  const Layout = LayoutComponent ?? PassThroughLayout;
   const toast = useToast();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
@@ -277,19 +279,12 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
 
   const isAdmin = variant === 'admin';
 
-  if (loading && projects.length === 0) {
-    return (
-      <LayoutComponent>
-        <Box py={16} display="flex" justifyContent="center" alignItems="center">
-          <Spinner size="xl" color={PLAY_GREEN} thickness="3px" />
-        </Box>
-      </LayoutComponent>
-    );
-  }
-
-  return (
-    <LayoutComponent>
-      <Box bg="#f0f0f0" minH="100vh" py={6} color="gray.800">
+  const pageContent = loading && projects.length === 0 ? (
+    <Box py={16} display="flex" justifyContent="center" alignItems="center">
+      <Spinner size="xl" color={PLAY_GREEN} thickness="3px" />
+    </Box>
+  ) : (
+    <Box bg="#f0f0f0" minH="100vh" py={6} color="gray.800">
         <Container maxW="6xl">
           <Heading size="lg" mb={variant === 'company' ? 1 : 6} color="gray.800" fontFamily="inherit">
             {variant === 'company' ? 'Student Projects' : 'Showcase Projects'}
@@ -837,8 +832,12 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
           </Box>
         </Container>
       </Box>
+  );
 
+  return (
+    <Layout>
+      {pageContent}
       <ProjectImageLightbox {...lightboxProps} />
-    </LayoutComponent>
+    </Layout>
   );
 }

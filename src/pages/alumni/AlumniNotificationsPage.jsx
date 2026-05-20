@@ -21,7 +21,6 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { FiSearch, FiStar, FiArchive, FiMail, FiCheck, FiExternalLink } from 'react-icons/fi';
-import AlumniLayout from '../../components/AlumniLayout';
 import { PlacementService } from '../../services/placement.service';
 
 const colors = {
@@ -162,8 +161,7 @@ export default function AlumniNotificationsPage() {
   };
 
   return (
-    <AlumniLayout>
-      <Box py={6} px={{ base: 4, md: 8 }}>
+    <Box py={6} px={{ base: 4, md: 8 }}>
         <Heading size="lg" mb={2} color={colors.dark} fontWeight="700">
           Notifications
         </Heading>
@@ -351,6 +349,5 @@ export default function AlumniNotificationsPage() {
           </TabPanels>
         </Tabs>
       </Box>
-    </AlumniLayout>
   );
 }

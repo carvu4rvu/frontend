@@ -62,6 +62,7 @@ import { ViewIcon, StarIcon, SearchIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaUser, FaChevronLeft, FaChevronDown, FaTrash, FaPlus, FaLink } from 'react-icons/fa';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
+import PassThroughLayout from '../../components/PassThroughLayout';
 import { PlacementService } from '../../services/placement.service';
 import ProgressiveImage from '../../components/projects/ProgressiveImage';
 import { splitProjectSnaps, getProjectLightboxImages, getShowcaseGalleryStrip } from '../../utils/projectSnaps';
@@ -72,7 +73,8 @@ const BLUE_ACCENT = '#1a73e8';
 const CARD_RADIUS = '16px';
 const STATUS_PILL = { px: 3, py: 0.5, borderRadius: 'full', fontSize: 'xs', fontWeight: 500 };
 
-export default function AdminProjectDetail({ variant = 'admin', LayoutComponent = AdminLayout, backPath: backPathProp, fetchProjectById: fetchProjectByIdProp }) {
+export default function AdminProjectDetail({ variant = 'admin', LayoutComponent, backPath: backPathProp, fetchProjectById: fetchProjectByIdProp }) {
+  const Layout = LayoutComponent ?? (variant === 'admin' ? AdminLayout : PassThroughLayout);
   const { projectId } = useParams();
   const location = useLocation();
   const toast = useToast();
@@ -291,18 +293,18 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
 
   if (loading && !project) {
     return (
-      <LayoutComponent>
+      <Layout>
         <Box py={16} display="flex" justifyContent="center" alignItems="center">
           <Spinner size="xl" color="blue.500" thickness="3px" />
         </Box>
-      </LayoutComponent>
+      </Layout>
     );
   }
 
   if (loadError || !project) {
     const is404 = loadError?.response?.status === 404;
     return (
-      <LayoutComponent>
+      <Layout>
         <Box bg="#f0f0f0" minH="100vh" py={12}>
           <Container maxW="md">
             <VStack spacing={6} align="stretch" bg="white" p={8} borderRadius="xl" shadow="md">
@@ -324,7 +326,7 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
             </VStack>
           </Container>
         </Box>
-      </LayoutComponent>
+      </Layout>
     );
   }
 
@@ -338,7 +340,7 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
   const metrics = project.metrics || {};
 
   return (
-    <LayoutComponent>
+    <Layout>
       <Box bg="#f8f9fa" minH="100vh" py={6} color="gray.800">
         <Container maxW="6xl">
           <Button
@@ -916,6 +918,6 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent 
       </AlertDialog>
 
       <ProjectImageLightbox {...lightboxProps} />
-    </LayoutComponent>
+    </Layout>
   );
 }

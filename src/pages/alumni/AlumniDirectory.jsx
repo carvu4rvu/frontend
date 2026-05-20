@@ -14,7 +14,6 @@ import {
 } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { FiSearch } from 'react-icons/fi';
-import AlumniLayout from '../../components/AlumniLayout';
 import { PlacementService } from '../../services/placement.service';
 import './AlumniDirectory.css';
 
@@ -153,8 +152,7 @@ const AlumniDirectory = () => {
   const linkId = (a) => a.student_id || a.usn || a.id;
 
   return (
-    <AlumniLayout>
-      <div className="alumni-dir">
+    <div className="alumni-dir">
         <header className="alumni-dir__hero">
           <div>
             <h1 className="alumni-dir__title">Alumni Directory</h1>
@@ -331,7 +329,6 @@ const AlumniDirectory = () => {
           </SimpleGrid>
         )}
       </div>
-    </AlumniLayout>
   );
 };
 

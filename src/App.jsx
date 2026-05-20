@@ -78,6 +78,7 @@ import AlumniProfile from './pages/alumni/AlumniProfile';
 import ProjectsShowcasePage from './pages/ProjectsShowcasePage';
 import ProjectTopChartsPage from './pages/ProjectTopChartsPage';
 import AlumniLayout from './components/AlumniLayout';
+import { AlumniProfileProvider } from './context/AlumniProfileContext';
 import VcLayout from './components/VcLayout';
 import { PlacementService } from './services/placement.service';
 import AlumniViewStudent from './pages/alumni/AlumniViewStudent';
@@ -120,6 +121,10 @@ const EventsDriveRedirect = () => {
 const isStudentPath = (path) =>
   path === '/student-dashboard' || path.startsWith('/student/');
 
+/** Alumni portal paths share one AlumniLayout via router Outlet (excludes admin routes like alumni-connect). */
+const isAlumniPortalPath = (path) =>
+  path.startsWith('/placement/alumni-') && path !== '/placement/alumni-connect';
+
 const Layout = () => {
   const location = useLocation();
   const isStudentDashboard = location.pathname.startsWith('/student-dashboard');
@@ -129,6 +134,7 @@ const Layout = () => {
   const isAdminStudentDetail = /^\/placement\/students\/[^/]+/.test(location.pathname);
   const isPlacementRoute = location.pathname.startsWith('/placement/');
   const onStudentPath = isStudentPath(location.pathname);
+  const onAlumniPortalPath = isAlumniPortalPath(location.pathname);
 
   // Hide Navbar on student pages, placement (admin) pages, alumni, company pages (they have their own layouts)
   const hideNavbar = isStudentDashboard || isStudentProfile || isAlumniPage || isCompanyPage || isAdminStudentDetail || isPlacementRoute;
@@ -149,6 +155,12 @@ const Layout = () => {
             <StudentProfileLayout>
               <Outlet />
             </StudentProfileLayout>
+          ) : onAlumniPortalPath ? (
+            <AlumniProfileProvider>
+              <AlumniLayout>
+                <Outlet />
+              </AlumniLayout>
+            </AlumniProfileProvider>
           ) : (
             <Outlet />
           )}
@@ -446,7 +458,6 @@ const router = createBrowserRouter([
         element: (
           <PlacementProtectedRoute requiredRole="alumni">
             <ProjectsShowcasePage
-              LayoutComponent={AlumniLayout}
               variant="alumni"
               fetchProjects={async () => {
                 const data = await PlacementService.getAlumniProjects();
@@ -460,7 +471,7 @@ const router = createBrowserRouter([
         path: "/placement/alumni-projects/project/:projectId",
         element: (
           <PlacementProtectedRoute requiredRole="alumni">
-            <AdminProjectDetail variant="alumni" LayoutComponent={AlumniLayout} />
+            <AdminProjectDetail variant="alumni" />
           </PlacementProtectedRoute>
         ),
         errorElement: <ProjectDetailErrorBoundary />
@@ -470,7 +481,6 @@ const router = createBrowserRouter([
         element: (
           <PlacementProtectedRoute requiredRole="alumni">
             <ProjectTopChartsPage
-              LayoutComponent={AlumniLayout}
               variant="alumni"
               projectBasePath="/placement/alumni-projects"
               fetchProjects={async () => {

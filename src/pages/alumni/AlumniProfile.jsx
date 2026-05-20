@@ -37,7 +37,7 @@ import {
   ExternalLinkIcon,
 } from '@chakra-ui/icons';
 import { FiCamera, FiMapPin, FiBriefcase, FiLinkedin, FiGlobe, FiCalendar, FiUser, FiHome, FiEdit3, FiSave, FiX } from 'react-icons/fi';
-import AlumniLayout from '../../components/AlumniLayout';
+import { useAlumniProfile } from '../../context/AlumniProfileContext';
 import { PlacementService } from '../../services/placement.service';
 import { getFileUrl } from '../../utils/fileUrl';
 
@@ -88,6 +88,7 @@ const initialForm = {
 };
 
 const AlumniProfile = () => {
+  const { updateProfile } = useAlumniProfile();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -182,6 +183,7 @@ const AlumniProfile = () => {
       };
       const updated = await PlacementService.updateAlumniMe(payload);
       setProfile(updated);
+      updateProfile(updated);
       setEditing(false);
       setPendingImage(null);
       setPendingImagePreview(null);
@@ -228,27 +230,23 @@ const AlumniProfile = () => {
 
   if (loading) {
     return (
-      <AlumniLayout>
-        <Flex justify="center" align="center" minH="60vh" bg={colors.pageBg}>
-          <Spinner size="xl" color={colors.accent} thickness="3px" />
-        </Flex>
-      </AlumniLayout>
+      <Flex justify="center" align="center" minH="60vh" bg={colors.pageBg}>
+        <Spinner size="xl" color={colors.accent} thickness="3px" />
+      </Flex>
     );
   }
 
   if (!profile) {
     return (
-      <AlumniLayout>
-        <Box bg={colors.pageBg} minH="100vh" py={10}>
-          <Container maxW="2xl">
-            <Card bg={colors.cardBg} borderRadius="xl" boxShadow="sm" border="1px solid" borderColor={colors.border}>
-              <CardBody p={8}>
-                <Text color={colors.secondary}>Profile not found. If you just registered, try logging in again.</Text>
-              </CardBody>
-            </Card>
-          </Container>
-        </Box>
-      </AlumniLayout>
+      <Box bg={colors.pageBg} minH="100vh" py={10}>
+        <Container maxW="2xl">
+          <Card bg={colors.cardBg} borderRadius="xl" boxShadow="sm" border="1px solid" borderColor={colors.border}>
+            <CardBody p={8}>
+              <Text color={colors.secondary}>Profile not found. If you just registered, try logging in again.</Text>
+            </CardBody>
+          </Card>
+        </Container>
+      </Box>
     );
   }
 
@@ -266,8 +264,7 @@ const AlumniProfile = () => {
   };
 
   return (
-    <AlumniLayout>
-      <Box bg={colors.pageBg} minH="100vh">
+    <Box bg={colors.pageBg} minH="100vh">
         {/* Header Section */}
         <Box bg={colors.headerBg} py={10}>
           <Container maxW="5xl">
@@ -914,7 +911,6 @@ const AlumniProfile = () => {
           )}
         </Container>
       </Box>
-    </AlumniLayout>
   );
 };
 

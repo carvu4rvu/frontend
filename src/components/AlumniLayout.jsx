@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Box, HStack, Button, Text, Flex, Avatar, Image, Menu, MenuButton, MenuList, MenuItem, MenuDivider, IconButton, Badge } from '@chakra-ui/react';
+import { Box, HStack, Button, Text, Flex, Avatar, Menu, MenuButton, MenuList, MenuItem, MenuDivider, IconButton, Badge } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { BellIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
+import { useAlumniProfile } from '../context/AlumniProfileContext';
 import { PlacementService } from '../services/placement.service';
-import { getFileUrl } from '../utils/fileUrl';
 import { CarvuBrand } from './CarvuBrand';
 
 const NAV_ACCENT = '#FDE74C';
@@ -13,23 +13,11 @@ const HEADER_BG = '#20343c';
 const HEADER_BORDER = '#2d4a54';
 
 const AlumniLayout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
+  const { profile: alumniProfile, profileImage, displayName } = useAlumniProfile();
   const location = useLocation();
   const navigate = useNavigate();
-  const [alumniProfile, setAlumniProfile] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    const loadAlumniProfile = async () => {
-      try {
-        const data = await PlacementService.getAlumniMe();
-        setAlumniProfile(data);
-      } catch (err) {
-        console.error('Failed to load alumni profile:', err);
-      }
-    };
-    loadAlumniProfile();
-  }, []);
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -60,8 +48,6 @@ const AlumniLayout = ({ children }) => {
 
   const isActive = (path) => location.pathname === path;
 
-  const displayName = alumniProfile?.full_name || user?.name || user?.full_name || 'Alumni';
-  const profileImage = alumniProfile?.profile_image ? getFileUrl(alumniProfile.profile_image) : user?.profile_image;
   const shortName = displayName.split(' ')[0];
 
   return (
