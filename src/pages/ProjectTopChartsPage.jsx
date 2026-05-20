@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -13,7 +13,7 @@ import {
   InputLeftElement,
 } from '@chakra-ui/react';
 import { SearchIcon, ChevronLeftIcon } from '@chakra-ui/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import PassThroughLayout from '../components/PassThroughLayout';
 import { PlacementService } from '../services/placement.service';
 import TopChartsList from '../components/projects/TopChartsList';
@@ -37,8 +37,6 @@ export default function ProjectTopChartsPage({
   const Layout = LayoutComponent ?? PassThroughLayout;
   const toast = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
-  const pageTopRef = useRef(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -68,17 +66,6 @@ export default function ProjectTopChartsPage({
     fetchProjects();
   }, [fetchProjects]);
 
-  const scrollPageToTop = useCallback(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    pageTopRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
-  }, []);
-
-  useLayoutEffect(() => {
-    scrollPageToTop();
-  }, [location.pathname, location.key, scrollPageToTop]);
-
   const rankedProjects = useMemo(() => {
     let list = [...projects];
     if (search.trim()) {
@@ -92,10 +79,6 @@ export default function ProjectTopChartsPage({
     }
     return sortByTopChartsScore(list);
   }, [projects, search]);
-
-  useLayoutEffect(() => {
-    if (!loading) scrollPageToTop();
-  }, [loading, rankedProjects.length, scrollPageToTop]);
 
   const goToProjectDetail = (project, e) => {
     if (e) e.stopPropagation();
@@ -142,7 +125,6 @@ export default function ProjectTopChartsPage({
     <Layout>
       <Box bg="#f8fafc" minH="100vh" py={{ base: 6, md: 8 }}>
         <Container maxW="container.lg">
-          <Box ref={pageTopRef} scrollMarginTop="88px" aria-hidden />
           <Button
             variant="ghost"
             size="sm"

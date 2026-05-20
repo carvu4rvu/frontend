@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, use
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import PlacementNavigationTracker from './components/PlacementNavigationTracker';
+import ScrollToTop from './components/ScrollToTop';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import Register from './pages/Register';
@@ -142,6 +143,7 @@ const Layout = () => {
 
   return (
     <Flex direction="column" minH="100vh">
+      <ScrollToTop />
       {isPlacementRoute && <PlacementNavigationTracker />}
       {!hideNavbar && <Navbar />}
       <Box flex="1">
