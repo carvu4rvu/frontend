@@ -47,6 +47,7 @@ import { CompanyService } from '../../services/company.service';
 import { getFileUrl } from '../../utils/fileUrl';
 import { ProjectShowcase } from '../../components/student/projects/ProjectShowcase';
 import '../../pages/student/profile/ProjectsProfile.css';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 import './CompanyStudentView.css';
 
 const colors = {
@@ -82,6 +83,7 @@ const SectionCard = ({ icon, title, children, isEmpty, className = '' }) => (
 const CompanyStudentView = () => {
   const { usn } = useParams();
   const navigate = useNavigate();
+  const { backLabel, goBack } = usePlacementBack('/company/drives');
   const toast = useToast();
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,7 @@ const CompanyStudentView = () => {
         <Container maxW="1200px" py={8}>
           <VStack spacing={4}>
             <Text>Student not found</Text>
-            <Button onClick={() => navigate(-1)}>Go Back</Button>
+            <Button onClick={goBack}>{backLabel}</Button>
           </VStack>
         </Container>
       </CompanyLayout>
@@ -164,9 +166,9 @@ const CompanyStudentView = () => {
             variant="ghost"
             size="sm"
             mb={4}
-            onClick={() => navigate(-1)}
+            onClick={goBack}
           >
-            Back
+            {backLabel}
           </Button>
 
           {/* Profile Header Card */}

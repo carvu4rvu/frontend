@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAlumniProfile } from '../context/AlumniProfileContext';
 import { PlacementService } from '../services/placement.service';
 import { CarvuBrand } from './CarvuBrand';
+import { isCampusEventsPath } from '../utils/campusEventsPaths';
 
 const NAV_ACCENT = '#FDE74C';
 const HEADER_BG = '#20343c';
@@ -249,9 +250,17 @@ const AlumniLayout = ({ children }) => {
         </HStack>
       </Flex>
 
-      <Box flex="1" p={{ base: 4, md: 6 }} pb={{ base: 4, md: 5 }}>
-        <Box maxW="100%">{children}</Box>
-      </Box>
+      {campusEventsPage ? (
+        <Box flex="1" p={8}>
+          <Box maxW="1600px" mx="auto" w="100%">
+            {children}
+          </Box>
+        </Box>
+      ) : (
+        <Box flex="1" p={{ base: 4, md: 6 }} pb={{ base: 4, md: 5 }}>
+          <Box maxW="100%">{children}</Box>
+        </Box>
+      )}
     </Box>
   );
 };

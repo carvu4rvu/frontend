@@ -23,6 +23,7 @@ import {
 import { ChevronLeftIcon, EmailIcon, PhoneIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import { FaLinkedin, FaGlobe } from 'react-icons/fa';
 import { PlacementService } from '../../services/placement.service';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 
 const colors = {
   accent: '#d4a960',
@@ -43,6 +44,7 @@ const CARD_SHADOW = '0 4px 24px rgba(15, 23, 42, 0.08)';
 const AlumniViewAlumni = () => {
   const { identifier } = useParams();
   const navigate = useNavigate();
+  const { backLabel, goBack } = usePlacementBack('/placement/alumni-directory');
   const toast = useToast();
   const [alumni, setAlumni] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ const AlumniViewAlumni = () => {
         <Text color={colors.secondary} fontSize="lg" fontWeight="500">Alumni not found.</Text>
         <Button
           leftIcon={<ChevronLeftIcon />}
-          onClick={() => navigate('/placement/alumni-directory')}
+          onClick={goBack}
           bg={colors.accent}
           color="white"
           fontWeight="600"
@@ -96,7 +98,7 @@ const AlumniViewAlumni = () => {
           px={6}
           _hover={{ bg: colors.accentHover }}
         >
-          Back to Directory
+          {backLabel}
         </Button>
       </Flex>
     );
@@ -111,7 +113,7 @@ const AlumniViewAlumni = () => {
             variant="ghost"
             size="sm"
             leftIcon={<ChevronLeftIcon boxSize={5} />}
-            onClick={() => navigate('/placement/alumni-directory')}
+            onClick={goBack}
             mb={{ base: 4, md: 6 }}
             color={colors.secondary}
             fontWeight="600"
@@ -120,7 +122,7 @@ const AlumniViewAlumni = () => {
             borderRadius="lg"
             px={4}
           >
-            Back to Alumni Directory
+            {backLabel}
           </Button>
 
           <Box

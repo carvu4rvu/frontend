@@ -51,6 +51,7 @@ import { IconButton } from '@chakra-ui/react';
 import * as XLSX from 'xlsx';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 
 /** Unique school acronym only — strips program suffixes like " - BTECH" or " (HONS)". */
 function normalizeSchoolName(school) {
@@ -935,12 +936,12 @@ const JobOffers = () => {
               <Button 
                 variant="outline" 
                 borderColor="gray.300"
-                onClick={() => navigate(-1)}
+                onClick={goBack}
                 size="sm"
                 bg="white"
                 leftIcon={<ArrowBackIcon />}
               >
-                Back
+                {backLabel}
               </Button>
             </HStack>
           </Flex>

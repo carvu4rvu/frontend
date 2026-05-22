@@ -46,6 +46,10 @@
 }
 
 /* Drive info card – placement drive table row style */
+.drive-process-page .drive-process-header-actions {
+  align-items: center;
+}
+
 .drive-process-page .drive-info-card {
   transition: box-shadow 0.2s ease;
 }
@@ -394,6 +398,132 @@
 .download-modal .download-confirm-btn {
   font-weight: 600;
   min-width: 180px;
+}
+
+/* Round export modal — checkbox rounds & filters */
+.round-export-modal .round-export-section-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #334155;
+}
+
+.round-export-modal .round-export-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.round-export-modal .round-export-select-all span {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.round-export-modal .round-export-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.5rem;
+}
+
+.round-export-modal .round-export-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  min-height: 3.25rem;
+}
+
+.round-export-modal .round-export-chip:hover {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.round-export-modal .round-export-chip.is-selected {
+  border-color: #14b8a6;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%);
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.2);
+}
+
+.round-export-modal .round-export-chip .chakra-checkbox {
+  margin-bottom: 0.1rem;
+}
+
+.round-export-modal .round-export-chip-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+.round-export-modal .round-export-chip-meta {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.round-export-modal .round-export-scope-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+}
+
+.round-export-modal .round-export-scope-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 0.75rem 0.85rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.round-export-modal .round-export-scope-card:hover {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.round-export-modal .round-export-scope-card.is-selected {
+  border-color: #14b8a6;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%);
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.2);
+}
+
+.round-export-modal .round-export-scope-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.round-export-modal .round-export-scope-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.round-export-modal .round-export-categories {
+  max-height: 260px;
+}
+
+@media (max-width: 640px) {
+  .round-export-modal .round-export-checkbox-grid,
+  .round-export-modal .round-export-scope-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Responsive adjustments */

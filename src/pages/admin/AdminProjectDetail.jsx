@@ -61,6 +61,7 @@ import {
 import { ViewIcon, StarIcon, SearchIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaUser, FaChevronLeft, FaChevronDown, FaTrash, FaPlus, FaLink } from 'react-icons/fa';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { resolveAppBack } from '../../utils/placementNavigationHistory';
 import AdminLayout from '../../components/AdminLayout';
 import PassThroughLayout from '../../components/PassThroughLayout';
 import { PlacementService } from '../../services/placement.service';
@@ -288,8 +289,12 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent,
     }
   };
 
-  const backPath = backPathProp ?? (isCompany ? '/company/projects' : isAlumni ? '/placement/alumni-projects' : '/placement/gallery/manage');
-  const backLabel = backPathProp ? 'Back to Student Projects' : (isCompany || isAlumni ? 'Back to Student Projects' : 'Back to Manage Projects');
+  const dynamicBack = resolveAppBack(
+    location,
+    isCompany ? '/company/projects' : isAlumni ? '/placement/alumni-projects' : '/placement/gallery/showcase'
+  );
+  const backPath = backPathProp ?? dynamicBack.path;
+  const backLabel = backPathProp ? 'Back to Student Projects' : dynamicBack.label;
 
   if (loading && !project) {
     return (

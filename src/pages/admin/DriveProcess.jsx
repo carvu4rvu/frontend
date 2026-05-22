@@ -36,8 +36,9 @@ import {
   Wrap,
   WrapItem
 } from '@chakra-ui/react';
-import { ArrowBackIcon, SearchIcon, DownloadIcon, AddIcon } from '@chakra-ui/icons';
-import { MdAssignment, MdAdd, MdViewList, MdSave, MdBusiness, MdWork, MdCalendarToday, MdPeople, MdWarning, MdCardGiftcard } from 'react-icons/md';
+import { ArrowBackIcon, SearchIcon, DownloadIcon, AddIcon, DeleteIcon } from '@chakra-ui/icons';
+import * as XLSX from 'xlsx';
+import { MdAssignment, MdAdd, MdViewList, MdSave, MdBusiness, MdWork, MdCalendarToday, MdPeople, MdWarning, MdCardGiftcard, MdUpload } from 'react-icons/md';
 import JSZip from 'jszip';
 import { getFileUrl } from '../../utils/fileUrl';
 import { getCompanyLogoRaw } from '../../utils/companyLogo';
@@ -45,7 +46,12 @@ import { PlacementService } from '../../services/placement.service';
 import AdminLayout from '../../components/AdminLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import AddStudentsToDrive from '../../components/placement/AddStudentsToDrive';
-import { getEffectiveRoundStatus, isVisibleOnRoundTab } from '../../utils/placementRoundProgression';
+import {
+  getEffectiveRoundStatus,
+  isVisibleOnRoundTab,
+  sortProcessesForAllRoundsView,
+} from '../../utils/placementRoundProgression';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 import './DriveProcess.css';
 
 /** Map round display name (from drive.process_rounds) to API field key */
@@ -229,6 +235,7 @@ const EXPORT_COLUMN_LABELS = {
   interview_status: 'Interview',
   hr_round_status: 'HR Round',
   final_select_status: 'Final Selected',
+  round_status: 'Round status (this tab)',
   malpractice: 'Malpractice',
   remarks: 'Remarks',
 };
@@ -283,6 +290,7 @@ const DriveProcess = () => {
   const { driveId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { backPath, backLabel, goBack } = usePlacementBack('/placement/events');
   const toast = useToast();
   const [drive, setDrive] = useState(null);
   const [processes, setProcesses] = useState([]);
@@ -300,9 +308,19 @@ const DriveProcess = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const { isOpen: isDownloadOpen, onOpen: onDownloadOpen, onClose: onDownloadClose } = useDisclosure();
+  const { isOpen: isRoundExportOpen, onOpen: onRoundExportOpen, onClose: onRoundExportClose } = useDisclosure();
+  const { isOpen: isRoundImportOpen, onOpen: onRoundImportOpen, onClose: onRoundImportClose } = useDisclosure();
   const [exportColumns, setExportColumns] = useState(Object.keys(EXPORT_COLUMN_LABELS));
+  /** Round keys: 'registered' | 'approved' | '0' | '1' … */
+  const [roundExportSelectedRounds, setRoundExportSelectedRounds] = useState(['registered']);
   const [includeResumes, setIncludeResumes] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [roundExporting, setRoundExporting] = useState(false);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [importPreviewRows, setImportPreviewRows] = useState([]);
+  const [importFileName, setImportFileName] = useState('');
+  const importFileRef = React.useRef(null);
+  const [removingUsn, setRemovingUsn] = useState(null);
 
   const fetchDriveAndProcesses = async (options = {}) => {
     const inAddStudentsMode = options.addStudentsMode ?? showAddStudents;
@@ -421,6 +439,10 @@ const DriveProcess = () => {
         return true;
       });
     }
+
+    if (currentActiveRoundIndex === -1) {
+      result = sortProcessesForAllRoundsView(result, roundFields);
+    }
     
     return result;
   };
@@ -436,6 +458,40 @@ const DriveProcess = () => {
     setSelectedProcessIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  const handleRemoveFromProcess = async (process) => {
+    const usn = process?.usn;
+    if (!usn || !driveId) return;
+    const label = process.student_name ? `${usn} (${process.student_name})` : usn;
+    if (!window.confirm(`Remove ${label} from this drive process?`)) return;
+    setRemovingUsn(usn);
+    try {
+      await PlacementService.removeFromProcess(driveId, usn);
+      toast({
+        title: 'Student removed',
+        description: `${usn} removed from this drive.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setEditedProcesses((prev) => {
+        const next = { ...prev };
+        delete next[process.id];
+        return next;
+      });
+      await fetchDriveAndProcesses();
+    } catch (error) {
+      toast({
+        title: 'Remove failed',
+        description: error?.message || 'Could not remove student from process.',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setRemovingUsn(null);
+    }
   };
 
   const handleProcessFieldChange = (id, field, value) => {
@@ -610,6 +666,269 @@ const DriveProcess = () => {
     return selected > 0 && selected < cat.columns.length;
   };
 
+  const getBulkRoundField = () => {
+    if (isApprovedTab) return 'approved_status';
+    if (isRoundTab && currentSingleRoundField && currentSingleRoundField !== 'registration_status') {
+      return currentSingleRoundField;
+    }
+    return null;
+  };
+
+  const getRoundExportLabel = (key) => {
+    if (key === 'registered') return 'Registered';
+    if (key === 'approved') return 'Approved';
+    const idx = Number(key);
+    if (!Number.isNaN(idx) && processRounds[idx]) {
+      return `${processRounds[idx]} (Round ${idx + 1})`;
+    }
+    return 'Round';
+  };
+
+  const getAllRoundExportKeys = () => [
+    'registered',
+    'approved',
+    ...processRounds.map((_, idx) => String(idx)),
+  ];
+
+  const openRoundExportModal = () => {
+    if (currentActiveRoundIndex === -2) {
+      setRoundExportSelectedRounds(['registered']);
+    } else if (currentActiveRoundIndex === -3) {
+      setRoundExportSelectedRounds(['approved']);
+    } else if (currentActiveRoundIndex >= 0) {
+      setRoundExportSelectedRounds([String(currentActiveRoundIndex)]);
+    } else {
+      setRoundExportSelectedRounds(['registered']);
+    }
+    onRoundExportOpen();
+  };
+
+  const toggleRoundExportRound = (key) => {
+    setRoundExportSelectedRounds((prev) => {
+      if (prev.includes(key)) {
+        return prev.length > 1 ? prev.filter((k) => k !== key) : prev;
+      }
+      return [...prev, key];
+    });
+  };
+
+  const buildRoundExportParams = (roundKey) => {
+    const params = {
+      stage: 'round',
+      round_outcome: 'all',
+    };
+    if (roundKey === 'registered') {
+      params.round_field = 'registration_status';
+    } else if (roundKey === 'approved') {
+      params.round_field = 'approved_status';
+    } else {
+      const idx = Number(roundKey);
+      if (!Number.isNaN(idx) && idx >= 0) params.round_index = idx;
+    }
+    return params;
+  };
+
+  const handleDownloadRoundTemplate = () => {
+    const roundLabel = currentRoundTitle.replace(/\s+/g, '_');
+    const rows = [
+      { USN: '1RVU22BSC001', status: 'Selected' },
+      { USN: '1RVU22BSC002', status: 'Rejected' },
+    ];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bulk status');
+    XLSX.writeFile(wb, `${roundLabel}_bulk_status_template.xlsx`);
+    toast({
+      title: 'Template downloaded',
+      description: 'Fill USN and status (Selected or Rejected), then import.',
+      status: 'success',
+      duration: 4000,
+    });
+  };
+
+  const handleRoundExportDownload = async () => {
+    if (roundExportSelectedRounds.length === 0) {
+      toast({ title: 'Select at least one round', status: 'warning' });
+      return;
+    }
+    setRoundExporting(true);
+    try {
+      const escapeCsv = (v) => {
+        if (v == null) return '';
+        const s = String(v);
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+      };
+
+      const mergedRows = [];
+      const rowKeys = new Set();
+      let baseColumns = [];
+
+      for (const roundKey of roundExportSelectedRounds) {
+        const { data, columns } = await PlacementService.getDriveExportData(
+          driveId,
+          buildRoundExportParams(roundKey)
+        );
+        if (!data?.length) continue;
+        if (!baseColumns.length) baseColumns = columns;
+        const roundLabel = getRoundExportLabel(roundKey);
+        for (const row of data) {
+          const dedupeKey = `${roundKey}|${row.usn}`;
+          if (rowKeys.has(dedupeKey)) continue;
+          rowKeys.add(dedupeKey);
+          mergedRows.push({
+            ...row,
+            round_name: roundLabel,
+          });
+        }
+      }
+
+      if (!mergedRows.length) {
+        toast({
+          title: 'No data to export',
+          description: 'No students found for the selected round(s).',
+          status: 'info',
+        });
+        return;
+      }
+
+      const multiRound = roundExportSelectedRounds.length > 1;
+      const csvColumns = [...(multiRound ? ['round_name'] : []), ...baseColumns];
+      const columnLabels = {
+        round_name: 'Round',
+        ...EXPORT_COLUMN_LABELS,
+      };
+      const headers = csvColumns.map((c) => columnLabels[c] || c);
+      const rows = mergedRows.map((row) =>
+        csvColumns.map((col) => escapeCsv(row[col])).join(',')
+      );
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const safeCo = (drive?.company_name || 'drive').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const roundPart =
+        roundExportSelectedRounds.length === 1
+          ? getRoundExportLabel(roundExportSelectedRounds[0]).replace(/[^a-zA-Z0-9_-]/g, '_')
+          : `${roundExportSelectedRounds.length}_rounds`;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${safeCo}_${roundPart}_export.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toast({
+        title: 'Export complete',
+        description: `${mergedRows.length} row(s) exported.`,
+        status: 'success',
+      });
+      onRoundExportClose();
+    } catch (error) {
+      toast({ title: 'Export failed', description: error?.message || 'Could not export.', status: 'error' });
+    } finally {
+      setRoundExporting(false);
+    }
+  };
+
+  const parseImportSpreadsheet = (file) => {
+    const ext = (file.name || '').toLowerCase();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          let rows = [];
+          if (ext.endsWith('.csv')) {
+            const text = String(e.target.result || '');
+            const wb = XLSX.read(text, { type: 'string' });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+          } else {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array' });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+          }
+          const mapped = rows
+            .map((row) => {
+              const keys = Object.keys(row);
+              const usnKey = keys.find((k) => /^usn$/i.test(String(k).trim()));
+              const statusKey = keys.find((k) => /^status$/i.test(String(k).trim()));
+              return {
+                usn: String(row[usnKey] ?? '').trim(),
+                status: String(row[statusKey] ?? '').trim(),
+              };
+            })
+            .filter((r) => r.usn);
+          resolve(mapped);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Could not read file'));
+      if (ext.endsWith('.csv')) reader.readAsText(file);
+      else reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const handleImportFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = (file.name || '').toLowerCase();
+    if (!ext.endsWith('.xlsx') && !ext.endsWith('.xls') && !ext.endsWith('.csv')) {
+      toast({ title: 'Use .xlsx, .xls, or .csv', status: 'warning' });
+      return;
+    }
+    try {
+      const rows = await parseImportSpreadsheet(file);
+      if (!rows.length) {
+        toast({ title: 'No rows found', description: 'Need columns USN and status.', status: 'warning' });
+        return;
+      }
+      setImportPreviewRows(rows);
+      setImportFileName(file.name);
+      onRoundImportOpen();
+    } catch (err) {
+      toast({ title: 'Could not read file', description: err?.message, status: 'error' });
+    }
+    e.target.value = '';
+  };
+
+  const handleApplyBulkImport = async () => {
+    const field = getBulkRoundField();
+    if (!field || !importPreviewRows.length) return;
+    setBulkImporting(true);
+    try {
+      const result = await PlacementService.bulkUpdateRoundStatus(driveId, {
+        round_field: field,
+        updates: importPreviewRows,
+      });
+      toast({
+        title: 'Bulk update complete',
+        description: result?.message || `Updated ${result?.updated?.length ?? 0} student(s).`,
+        status: 'success',
+        duration: 5000,
+      });
+      if (result?.errors?.length) {
+        toast({
+          title: `${result.errors.length} row(s) skipped`,
+          description: result.errors.map((e) => `${e.usn}: ${e.reason}`).slice(0, 3).join('; '),
+          status: 'warning',
+          duration: 6000,
+        });
+      }
+      onRoundImportClose();
+      setImportPreviewRows([]);
+      setImportFileName('');
+      setEditedProcesses({});
+      await fetchDriveAndProcesses();
+    } catch (error) {
+      toast({
+        title: 'Import failed',
+        description: error?.message || 'Bulk update failed.',
+        status: 'error',
+      });
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
   const handleDownload = async () => {
     if (exportColumns.length === 0) {
       toast({ title: 'Select at least one column', status: 'warning' });
@@ -702,8 +1021,8 @@ const DriveProcess = () => {
       <AdminLayout>
         <Box p={5}>
           <Text>Drive not found.</Text>
-          <Button mt={4} onClick={() => navigate('/placement/events')}>
-            Back to Events
+          <Button mt={4} onClick={goBack}>
+            {backLabel}
           </Button>
         </Box>
       </AdminLayout>
@@ -743,14 +1062,14 @@ const DriveProcess = () => {
           ? 'Job Offers'
           : `${currentRoundName} (Round ${currentActiveRoundIndex + 1})`;
   const currentRoundDesc = isAllRoundsView
-    ? 'View and edit status across all rounds. Edit malpractice and remarks for any student.'
+    ? 'Everyone on this drive (sorted by rounds passed; violations at bottom). Students who failed a prior round stay visible here only—not on later round tabs.'
       : isRegisteredTab
       ? `Students self-register for drives; status auto-expires to Not Registered after deadline. (${filteredProcesses.length} total)`
       : isApprovedTab
         ? `Admin approves only registered students. (${filteredProcesses.length} registered)`
         : isJobOffersTab
           ? `Select final selected students to create job offers. (${filteredProcesses.length} selected)`
-          : `Only students who passed previous rounds. (${filteredProcesses.length} candidates)`;
+          : `Only students who passed all previous rounds (violations hidden here—see All Rounds). (${filteredProcesses.length} candidates)`;
 
   // Calculate stats
   const totalStudents = processes.length;
@@ -759,6 +1078,20 @@ const DriveProcess = () => {
   const disciplinaryCount = processes.filter((p) => getCompliancePrimaryCategory(p) === 'disciplinary').length;
   const policyViolationCount = processes.filter((p) => getCompliancePrimaryCategory(p) === 'placement_policy').length;
   const selectedCount = processes.filter((p) => p.final_select_status === true).length;
+
+  const showRoundBulkTools =
+    (isRoundTab || isApprovedTab) &&
+    currentSingleRoundField &&
+    currentSingleRoundField !== 'registration_status';
+
+  const allRoundExportKeys = getAllRoundExportKeys();
+  const allRoundsExportSelected =
+    allRoundExportKeys.length > 0 &&
+    allRoundExportKeys.every((k) => roundExportSelectedRounds.includes(k));
+  const roundExportModalTitle =
+    roundExportSelectedRounds.length === 1
+      ? getRoundExportLabel(roundExportSelectedRounds[0])
+      : `${roundExportSelectedRounds.length} rounds`;
 
   return (
     <AdminLayout>
@@ -772,12 +1105,12 @@ const DriveProcess = () => {
                   leftIcon={<ArrowBackIcon />}
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate('/placement/events')}
+                  onClick={goBack}
                 >
-                  Back to Events
+                  {backLabel}
                 </Button>
               </HStack>
-              <HStack spacing={3} flexWrap="wrap">
+              <HStack spacing={3} flexWrap="wrap" className="drive-process-header-actions">
                 {drive?.placement_status && (
                   <Badge
                     colorScheme={
@@ -802,6 +1135,18 @@ const DriveProcess = () => {
                   >
                     {drive.placement_status}
                   </Badge>
+                )}
+                {!showAddStudents && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    colorScheme="teal"
+                    leftIcon={<DownloadIcon />}
+                    fontWeight="bold"
+                    onClick={openRoundExportModal}
+                  >
+                    Export
+                  </Button>
                 )}
                 <Button
                   size="sm"
@@ -1053,6 +1398,35 @@ const DriveProcess = () => {
                         {displayCount} of {processes.length} students
                       </Text>
                     </Box>
+                    {showRoundBulkTools && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          colorScheme="orange"
+                          leftIcon={<Icon as={MdUpload} />}
+                          fontWeight="bold"
+                          onClick={() => importFileRef.current?.click()}
+                        >
+                          Import
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          fontWeight="semibold"
+                          onClick={handleDownloadRoundTemplate}
+                        >
+                          Template
+                        </Button>
+                        <input
+                          ref={importFileRef}
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          style={{ display: 'none' }}
+                          onChange={handleImportFileChange}
+                        />
+                      </>
+                    )}
                     {isApprovedTab && (
                       <Button
                         colorScheme="green"
@@ -1207,6 +1581,9 @@ const DriveProcess = () => {
                                 <Th className="table-header" px={4} py={3} minW="180px">
                                   Remarks
                                 </Th>
+                                <Th className="table-header" px={3} py={3} textAlign="center" w="100px">
+                                  Actions
+                                </Th>
                               </>
                             ) : (
                               <>
@@ -1215,9 +1592,6 @@ const DriveProcess = () => {
                                 </Th>
                                 <Th className="table-header" px={4} py={3} textAlign="center" minW="160px">
                                   {isRegisteredTab ? 'Registration Status (student-set)' : 'Set Selection Status'}
-                                </Th>
-                                <Th className="table-header" px={4} py={3} minW="120px">
-                                  Previous Stages
                                 </Th>
                                 <Th className="table-header" px={4} py={3} minW="180px">
                                   Remarks
@@ -1230,7 +1604,7 @@ const DriveProcess = () => {
                           {filteredProcesses.length === 0 ? (
                             <Tr>
                               <Td
-                                colSpan={isJobOffersTab ? 5 : isAllRoundsView ? processRounds.length + 5 : 4}
+                                colSpan={isJobOffersTab ? 5 : isAllRoundsView ? processRounds.length + 6 : 3}
                                 textAlign="center"
                                 py={10}
                                 color="gray.500"
@@ -1380,6 +1754,19 @@ const DriveProcess = () => {
                                         title="Edit remarks (e.g. malpractice details)"
                                       />
                                     </Td>
+                                    <Td px={3} py={3} textAlign="center">
+                                      <Button
+                                        size="xs"
+                                        colorScheme="red"
+                                        variant="outline"
+                                        leftIcon={<DeleteIcon />}
+                                        isLoading={removingUsn === process.usn}
+                                        loadingText="Removing"
+                                        onClick={() => handleRemoveFromProcess(process)}
+                                      >
+                                        Remove
+                                      </Button>
+                                    </Td>
                                   </>
                                 ) : (
                                   <>
@@ -1492,20 +1879,6 @@ const DriveProcess = () => {
                                       )}
                                     </Td>
                                     <Td px={4} py={3}>
-                                      <Flex gap={1} flexWrap="wrap">
-                                        {Array.from({ length: Math.max(0, currentActiveRoundIndex) }).map((_, i) => (
-                                          <Box
-                                            key={i}
-                                            w={2}
-                                            h={2}
-                                            borderRadius="full"
-                                            bg="green.500"
-                                            title={`${processRounds[i]}: Passed`}
-                                          />
-                                        ))}
-                                      </Flex>
-                                    </Td>
-                                    <Td px={4} py={3}>
                                       <Input
                                         size="sm"
                                         bg="gray.50"
@@ -1534,6 +1907,154 @@ const DriveProcess = () => {
           </VStack>
         </Container>
       </Box>
+
+      <Modal isOpen={isRoundExportOpen} onClose={onRoundExportClose} size="lg" scrollBehavior="inside">
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent className="download-modal round-export-modal">
+          <ModalHeader className="download-modal-header">
+            Export — {roundExportModalTitle}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody className="download-modal-body" pb={6}>
+            <Text fontSize="sm" color="gray.600" mb={4} lineHeight="tall">
+              Select the round(s) to export. All students on each round tab are included with full details.
+            </Text>
+
+            <Box className="round-export-section">
+              <Flex align="center" justify="space-between" mb={3} flexWrap="wrap" gap={2}>
+                <Text className="round-export-section-title">Rounds</Text>
+                <Checkbox
+                  size="sm"
+                  className="round-export-select-all"
+                  isChecked={allRoundsExportSelected}
+                  isIndeterminate={
+                    roundExportSelectedRounds.length > 0 && !allRoundsExportSelected
+                  }
+                  onChange={(e) => {
+                    setRoundExportSelectedRounds(
+                      e.target.checked ? [...allRoundExportKeys] : ['registered']
+                    );
+                  }}
+                >
+                  Select all
+                </Checkbox>
+              </Flex>
+              <Box className="round-export-checkbox-grid">
+                <label
+                  className={`round-export-chip ${roundExportSelectedRounds.includes('registered') ? 'is-selected' : ''}`}
+                >
+                  <Checkbox
+                    isChecked={roundExportSelectedRounds.includes('registered')}
+                    onChange={() => toggleRoundExportRound('registered')}
+                    colorScheme="teal"
+                  />
+                  <span className="round-export-chip-label">Registered</span>
+                </label>
+                <label
+                  className={`round-export-chip ${roundExportSelectedRounds.includes('approved') ? 'is-selected' : ''}`}
+                >
+                  <Checkbox
+                    isChecked={roundExportSelectedRounds.includes('approved')}
+                    onChange={() => toggleRoundExportRound('approved')}
+                    colorScheme="teal"
+                  />
+                  <span className="round-export-chip-label">Approved</span>
+                </label>
+                {processRounds.map((name, idx) => {
+                  const key = String(idx);
+                  return (
+                    <label
+                      key={`${name}-${idx}`}
+                      className={`round-export-chip ${roundExportSelectedRounds.includes(key) ? 'is-selected' : ''}`}
+                    >
+                      <Checkbox
+                        isChecked={roundExportSelectedRounds.includes(key)}
+                        onChange={() => toggleRoundExportRound(key)}
+                        colorScheme="teal"
+                      />
+                      <span className="round-export-chip-label">{name}</span>
+                      <span className="round-export-chip-meta">Round {idx + 1}</span>
+                    </label>
+                  );
+                })}
+              </Box>
+            </Box>
+          </ModalBody>
+          <ModalFooter className="download-modal-footer">
+            <Button variant="ghost" mr={3} onClick={onRoundExportClose}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="teal"
+              className="download-confirm-btn"
+              leftIcon={<DownloadIcon />}
+              onClick={handleRoundExportDownload}
+              isLoading={roundExporting}
+              isDisabled={roundExportSelectedRounds.length === 0}
+            >
+              Download CSV
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isRoundImportOpen} onClose={onRoundImportClose} size="lg" scrollBehavior="inside">
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent>
+          <ModalHeader>Import bulk status — {currentRoundTitle}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={4}>
+            <Text fontSize="sm" color="gray.600" mb={3}>
+              Updates <strong>{currentRoundTitle}</strong> for each USN. Use <em>Selected</em> or{' '}
+              <em>Rejected</em> in the status column.
+              {importFileName ? ` File: ${importFileName}` : ''}
+            </Text>
+            <Button size="sm" variant="link" colorScheme="blue" mb={3} onClick={handleDownloadRoundTemplate}>
+              Download template (.xlsx)
+            </Button>
+            {importPreviewRows.length > 0 ? (
+              <TableContainer maxH="280px" overflowY="auto" borderWidth="1px" borderRadius="md">
+                <Table size="sm">
+                  <Thead bg="gray.50" position="sticky" top={0}>
+                    <Tr>
+                      <Th>USN</Th>
+                      <Th>Status</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {importPreviewRows.slice(0, 50).map((row, i) => (
+                      <Tr key={`${row.usn}-${i}`}>
+                        <Td fontFamily="mono" fontSize="xs">
+                          {row.usn}
+                        </Td>
+                        <Td>{row.status}</Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            ) : null}
+            {importPreviewRows.length > 50 && (
+              <Text fontSize="xs" color="gray.500" mt={2}>
+                Showing first 50 of {importPreviewRows.length} rows.
+              </Text>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={onRoundImportClose} isDisabled={bulkImporting}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="orange"
+              onClick={handleApplyBulkImport}
+              isLoading={bulkImporting}
+              isDisabled={!importPreviewRows.length}
+            >
+              Apply to {importPreviewRows.length} student(s)
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <Modal isOpen={isDownloadOpen} onClose={onDownloadClose} size="2xl" scrollBehavior="inside">
         <ModalOverlay backdropFilter="blur(4px)" />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../utils/placementNavigationHistory';
 import * as XLSX from 'xlsx';
 import {
   Box,
@@ -1204,6 +1205,7 @@ export const IndividualStudentEligibilityTab = () => {
 
 const ViewAllStudents = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [students, setStudents] = useState([]);
   const [schools, setSchools] = useState([]);
@@ -1704,7 +1706,9 @@ const ViewAllStudents = () => {
   };
 
   const handleView = (usn) => {
-    navigate(`/placement/students/${encodeURIComponent(usn)}`);
+    navigate(`/placement/students/${encodeURIComponent(usn)}`, {
+      state: buildPlacementNavState(location),
+    });
   };
 
   const clearFilters = () => {

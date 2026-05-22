@@ -37,9 +37,10 @@ import {
   Switch,
   SimpleGrid,
 } from '@chakra-ui/react';
-import { SearchIcon, AddIcon, ExternalLinkIcon, CopyIcon, EmailIcon } from '@chakra-ui/icons';
-import { FaGraduationCap, FaKey, FaExchangeAlt, FaHistory } from 'react-icons/fa';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { SearchIcon, AddIcon, ExternalLinkIcon, CopyIcon, EmailIcon, ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
+import { FaGraduationCap, FaKey, FaExchangeAlt, FaHistory, FaUndo } from 'react-icons/fa';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 import AlumniRegistrationCodes from './AlumniRegistrationCodes';
@@ -52,6 +53,40 @@ function AlumniTabLabel({ icon, children }) {
       <Text as="span">{children}</Text>
     </HStack>
   );
+}
+
+function shortBatchId(batchId) {
+  const s = String(batchId || '');
+  return s.length > 8 ? `${s.slice(0, 8)}…` : s || '—';
+}
+
+function canRevertConversionBatch(batch) {
+  return (batch?.logs || []).some((l) => l.status === 'success');
+}
+
+function isConversionBatchFullyReverted(batch) {
+  const logs = batch?.logs || [];
+  return logs.length > 0 && logs.every((l) => l.status === 'reverted');
+}
+
+function logStatusColorScheme(status) {
+  if (status === 'success') return 'green';
+  if (status === 'failed') return 'red';
+  if (status === 'reverted') return 'purple';
+  if (status === 'pending') return 'yellow';
+  return 'gray';
+}
+
+function formatConversionBatchWhen(createdAt) {
+  if (!createdAt) return '—';
+  try {
+    return new Date(createdAt).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  } catch {
+    return createdAt;
+  }
 }
 
 function formatOfferMeta(alum) {
@@ -157,10 +192,12 @@ function AlumniGridCard({ alum, onOpen }) {
 
 const AlumniList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isConvertOpen, onOpen: onConvertOpen, onClose: onConvertClose } = useDisclosure();
+  const { isOpen: isRevertOpen, onOpen: onRevertOpen, onClose: onRevertClose } = useDisclosure();
 
   // Read initial values from URL query params
   const initialSchoolId = searchParams.get('school_id') || '';
@@ -174,7 +211,9 @@ const AlumniList = () => {
   const initialPersonalEmailOnly =
     searchParams.get('personal_email') === '1' || searchParams.get('has_personal_email') === 'true';
   const initialTab = searchParams.get('tab');
-  const [tabIndex, setTabIndex] = useState(initialTab === 'conversions' ? 2 : 0);
+  const [tabIndex, setTabIndex] = useState(
+    initialTab === 'conversions' ? 2 : initialTab === 'logs' ? 3 : 0
+  );
   const [alumni, setAlumni] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,8 +239,11 @@ const AlumniList = () => {
   const [conversionsSelectedUsns, setConversionsSelectedUsns] = useState(new Set());
   const [convertLoading, setConvertLoading] = useState(false);
   const [convertResult, setConvertResult] = useState(null);
-  const [conversionLogs, setConversionLogs] = useState([]);
+  const [conversionBatches, setConversionBatches] = useState([]);
   const [conversionLogsLoading, setConversionLogsLoading] = useState(false);
+  const [expandedBatchId, setExpandedBatchId] = useState(null);
+  const [revertBatchTarget, setRevertBatchTarget] = useState(null);
+  const [revertLoading, setRevertLoading] = useState(false);
 
   const [newAlumni, setNewAlumni] = useState({
     usn: '',
@@ -235,6 +277,8 @@ const AlumniList = () => {
     const next = new URLSearchParams(searchParams);
     if (index === 2) {
       next.set('tab', 'conversions');
+    } else if (index === 3) {
+      next.set('tab', 'logs');
     } else {
       next.delete('tab');
       next.delete('school_id');
@@ -459,14 +503,56 @@ const AlumniList = () => {
   const fetchConversionLogs = useCallback(async () => {
     setConversionLogsLoading(true);
     try {
-      const logs = await PlacementService.getAlumniConversionLogs({ limit: 300 });
-      setConversionLogs(logs || []);
+      const batches = await PlacementService.getAlumniConversionLogs({ limit: 500, grouped: true });
+      setConversionBatches(Array.isArray(batches) ? batches : []);
+      setExpandedBatchId(null);
     } catch (e) {
       toast({ title: 'Failed to load conversion logs', status: 'error' });
     } finally {
       setConversionLogsLoading(false);
     }
   }, [toast]);
+
+  const toggleConversionBatch = (batchId) => {
+    setExpandedBatchId((prev) => (prev === batchId ? null : batchId));
+  };
+
+  const openRevertBatchModal = (batch, e) => {
+    e?.stopPropagation?.();
+    setRevertBatchTarget(batch);
+    onRevertOpen();
+  };
+
+  const handleRevertBatchConfirm = async () => {
+    if (!revertBatchTarget?.batch_id) return;
+    setRevertLoading(true);
+    try {
+      const data = await PlacementService.revertAlumniConversionBatch(revertBatchTarget.batch_id);
+      toast({
+        title: 'Bulk conversion reverted',
+        description: data?.message || 'Students were restored; logs remain marked as reverted.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      onRevertClose();
+      setRevertBatchTarget(null);
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'logs');
+      window.location.assign(`/placement/alumni?${next.toString()}`);
+      return;
+    } catch (e) {
+      toast({
+        title: 'Revert failed',
+        description: e?.message || 'Could not revert this batch.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setRevertLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (tabIndex === 3) fetchConversionLogs();
@@ -673,7 +759,11 @@ const AlumniList = () => {
                       <AlumniGridCard
                         key={alum.id ?? alum.usn ?? alum.student_id ?? `alum-${index}`}
                         alum={alum}
-                        onOpen={() => navigate(`/placement/alumni/${linkId(alum)}`)}
+                        onOpen={() =>
+                          navigate(`/placement/alumni/${linkId(alum)}`, {
+                            state: buildPlacementNavState(location),
+                          })
+                        }
                       />
                     ))}
                   </div>
@@ -897,57 +987,171 @@ const AlumniList = () => {
               <TabPanel p={0}>
                 <Box className="alumni-portal__panel">
                   <p className="alumni-portal__panel-intro">
-                    Alumni conversion log (RVU role change, alumni profile, and personal Gmail login).
+                    Bulk conversion runs are stored in <strong>alumni_conversion_log</strong>. Click a batch to see each student.
+                    Use <strong>Revert bulk</strong> to undo successful conversions; every row stays in the log with status <strong>reverted</strong> so you can always see who was rolled back.
                   </p>
                 {conversionLogsLoading ? (
                   <div className="alumni-portal__loading"><Spinner /></div>
-                ) : (
-                  <TableContainer className="alumni-portal__table-wrap" overflowX="auto">
-                    <Table variant="simple" size="sm">
-                      <Thead>
-                        <Tr>
-                          <Th>#</Th>
-                          <Th>Batch ID</Th>
-                          <Th>USN</Th>
-                          <Th>RVU email</Th>
-                          <Th>Personal email</Th>
-                          <Th>Alumni migrated</Th>
-                          <Th>Role converted</Th>
-                          <Th>Personal email login</Th>
-                          <Th>Status</Th>
-                          <Th>Error</Th>
-                          <Th>Created</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {conversionLogs.map((log, i) => {
-                          const migrated = log.status === 'success';
-                          return (
-                            <Tr key={log.id}>
-                              <Td>{i + 1}</Td>
-                              <Td fontFamily="mono" fontSize="xs">{String(log.batch_id || '').slice(0, 8)}…</Td>
-                              <Td fontFamily="mono" fontSize="xs">{log.usn || '—'}</Td>
-                              <Td fontSize="sm">{log.rvu_email || '—'}</Td>
-                              <Td fontSize="sm">{log.personal_email || '—'}</Td>
-                              <Td>
-                                <Badge colorScheme={migrated ? 'green' : 'red'} variant={migrated ? 'solid' : 'subtle'} size="sm">
-                                  {migrated ? 'Yes' : 'No'}
-                                </Badge>
-                              </Td>
-                              <Td>{log.role_converted ? 'Yes' : 'No'}</Td>
-                              <Td>{log.personal_mail_row_created ? 'Yes' : 'No'}</Td>
-                              <Td><Badge colorScheme={log.status === 'success' ? 'green' : log.status === 'failed' ? 'red' : 'gray'} size="sm">{log.status}</Badge></Td>
-                              <Td fontSize="xs" maxW="200px" isTruncated title={log.error_message}>{log.error_message || '—'}</Td>
-                              <Td fontSize="xs">{log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</Td>
-                            </Tr>
-                          );
-                        })}
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
-                )}
-                {!conversionLogsLoading && conversionLogs.length === 0 && (
+                ) : conversionBatches.length === 0 ? (
                   <div className="alumni-portal__empty">No conversion logs yet.</div>
+                ) : (
+                  <div className="alumni-portal__log-batches">
+                    {conversionBatches.map((batch) => {
+                      const isExpanded = expandedBatchId === batch.batch_id;
+                      const studentLabel =
+                        batch.total === 1 ? '1 student' : `${batch.total} students`;
+                      const fullyReverted = isConversionBatchFullyReverted(batch);
+                      const showRevert = canRevertConversionBatch(batch);
+                      return (
+                        <div
+                          key={batch.batch_id}
+                          className={`alumni-portal__log-batch${isExpanded ? ' alumni-portal__log-batch--expanded' : ''}${fullyReverted ? ' alumni-portal__log-batch--reverted' : ''}`}
+                        >
+                          <div className="alumni-portal__log-batch-head-row">
+                          <button
+                            type="button"
+                            className="alumni-portal__log-batch-head"
+                            onClick={() => toggleConversionBatch(batch.batch_id)}
+                            aria-expanded={isExpanded}
+                          >
+                            <span className="alumni-portal__log-batch-main">
+                              <span className="alumni-portal__log-batch-title">
+                                {fullyReverted ? 'Bulk conversion (reverted)' : 'Bulk conversion'} · {studentLabel}
+                              </span>
+                              <span className="alumni-portal__log-batch-meta">
+                                <time className="alumni-portal__log-batch-date" dateTime={batch.created_at || undefined}>
+                                  {formatConversionBatchWhen(batch.created_at)}
+                                </time>
+                                <span className="alumni-portal__log-batch-meta-sep" aria-hidden>·</span>
+                                <span className="alumni-portal__log-batch-id" title={batch.batch_id}>
+                                  Batch {shortBatchId(batch.batch_id)}
+                                </span>
+                              </span>
+                            </span>
+                            <HStack spacing={2} className="alumni-portal__log-batch-stats" flexShrink={0}>
+                              {batch.success > 0 && (
+                                <Badge colorScheme="green" size="sm">
+                                  {batch.success} {batch.success === 1 ? 'alumni' : 'alumnis'}
+                                </Badge>
+                              )}
+                              {batch.failed > 0 && (
+                                <Badge colorScheme="red" size="sm">{batch.failed} failed</Badge>
+                              )}
+                              {batch.pending > 0 && (
+                                <Badge colorScheme="yellow" size="sm">{batch.pending} pending</Badge>
+                              )}
+                              {batch.reverted > 0 && (
+                                <Badge colorScheme="purple" size="sm">{batch.reverted} reverted</Badge>
+                              )}
+                            </HStack>
+                            <Icon
+                              as={isExpanded ? ChevronUpIcon : ChevronDownIcon}
+                              boxSize={5}
+                              color="gray.500"
+                              aria-hidden
+                            />
+                          </button>
+                          {showRevert && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              colorScheme="purple"
+                              bg="transparent"
+                              _hover={{ bg: 'rgba(128, 90, 213, 0.1)' }}
+                              leftIcon={<Icon as={FaUndo} />}
+                              className="alumni-portal__log-batch-revert"
+                              onClick={(e) => openRevertBatchModal(batch, e)}
+                            >
+                              Revert bulk
+                            </Button>
+                          )}
+                          </div>
+                          {isExpanded && (
+                            <div className="alumni-portal__log-batch-detail">
+                              <TableContainer className="alumni-portal__table-wrap alumni-portal__log-table-wrap" overflowX="auto">
+                                <Table variant="simple" size="sm" className="alumni-portal__log-table">
+                                  <Thead>
+                                    <Tr>
+                                      <Th className="alumni-portal__log-th--num">#</Th>
+                                      <Th>Student</Th>
+                                      <Th>USN</Th>
+                                      <Th>RVU email</Th>
+                                      <Th>Personal email</Th>
+                                      <Th className="alumni-portal__log-th--center">Migrated</Th>
+                                      <Th className="alumni-portal__log-th--center">Role</Th>
+                                      <Th className="alumni-portal__log-th--center">Gmail</Th>
+                                      <Th className="alumni-portal__log-th--center">Status</Th>
+                                      <Th>Notes</Th>
+                                    </Tr>
+                                  </Thead>
+                                  <Tbody>
+                                    {(batch.logs || []).map((log, i) => {
+                                      const migrated = log.status === 'success';
+                                      const wasReverted = log.status === 'reverted';
+                                      const failed = log.status === 'failed';
+                                      return (
+                                        <Tr
+                                          key={log.id}
+                                          className={
+                                            wasReverted
+                                              ? 'alumni-portal__log-row--reverted'
+                                              : failed
+                                                ? 'alumni-portal__log-row--failed'
+                                                : undefined
+                                          }
+                                        >
+                                          <Td className="alumni-portal__log-td--num">{i + 1}</Td>
+                                          <Td className="alumni-portal__log-td--name">{log.student_name || '—'}</Td>
+                                          <Td>
+                                            <span className="alumni-portal__log-usn">{log.usn || '—'}</span>
+                                          </Td>
+                                          <Td className="alumni-portal__log-td--email" title={log.rvu_email || undefined}>
+                                            {log.rvu_email || '—'}
+                                          </Td>
+                                          <Td className="alumni-portal__log-td--email" title={log.personal_email || undefined}>
+                                            {log.personal_email || '—'}
+                                          </Td>
+                                          <Td className="alumni-portal__log-td--center">
+                                            <Badge
+                                              colorScheme={wasReverted ? 'purple' : migrated ? 'green' : 'red'}
+                                              variant={migrated || wasReverted ? 'solid' : 'subtle'}
+                                              size="sm"
+                                              className="alumni-portal__log-badge"
+                                            >
+                                              {wasReverted ? 'Reverted' : migrated ? 'Yes' : 'No'}
+                                            </Badge>
+                                          </Td>
+                                          <Td className="alumni-portal__log-td--center alumni-portal__log-td--flag">
+                                            {log.role_converted && !wasReverted ? 'Yes' : wasReverted ? 'Undone' : 'No'}
+                                          </Td>
+                                          <Td className="alumni-portal__log-td--center alumni-portal__log-td--flag">
+                                            {log.personal_mail_row_created && !wasReverted ? 'Yes' : wasReverted ? 'Removed' : 'No'}
+                                          </Td>
+                                          <Td className="alumni-portal__log-td--center">
+                                            <Badge
+                                              colorScheme={logStatusColorScheme(log.status)}
+                                              size="sm"
+                                              className="alumni-portal__log-badge alumni-portal__log-badge--status"
+                                            >
+                                              {log.status}
+                                            </Badge>
+                                          </Td>
+                                          <Td className="alumni-portal__log-td--notes" title={log.error_message || undefined}>
+                                            {log.error_message || '—'}
+                                          </Td>
+                                        </Tr>
+                                      );
+                                    })}
+                                  </Tbody>
+                                </Table>
+                              </TableContainer>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
                 </Box>
               </TabPanel>
@@ -1075,6 +1279,62 @@ const AlumniList = () => {
                 ) : (
                   <Button onClick={closeConvertModal}>Close</Button>
                 )}
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+
+          <Modal
+            isOpen={isRevertOpen}
+            onClose={() => {
+              if (!revertLoading) {
+                onRevertClose();
+                setRevertBatchTarget(null);
+              }
+            }}
+            size="md"
+            isCentered
+          >
+            <ModalOverlay />
+            <ModalContent className="alumni-portal__modal-content">
+              <ModalHeader>Revert bulk conversion?</ModalHeader>
+              <ModalCloseButton isDisabled={revertLoading} />
+              <ModalBody>
+                {revertBatchTarget && (
+                  <Box>
+                    <Text mb={3}>
+                      This will undo every <strong>successful</strong> conversion in this batch (
+                      {revertBatchTarget.success} student
+                      {revertBatchTarget.success === 1 ? '' : 's'}
+                      ): RVU login back to student, alumni profile removed, personal Gmail login removed.
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" mb={2}>
+                      All rows stay in <strong>alumni_conversion_log</strong> with status <Badge colorScheme="purple" size="sm">reverted</Badge> so you can still expand this batch and see who was rolled back.
+                    </Text>
+                    <Text fontSize="xs" color="gray.500" fontFamily="mono">
+                      Batch {shortBatchId(revertBatchTarget.batch_id)}
+                    </Text>
+                  </Box>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    onRevertClose();
+                    setRevertBatchTarget(null);
+                  }}
+                  isDisabled={revertLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  colorScheme="purple"
+                  leftIcon={<Icon as={FaUndo} />}
+                  onClick={handleRevertBatchConfirm}
+                  isLoading={revertLoading}
+                >
+                  Revert bulk
+                </Button>
               </ModalFooter>
             </ModalContent>
           </Modal>

@@ -54,6 +54,7 @@ import {
   FaDownload,
 } from 'react-icons/fa';
 import { PlacementService } from '../../services/placement.service';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 import { getFileUrl } from '../../utils/fileUrl';
 
 // Color palette – alumni brand
@@ -108,6 +109,7 @@ function getSocialColor(url, name) {
 const AlumniViewStudent = () => {
   const { usn } = useParams();
   const navigate = useNavigate();
+  const { backLabel, goBack } = usePlacementBack('/placement/alumni-projects');
   const toast = useToast();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -313,7 +315,7 @@ const AlumniViewStudent = () => {
         <Text color={colors.secondary} fontSize="lg" fontWeight="500">Student not found.</Text>
         <Button
           leftIcon={<ChevronLeftIcon />}
-          onClick={() => navigate('/placement/alumni-projects')}
+          onClick={goBack}
           bg={colors.accent}
           color="white"
           fontWeight="600"
@@ -321,7 +323,7 @@ const AlumniViewStudent = () => {
           px={6}
           _hover={{ bg: colors.accentHover }}
         >
-          Back to Projects
+          {backLabel}
         </Button>
       </Flex>
     );
@@ -362,7 +364,7 @@ const AlumniViewStudent = () => {
             variant="ghost"
             size="sm"
             leftIcon={<ChevronLeftIcon boxSize={5} />}
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             mb={{ base: 4, md: 6 }}
             color={colors.secondary}
             fontWeight="600"
@@ -371,7 +373,7 @@ const AlumniViewStudent = () => {
             borderRadius="lg"
             px={4}
           >
-            Back to Projects
+            {backLabel}
           </Button>
 
           {/* Student Profile Card - no top banner */}

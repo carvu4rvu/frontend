@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import {
   Box,
   Container,
@@ -44,6 +45,7 @@ const DRIVE_SECTIONS = [
 
 const CompanyDrives = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [drives, setDrives] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +106,7 @@ const CompanyDrives = () => {
   );
 
   const openDrive = (drive) => {
-    navigate(`/company/drive/${drive.id}`);
+    navigate(`/company/drive/${drive.id}`, { state: buildPlacementNavState(location) });
   };
 
   const showPageEmpty = !loading && !loadError && visibleDrives.length === 0;

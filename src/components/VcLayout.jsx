@@ -14,6 +14,7 @@ import { BellIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 import { PlacementService } from '../services/placement.service';
 import { CarvuBrand } from './CarvuBrand';
+import { isCampusEventsPath } from '../utils/campusEventsPaths';
 
 const NAV_ACCENT = '#FDE74C';
 const HEADER_BG = '#20343c';
@@ -22,6 +23,7 @@ const HEADER_BORDER = '#2d4a54';
 const VcLayout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const campusEventsPage = isCampusEventsPath(location.pathname);
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -176,9 +178,17 @@ const VcLayout = ({ children }) => {
         </HStack>
       </Flex>
 
-      <Box p={{ base: 4, md: 8 }}>
-        <Box maxW="100%">{children}</Box>
-      </Box>
+      {campusEventsPage ? (
+        <Box p={8}>
+          <Box maxW="1600px" mx="auto" w="100%">
+            {children}
+          </Box>
+        </Box>
+      ) : (
+        <Box p={{ base: 4, md: 8 }}>
+          <Box maxW="100%">{children}</Box>
+        </Box>
+      )}
     </Box>
   );
 };

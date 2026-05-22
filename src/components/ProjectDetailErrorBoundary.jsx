@@ -1,5 +1,6 @@
 import React from 'react';
-import { useRouteError, useNavigate } from 'react-router-dom';
+import { useRouteError, useNavigate, useLocation } from 'react-router-dom';
+import { resolveAppBack } from '../utils/placementNavigationHistory';
 import { Box, Button, Container, Heading, Text, VStack } from '@chakra-ui/react';
 import { FaChevronLeft } from 'react-icons/fa';
 import AdminLayout from './AdminLayout';
@@ -11,6 +12,8 @@ import AdminLayout from './AdminLayout';
 export default function ProjectDetailErrorBoundary() {
   const error = useRouteError();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { path: backPath, label: backLabel } = resolveAppBack(location, '/placement/gallery/showcase');
   const is404 = error?.response?.status === 404 || (error?.message && error.message.includes('404'));
 
   return (
@@ -29,9 +32,9 @@ export default function ProjectDetailErrorBoundary() {
             <Button
               leftIcon={<Box as={FaChevronLeft} />}
               colorScheme="blue"
-              onClick={() => navigate('/placement/gallery/manage')}
+              onClick={() => navigate(backPath)}
             >
-              Back to Manage Projects
+              {backLabel}
             </Button>
           </VStack>
         </Container>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import {
   Box,
   Text,
@@ -60,6 +61,7 @@ const INITIAL_FILTERS = {
 
 const AlumniDirectory = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [alumni, setAlumni] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -284,7 +286,9 @@ const AlumniDirectory = () => {
                   className="alumni-dir__card"
                   variant="outline"
                   onClick={() =>
-                    navigate(`/placement/alumni-directory/${encodeURIComponent(String(linkId(a)))}`)
+                    navigate(`/placement/alumni-directory/${encodeURIComponent(String(linkId(a)))}`, {
+                      state: buildPlacementNavState(location),
+                    })
                   }
                 >
                   <CardBody p={4}>

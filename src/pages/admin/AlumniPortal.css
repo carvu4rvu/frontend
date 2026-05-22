@@ -526,6 +526,298 @@
   box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25) !important;
 }
 
+/* Conversion logs — bulk batches */
+.alumni-portal__log-batches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.alumni-portal__log-batch {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.alumni-portal__log-batch--expanded {
+  border-color: #94a3b8;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.alumni-portal__log-batch--reverted {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+}
+
+.alumni-portal__log-batch-head-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  transition: background 0.15s ease;
+}
+
+.alumni-portal__log-batch--reverted .alumni-portal__log-batch-head-row {
+  background: #faf5ff;
+}
+
+.alumni-portal__log-batch-head-row:hover {
+  background: linear-gradient(180deg, #f1f5f9 0%, #e8eef4 100%);
+}
+
+.alumni-portal__log-batch--reverted .alumni-portal__log-batch-head-row:hover {
+  background: #f3e8ff;
+}
+
+.alumni-portal__log-batch-head-row .alumni-portal__log-batch-head {
+  flex: 1;
+  border-radius: 0;
+}
+
+.alumni-portal__log-batch-revert {
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 0.75rem;
+  margin-left: 0.25rem;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.alumni-portal__log-batch-revert:hover {
+  background: rgba(128, 90, 213, 0.1) !important;
+}
+
+.alumni-portal__log-batch--reverted .alumni-portal__log-batch-revert:hover {
+  background: rgba(128, 90, 213, 0.14) !important;
+}
+
+.alumni-portal__log-batch-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.alumni-portal__log-batch-head:hover {
+  background: transparent;
+}
+
+.alumni-portal__log-batch-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.alumni-portal__log-batch-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.alumni-portal__log-batch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.alumni-portal__log-batch-date {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #047857;
+  letter-spacing: 0.01em;
+}
+
+.alumni-portal__log-batch--reverted .alumni-portal__log-batch-date {
+  color: #6d28d9;
+}
+
+.alumni-portal__log-batch-meta-sep {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.alumni-portal__log-batch-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.alumni-portal__log-batch-stats {
+  margin-right: 0.25rem;
+}
+
+.alumni-portal__log-batch-detail {
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.alumni-portal__log-batch-detail .alumni-portal__log-table-wrap {
+  margin-top: 0;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+  max-height: min(420px, 55vh);
+  overflow: auto;
+}
+
+.alumni-portal__log-table-wrap .alumni-portal__log-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 920px;
+}
+
+.alumni-portal__log-table-wrap thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.alumni-portal__log-table-wrap thead tr {
+  background: linear-gradient(135deg, #1a3340 0%, #243f4d 45%, #2f5a6b 100%);
+  box-shadow: 0 2px 0 rgba(15, 23, 42, 0.12);
+}
+
+.alumni-portal__log-table-wrap thead th {
+  color: #fbeec8 !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em;
+  text-transform: uppercase !important;
+  padding: 0.75rem 0.9rem !important;
+  border-bottom: 2px solid rgba(194, 179, 138, 0.45) !important;
+  white-space: nowrap;
+}
+
+.alumni-portal__log-th--num,
+.alumni-portal__log-td--num {
+  width: 2.5rem;
+  text-align: center;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.alumni-portal__log-th--center,
+.alumni-portal__log-td--center {
+  text-align: center;
+}
+
+.alumni-portal__log-table-wrap tbody tr {
+  border-bottom: 1px solid #e8eef4;
+  transition: background 0.15s ease;
+}
+
+.alumni-portal__log-table-wrap tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.alumni-portal__log-table-wrap tbody tr:hover {
+  background: #eef6ff !important;
+}
+
+.alumni-portal__log-table-wrap tbody td {
+  font-size: 0.8125rem !important;
+  padding: 0.7rem 0.9rem !important;
+  border-color: #e8eef4 !important;
+  vertical-align: middle !important;
+  color: #334155;
+}
+
+.alumni-portal__log-td--name {
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  min-width: 120px;
+}
+
+.alumni-portal__log-usn {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #1e293b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.alumni-portal__log-td--email {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem !important;
+  color: #475569 !important;
+}
+
+.alumni-portal__log-td--flag {
+  font-size: 0.75rem !important;
+  font-weight: 600;
+  color: #64748b !important;
+}
+
+.alumni-portal__log-td--notes {
+  max-width: 240px;
+  font-size: 0.75rem !important;
+  color: #64748b !important;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+}
+
+.alumni-portal__log-badge {
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.alumni-portal__log-row--reverted td {
+  background: #f5f3ff !important;
+}
+
+.alumni-portal__log-row--reverted {
+  box-shadow: inset 3px 0 0 #8b5cf6;
+}
+
+.alumni-portal__log-row--reverted:hover td {
+  background: #ede9fe !important;
+}
+
+.alumni-portal__log-row--failed td {
+  background: #fff5f5 !important;
+}
+
+.alumni-portal__log-row--failed {
+  box-shadow: inset 3px 0 0 #f56565;
+}
+
+.alumni-portal__log-row--failed:hover td {
+  background: #fed7d7 !important;
+}
+
 /* Tables */
 .alumni-portal__table-wrap {
   overflow-x: auto;

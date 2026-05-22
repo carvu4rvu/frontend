@@ -25,7 +25,8 @@ import {
 } from '@chakra-ui/react';
 import { ViewIcon, SearchIcon, StarIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaUser, FaHeart, FaRegHeart, FaBookmark, FaRegBookmark, FaLink, FaComment } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../utils/placementNavigationHistory';
 import PassThroughLayout from '../components/PassThroughLayout';
 import { PlacementService } from '../services/placement.service';
 import { getProjectCoverImage, getShowcaseHeroImage, getShowcaseGalleryStrip, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
@@ -72,6 +73,7 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
   const Layout = LayoutComponent ?? PassThroughLayout;
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -258,7 +260,9 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
     if (e) e.stopPropagation();
     if (project?.id) {
       markProjectSeen(project.id);
-      navigate(`${projectsBase}/project/${project.id}`);
+      const path = `${projectsBase}/project/${project.id}`;
+      const navState = variant === 'admin' ? buildPlacementNavState(location) : undefined;
+      navigate(path, navState ? { state: navState } : undefined);
     }
   };
 
@@ -732,7 +736,12 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
                                 color="gray.600"
                                 borderColor="gray.300"
                                 _hover={{ bg: 'gray.50' }}
-                                onClick={(e) => { e.stopPropagation(); navigate(`/placement/gallery/project/${p.id}?tab=reviews`); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/placement/gallery/project/${p.id}?tab=reviews`, {
+                                    state: buildPlacementNavState(location),
+                                  });
+                                }}
                                 aria-label="Insights"
                               />
                             </Tooltip>

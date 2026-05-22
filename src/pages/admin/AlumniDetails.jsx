@@ -23,6 +23,7 @@ import {
 import { ArrowBackIcon, EditIcon, DeleteIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 import './AlumniPortal.css';
 
 function formatOfferMeta(alum) {
@@ -104,6 +105,7 @@ function FieldBlock({ label, value, emphasis, full, href, mailto }) {
 const AlumniDetails = () => {
   const { identifier } = useParams();
   const navigate = useNavigate();
+  const { backLabel, goBack } = usePlacementBack('/placement/alumni');
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
@@ -193,9 +195,9 @@ const AlumniDetails = () => {
     <AdminLayout>
       <div className="alumni-detail">
         <div className="alumni-detail__inner">
-          <button type="button" className="alumni-detail__back" onClick={() => navigate('/placement/alumni')}>
+          <button type="button" className="alumni-detail__back" onClick={goBack}>
             <ArrowBackIcon boxSize={3} aria-hidden />
-            Back to alumni list
+            {backLabel}
           </button>
 
           <header className="alumni-detail__hero">

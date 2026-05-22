@@ -114,9 +114,20 @@ export const PlacementService = {
     const qs = new URLSearchParams();
     if (params.stage) qs.set('stage', params.stage);
     if (params.columns && params.columns.length) qs.set('columns', params.columns.join(','));
+    if (params.round_index != null) qs.set('round_index', String(params.round_index));
+    if (params.round_field) qs.set('round_field', params.round_field);
+    if (params.round_outcome) qs.set('round_outcome', params.round_outcome);
     const url = `/placement/drives/${driveId}/export${qs.toString() ? `?${qs}` : ''}`;
     const response = await apiFetch(url);
     return response.data ?? { data: [], columns: [], availableColumns: [] };
+  },
+
+  bulkUpdateRoundStatus: async (driveId, { round_field, updates }) => {
+    const response = await apiFetch(`/placement/drives/${driveId}/process/bulk-round-status`, {
+      method: 'POST',
+      body: JSON.stringify({ round_field, updates }),
+    });
+    return response.data;
   },
 
   /** Remove a student from a drive's process (admin) */
@@ -815,8 +826,19 @@ export const PlacementService = {
     if (params.batch_id) q.set('batch_id', params.batch_id);
     if (params.status) q.set('status', params.status);
     if (params.limit != null) q.set('limit', params.limit);
+    if (params.grouped) q.set('grouped', 'true');
     const response = await apiFetch(`/placement/alumni/conversion-logs${q.toString() ? `?${q}` : ''}`);
+    if (params.grouped) return response.data?.batches ?? [];
     return response.data?.logs ?? [];
+  },
+
+  /** Admin: revert an entire bulk conversion batch (undoes success rows; all logs → reverted) */
+  revertAlumniConversionBatch: async (batchId) => {
+    const response = await apiFetch('/placement/alumni/conversion-logs/revert', {
+      method: 'POST',
+      body: JSON.stringify({ batch_id: batchId }),
+    });
+    return response.data;
   },
 
   addAlumni: async (data) => {

@@ -16,7 +16,8 @@ import {
   Button,
 } from '@chakra-ui/react';
 import { FiChevronLeft, FiChevronRight, FiCalendar } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 import { EventsService } from '../../services/events.service';
@@ -24,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const CalendarOfEvents = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -265,7 +267,7 @@ const CalendarOfEvents = () => {
                                       bg={e.type === 'Placement' ? 'blue.500' : 'orange.500'}
                                       cursor="pointer"
                                       title={e.title}
-                                      onClick={() => e.type === 'Placement' && navigate(`/placement/events/${e.id}/process`)}
+                                      onClick={() => e.type === 'Placement' && navigate(`/placement/events/${e.id}/process`, { state: buildPlacementNavState(location) })}
                                       _hover={{ transform: 'scale(1.3)' }}
                                     />
                                   ))}
@@ -300,7 +302,7 @@ const CalendarOfEvents = () => {
                           borderLeft="4px solid"
                           borderLeftColor={e.type === 'Placement' ? 'blue.500' : 'orange.500'}
                           cursor="pointer"
-                          onClick={() => e.type === 'Placement' && navigate(`/placement/events/${e.id}/process`)}
+                          onClick={() => e.type === 'Placement' && navigate(`/placement/events/${e.id}/process`, { state: buildPlacementNavState(location) })}
                           _hover={{ bg: 'gray.50' }}
                         >
                           <Text fontWeight="bold" fontSize="sm" mb={1}>{e.title}</Text>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Flex,
@@ -33,6 +33,8 @@ import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import { getCompanyLogoRaw } from '../../utils/companyLogo';
 import { CompanyService } from '../../services/company.service';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 
 const ROUND_TO_FIELD = {
   registration: 'approved_status',
@@ -70,6 +72,8 @@ const COMPANY_VIEW_ONLY = true;
 const CompanyDriveDetail = () => {
   const { id: driveId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { backLabel, goBack } = usePlacementBack('/company/drives');
   const toast = useToast();
   const [drive, setDrive] = useState(null);
   const [processes, setProcesses] = useState([]);
@@ -317,8 +321,8 @@ const CompanyDriveDetail = () => {
       <CompanyLayout>
         <Box p={5}>
           <Text>Drive not found.</Text>
-          <Button mt={4} onClick={() => navigate('/company/drives')}>
-            Back to Drives
+          <Button mt={4} onClick={goBack}>
+            {backLabel}
           </Button>
         </Box>
       </CompanyLayout>
@@ -375,9 +379,9 @@ const CompanyDriveDetail = () => {
                   leftIcon={<ArrowBackIcon />}
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate('/company/drives')}
+                  onClick={goBack}
                 >
-                  Back to Drives
+                  {backLabel}
                 </Button>
               </HStack>
               {drive?.placement_status && (
@@ -766,7 +770,12 @@ const CompanyDriveDetail = () => {
                                     />
                                   </Td>
                                 )}
-                                <Td px={4} py={3} whiteSpace="nowrap" cursor="pointer" _hover={{ textDecoration: 'underline' }} onClick={() => process.usn && navigate(`/company/student/${process.usn}`)}>
+                                <Td px={4} py={3} whiteSpace="nowrap" cursor="pointer" _hover={{ textDecoration: 'underline' }} onClick={() =>
+                                  process.usn &&
+                                  navigate(`/company/student/${process.usn}`, {
+                                    state: buildPlacementNavState(location),
+                                  })
+                                }>
                                   <Box fontSize="sm" fontWeight="bold" color="blue.600">{process.usn}</Box>
                                   <Box fontSize="xs" color="gray.500">{process.student_name || '-'}</Box>
                                 </Td>
@@ -778,7 +787,12 @@ const CompanyDriveDetail = () => {
                               </>
                             ) : isAllRoundsView ? (
                               <>
-                                <Td px={4} py={3} whiteSpace="nowrap" cursor="pointer" _hover={{ textDecoration: 'underline' }} onClick={() => process.usn && navigate(`/company/student/${process.usn}`)}>
+                                <Td px={4} py={3} whiteSpace="nowrap" cursor="pointer" _hover={{ textDecoration: 'underline' }} onClick={() =>
+                                  process.usn &&
+                                  navigate(`/company/student/${process.usn}`, {
+                                    state: buildPlacementNavState(location),
+                                  })
+                                }>
                                   <Box fontSize="sm" fontWeight="bold" color="blue.600">{process.usn}</Box>
                                   <Box fontSize="xs" color="gray.500">{process.student_name || '-'}</Box>
                                 </Td>
@@ -825,7 +839,12 @@ const CompanyDriveDetail = () => {
                               </>
                             ) : (
                               <>
-                                <Td px={4} py={3} whiteSpace="nowrap" cursor="pointer" _hover={{ textDecoration: 'underline' }} onClick={() => process.usn && navigate(`/company/student/${process.usn}`)}>
+                                <Td px={4} py={3} whiteSpace="nowrap" cursor="pointer" _hover={{ textDecoration: 'underline' }} onClick={() =>
+                                  process.usn &&
+                                  navigate(`/company/student/${process.usn}`, {
+                                    state: buildPlacementNavState(location),
+                                  })
+                                }>
                                   <Box fontSize="sm" fontWeight="bold" color="blue.600">{process.usn}</Box>
                                   <Box fontSize="xs" color="gray.500">{process.student_name || '-'}</Box>
                                 </Td>

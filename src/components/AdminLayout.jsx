@@ -13,10 +13,12 @@ import { useAuth } from '../context/AuthContext';
 import CardNav from './ui/CardNav';
 
 import UniversalSearch from './UniversalSearch';
+import { isCampusEventsPath } from '../utils/campusEventsPaths';
 
 const AdminLayout = ({ children, fullWidth = false, compactTop = false }) => {
   const { user, logout, userRole } = useAuth();
   const location = useLocation();
+  const campusEventsPage = isCampusEventsPath(location.pathname);
   const navigate = useNavigate();
   const [isNavHovered, setIsNavHovered] = useState(false);
 
@@ -68,7 +70,8 @@ const AdminLayout = ({ children, fullWidth = false, compactTop = false }) => {
       links: [
         { label: "View All Students", path: "/placement/students", ariaLabel: "View Students" },
         { label: "Showcase Projects", path: "/placement/gallery/showcase", ariaLabel: "Showcase Projects" },
-        { label: "Manage Projects", path: "/placement/gallery/manage", ariaLabel: "Manage Projects" }
+        { label: "Manage Projects", path: "/placement/gallery/manage", ariaLabel: "Manage Projects" },
+        { label: "Events", path: "/placement/student-events", ariaLabel: "Campus Events" }
       ]
     },
     {
@@ -211,7 +214,13 @@ const AdminLayout = ({ children, fullWidth = false, compactTop = false }) => {
         transition="filter 0.3s ease"
         filter={isNavHovered ? 'blur(5px)' : 'none'}
       >
-        {fullWidth ? (
+        {campusEventsPage ? (
+          <Box p={8} w="100%" bg="#f8fafc" minH="calc(100vh - 72px)">
+            <Box maxW="1600px" mx="auto" w="100%">
+              {children}
+            </Box>
+          </Box>
+        ) : fullWidth ? (
           <Box w="100%" maxW="100%" p={0} m={0}>
             {children}
           </Box>

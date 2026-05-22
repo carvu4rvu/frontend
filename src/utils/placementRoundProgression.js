@@ -11,6 +11,10 @@ function getComplianceCategory(process) {
   return null;
 }
 
+export function isComplianceViolation(process) {
+  return getComplianceCategory(process) != null;
+}
+
 function isRegistered(process) {
   return String(process?.registration_status || '').toLowerCase() === 'registered';
 }
@@ -110,17 +114,40 @@ export function getEffectiveRoundStatus(process, field, roundFields = []) {
   return { key: 'pending', label: 'PENDING', cssClass: 'status-pending' };
 }
 
-/** Round tab visibility — include eliminated students so downstream shows NOT QUALIFIED. */
+/** Count selection stages passed (approved + each process round marked true). */
+export function countSelectionRoundsPassed(process, roundFields = []) {
+  let count = 0;
+  if (process?.approved_status === 'Qualified') count += 1;
+  for (const f of roundFields) {
+    if (f && process[f] === true) count += 1;
+  }
+  return count;
+}
+
+/** All Rounds tab: most rounds passed first; compliance violations last. */
+export function sortProcessesForAllRoundsView(list, roundFields = []) {
+  return [...list].sort((a, b) => {
+    const vA = isComplianceViolation(a);
+    const vB = isComplianceViolation(b);
+    if (vA !== vB) return vA ? 1 : -1;
+    const diff = countSelectionRoundsPassed(b, roundFields) - countSelectionRoundsPassed(a, roundFields);
+    if (diff !== 0) return diff;
+    return String(a.usn || '').localeCompare(String(b.usn || ''));
+  });
+}
+
+/**
+ * Individual round tabs: only students who passed all prior rounds.
+ * Compliance violations appear only in All Rounds view (roundIndex -1).
+ */
 export function isVisibleOnRoundTab(process, roundIndex, roundFields) {
   if (!isRegistered(process)) return roundIndex === -2;
   if (roundIndex === -3) return isRegistered(process);
   if (roundIndex < 0) return true;
-  if (process.approved_status !== 'Qualified') return roundIndex <= -3;
 
-  for (let j = 0; j < roundIndex; j++) {
-    const f = roundFields[j];
-    if (f && process[f] === false) return true;
-  }
+  if (roundIndex >= 0 && isComplianceViolation(process)) return false;
+
+  if (process.approved_status !== 'Qualified') return false;
 
   for (let j = 0; j < roundIndex; j++) {
     const f = roundFields[j];

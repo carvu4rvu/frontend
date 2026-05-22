@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import {
   Box,
   Container,
@@ -32,6 +33,7 @@ const formatStatus = (v) => (v == null || v === '' ? '-' : String(v));
 
 export default function Process() {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -171,7 +173,11 @@ export default function Process() {
                             size="xs"
                             colorScheme="teal"
                             variant="outline"
-                            onClick={() => navigate(`/placement/events/${row.drive_id}/process`)}
+                            onClick={() =>
+                              navigate(`/placement/events/${row.drive_id}/process`, {
+                                state: buildPlacementNavState(location),
+                              })
+                            }
                           >
                             Drive Process
                           </Button>

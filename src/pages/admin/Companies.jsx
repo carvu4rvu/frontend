@@ -49,6 +49,8 @@ import { StyledFileInput } from '../../components/ui/StyledFileInput';
 import CompanyDeleteDialog from '../../components/placement/CompanyDeleteDialog';
 import { PlacementService } from '../../services/placement.service';
 import { useAuth } from '../../context/AuthContext';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 
 const emptyContact = () => ({ contact_name: '', email: '', phone_number: '', role_title: '', remarks: '' });
 
@@ -68,6 +70,9 @@ const Companies = () => {
   const toast = useToast();
   const { userRole } = useAuth();
   const isVc = (userRole || '').toLowerCase() === 'vc';
+  const { backLabel, goBack } = usePlacementBack(
+    isVc ? '/placement/dashboard' : '/placement/companies'
+  );
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -268,10 +273,10 @@ const Companies = () => {
 
     switch (action) {
       case 'view':
-        navigate(`/placement/company/${company.id}`);
+        navigate(`/placement/company/${company.id}`, { state: buildPlacementNavState(location) });
         break;
       case 'edit':
-        navigate(`/placement/company/${company.id}?edit=1`);
+        navigate(`/placement/company/${company.id}?edit=1`, { state: buildPlacementNavState(location) });
         break;
       case 'image':
         setSelectedCompany(company);
@@ -394,14 +399,14 @@ const Companies = () => {
                 >
                   Add Company
                 </Button>
-                <Button variant="outline" borderColor="gray.300" onClick={() => navigate(-1)} size="sm" bg="white">
-                  Back
+                <Button variant="outline" borderColor="gray.300" onClick={goBack} size="sm" bg="white">
+                  {backLabel}
                 </Button>
               </HStack>
             )}
             {isVc && (
-              <Button variant="outline" borderColor="gray.300" onClick={() => navigate('/placement/dashboard')} size="sm" bg="white">
-                Back to Dashboard
+              <Button variant="outline" borderColor="gray.300" onClick={goBack} size="sm" bg="white">
+                {backLabel}
               </Button>
             )}
           </Flex>
@@ -502,7 +507,11 @@ const Companies = () => {
                   _hover={{ transform: 'scale(1.05)' }}
                   transition="all 0.2s"
                   cursor="pointer"
-                  onClick={() => navigate(`/placement/company/${company.id}`)}
+                  onClick={() =>
+                    navigate(`/placement/company/${company.id}`, {
+                      state: buildPlacementNavState(location),
+                    })
+                  }
                   onContextMenu={(e) => handleContextMenu(e, company)}
                 >
                   <Box boxShadow="sm" mb={2}>

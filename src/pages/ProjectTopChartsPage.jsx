@@ -13,7 +13,9 @@ import {
   InputLeftElement,
 } from '@chakra-ui/react';
 import { SearchIcon, ChevronLeftIcon } from '@chakra-ui/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../utils/placementNavigationHistory';
+import { usePlacementBack } from '../hooks/usePlacementBack';
 import PassThroughLayout from '../components/PassThroughLayout';
 import { PlacementService } from '../services/placement.service';
 import TopChartsList from '../components/projects/TopChartsList';
@@ -37,6 +39,7 @@ export default function ProjectTopChartsPage({
   const Layout = LayoutComponent ?? PassThroughLayout;
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -82,7 +85,11 @@ export default function ProjectTopChartsPage({
 
   const goToProjectDetail = (project, e) => {
     if (e) e.stopPropagation();
-    if (project?.id) navigate(`${projectsBase}/project/${project.id}`);
+    if (project?.id) {
+      const path = `${projectsBase}/project/${project.id}`;
+      const navState = variant === 'admin' ? buildPlacementNavState(location) : undefined;
+      navigate(path, navState ? { state: navState } : undefined);
+    }
   };
 
   const handleFavorite = async (projectId, e) => {
@@ -131,9 +138,9 @@ export default function ProjectTopChartsPage({
             leftIcon={<ChevronLeftIcon />}
             mb={4}
             color="gray.600"
-            onClick={() => navigate(backPath)}
+            onClick={goBack}
           >
-            Back to showcase
+            {backLabel}
           </Button>
 
           <Flex justify="space-between" align="flex-start" flexWrap="wrap" gap={4} mb={6}>
@@ -166,7 +173,7 @@ export default function ProjectTopChartsPage({
           ) : rankedProjects.length === 0 ? (
             <Box bg="white" borderRadius="2xl" p={12} textAlign="center" borderWidth="1px" borderColor="gray.100">
               <Text color="gray.500">No projects to rank yet.</Text>
-              <Button mt={4} size="sm" bg={PLAY_GREEN} color="white" _hover={{ bg: PLAY_GREEN_HOVER }} onClick={() => navigate(backPath)}>
+              <Button mt={4} size="sm" bg={PLAY_GREEN} color="white" _hover={{ bg: PLAY_GREEN_HOVER }} onClick={goBack}>
                 Return to showcase
               </Button>
             </Box>

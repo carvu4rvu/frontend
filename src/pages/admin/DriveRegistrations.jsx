@@ -23,10 +23,14 @@ import {
 import { ArrowBackIcon, DownloadIcon, AttachmentIcon, DeleteIcon } from '@chakra-ui/icons';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 
 const DriveRegistrations = () => {
   const { driveId } = useParams();
   const navigate = useNavigate();
+  const { backLabel, goBack } = usePlacementBack(
+    driveId ? `/placement/events/${driveId}/process` : '/placement/events'
+  );
   const toast = useToast();
   const [drive, setDrive] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -189,9 +193,9 @@ const DriveRegistrations = () => {
             <Button 
               leftIcon={<ArrowBackIcon />} 
               variant="ghost" 
-              onClick={() => navigate('/placement/events')}
+              onClick={goBack}
             >
-              Back to Drives
+              {backLabel}
             </Button>
             <HStack>
               <Input 

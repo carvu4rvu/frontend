@@ -67,6 +67,7 @@ import {
   navigateToPlacementNotificationSend,
 } from '../../utils/placementNotificationNav';
 import './PlacementEvents.css';
+import { usePlacementBack } from '../../hooks/usePlacementBack';
 import './CompanyDetails.css';
 
 const emptyContact = () => ({ id: null, contact_name: '', email: '', phone_number: '', role_title: '', remarks: '' });
@@ -88,6 +89,7 @@ const CompanyDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { backLabel, goBack } = usePlacementBack('/placement/companies');
   const toast = useToast();
   const { userRole } = useAuth();
   const isVc = (userRole || '').toLowerCase() === 'vc';
@@ -465,12 +467,12 @@ const CompanyDetails = () => {
               leftIcon={<ArrowBackIcon />}
               size="sm"
               variant="outline"
-              onClick={() => navigate('/placement/companies')}
+              onClick={goBack}
               bg="white"
               borderColor="gray.200"
               _hover={{ bg: 'gray.50', borderColor: 'gray.300' }}
             >
-              Back to companies
+              {backLabel}
             </Button>
           </Flex>
 

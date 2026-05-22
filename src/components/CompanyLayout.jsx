@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { CompanyService } from '../services/company.service';
 import { resolveCompanyLogoUrl } from '../utils/companyLogo';
 import { CarvuBrand } from './CarvuBrand';
+import { isCampusEventsPath } from '../utils/campusEventsPaths';
 import { CompanyLogo } from './CompanyLogo';
 
 // Same theme as AlumniLayout
@@ -29,6 +30,7 @@ const HEADER_BORDER = '#2d4a54';
 const CompanyLayout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const campusEventsPage = isCampusEventsPath(location.pathname);
   const navigate = useNavigate();
   const [companyProfile, setCompanyProfile] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -319,6 +321,12 @@ const CompanyLayout = ({ children }) => {
       {location.pathname === '/company/drives' || location.pathname.startsWith('/company/drive/') ? (
         <Box bg="#f0f0f0" minH="100vh" w="100%">
           {children}
+        </Box>
+      ) : campusEventsPage ? (
+        <Box p={8}>
+          <Box maxW="1600px" mx="auto" w="100%">
+            {children}
+          </Box>
         </Box>
       ) : (
         <Box p={{ base: 4, md: 8 }}>

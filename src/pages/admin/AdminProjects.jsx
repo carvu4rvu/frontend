@@ -52,6 +52,7 @@ import {
 import { ViewIcon, StarIcon, SearchIcon, CheckIcon, TimeIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaChevronLeft, FaChevronRight, FaUser, FaHeart, FaRegHeart, FaStar, FaRegStar, FaChevronDown, FaBookmark, FaRegBookmark, FaLink, FaComment } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import AdminLayout from '../../components/AdminLayout';
 import ProjectsShowcasePage from '../ProjectsShowcasePage';
 import { PlacementService } from '../../services/placement.service';
@@ -337,7 +338,11 @@ const AdminProjects = ({ mode = 'showcase' }) => {
   /** Open full project detail page (same as "Full details" in Manage) */
   const goToProjectDetail = (project, e) => {
     if (e) e.stopPropagation();
-    if (project?.id) navigate(`/placement/gallery/project/${project.id}`);
+    if (project?.id) {
+      navigate(`/placement/gallery/project/${project.id}`, {
+        state: buildPlacementNavState(location),
+      });
+    }
   };
 
   const openProjectDetailModal = (project) => {
@@ -998,7 +1003,12 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                     color="gray.600"
                                     borderColor="gray.300"
                                     _hover={{ bg: 'gray.50' }}
-                                    onClick={(e) => { e.stopPropagation(); navigate(`/placement/gallery/project/${p.id}?tab=reviews`); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/placement/gallery/project/${p.id}?tab=reviews`, {
+                                        state: buildPlacementNavState(location),
+                                      });
+                                    }}
                                     aria-label="Insights"
                                   />
                                 </Tooltip>
@@ -1314,7 +1324,11 @@ const AdminProjects = ({ mode = 'showcase' }) => {
                                             bg="blue.50"
                                             color="blue.600"
                                             _hover={{ bg: 'blue.100', borderColor: 'blue.300' }}
-                                            onClick={() => navigate(`/placement/gallery/project/${p.id}`)}
+                                            onClick={() =>
+                                              navigate(`/placement/gallery/project/${p.id}`, {
+                                                state: buildPlacementNavState(location),
+                                              })
+                                            }
                                           >
                                             Full details
                                           </Button>

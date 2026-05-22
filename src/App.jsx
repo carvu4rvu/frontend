@@ -82,6 +82,7 @@ import { PlacementService } from './services/placement.service';
 import AlumniViewStudent from './pages/alumni/AlumniViewStudent';
 import AlumniViewAlumni from './pages/alumni/AlumniViewAlumni';
 import AlumniEvents from './pages/alumni/AlumniEvents';
+import { EventsService } from './services/events.service';
 import AlumniNotificationsPage from './pages/alumni/AlumniNotificationsPage';
 import VcNotificationsPage from './pages/vc/VcNotificationsPage';
 import ReferralForm from './pages/alumni/ReferralForm';
@@ -144,7 +145,7 @@ const Layout = () => {
   return (
     <Flex direction="column" minH="100vh">
       <ScrollToTop />
-      {isPlacementRoute && <PlacementNavigationTracker />}
+      {(isPlacementRoute || isCompanyPage) && <PlacementNavigationTracker />}
       {!hideNavbar && <Navbar />}
       <Box flex="1">
         <StudentDataCacheProvider>
@@ -648,6 +649,17 @@ const router = createBrowserRouter([
         element: (
           <PlacementProtectedRoute requiredRole="admin">
             <PlacementReportsPage />
+          </PlacementProtectedRoute>
+        ),
+      },
+      {
+        path: "/placement/student-events",
+        element: (
+          <PlacementProtectedRoute requiredRole="admin">
+            <AlumniEvents
+              LayoutComponent={AdminLayout}
+              fetchEvents={() => EventsService.list()}
+            />
           </PlacementProtectedRoute>
         ),
       },

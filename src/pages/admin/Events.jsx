@@ -43,6 +43,7 @@ import { FaRocket, FaPlus, FaTimes } from 'react-icons/fa';
 import { HiLocationMarker } from 'react-icons/hi';
 import { MdCalendarToday, MdHourglassEmpty } from 'react-icons/md';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import * as XLSX from 'xlsx';
 import './PlacementEvents.css';
 import AdminLayout from '../../components/AdminLayout';
@@ -100,6 +101,8 @@ const EXPORT_COLUMNS = [
 const Events = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const placementNav = (path) =>
+    navigate(path, { state: buildPlacementNavState(location) });
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isEligibilityOpen, onOpen: onEligibilityOpen, onClose: onEligibilityClose } = useDisclosure();
@@ -311,7 +314,7 @@ const Events = () => {
   // const [loadingApps, setLoadingApps] = useState(false);
 
   const handleManageClick = async (drive) => {
-    navigate(`/placement/events/${drive.id}/registrations`);
+    placementNav(`/placement/events/${drive.id}/registrations`);
   };
 
   const handleSendNotification = async (drive, e) => {
@@ -534,7 +537,7 @@ const Events = () => {
         setNewEvent(initialEventState);
         setSelectedEventId(null);
         fetchDrives();
-        navigate(`/placement/events/${driveId}/process?clicked_add_students=true`);
+        placementNav(`/placement/events/${driveId}/process?clicked_add_students=true`);
       } else {
         onClose();
         setNewEvent(initialEventState);
@@ -676,7 +679,7 @@ const Events = () => {
               </Tooltip>
             )}
             <Tooltip label="Configure Eligibility">
-              <Button size="sm" variant="ghost" color="gray.400" _hover={{ color: 'teal.600' }} onClick={(e) => { e.stopPropagation(); navigate(`/placement/events/${drive.id}/process?clicked_add_students=true`); }} aria-label="Eligibility">
+              <Button size="sm" variant="ghost" color="gray.400" _hover={{ color: 'teal.600' }} onClick={(e) => { e.stopPropagation(); placementNav(`/placement/events/${drive.id}/process?clicked_add_students=true`); }} aria-label="Eligibility">
                 <CheckCircleIcon boxSize={4} />
               </Button>
             </Tooltip>
@@ -1050,7 +1053,7 @@ const Events = () => {
                             cursor: 'pointer' 
                           }}
                           transition="background 0.15s ease"
-                          onClick={() => navigate(`/placement/events/${drive.id}/process`)}
+                          onClick={() => placementNav(`/placement/events/${drive.id}/process`)}
                         >
                           {visibleTableColumns.map((col) => (
                             <Td key={col.id} textAlign={col.id === 'actions' ? 'right' : 'left'} maxW={col.id === 'location_description' ? '350px' : col.id === 'eligibility' ? '220px' : undefined} className={col.id === 'eligibility' ? 'col-eligibility' : undefined}>
@@ -1080,8 +1083,8 @@ const Events = () => {
                     className="placement-events-card"
                     role="button"
                     tabIndex={0}
-                    onClick={() => navigate(`/placement/events/${drive.id}/process`)}
-                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/placement/events/${drive.id}/process`)}
+                    onClick={() => placementNav(`/placement/events/${drive.id}/process`)}
+                    onKeyDown={(e) => e.key === 'Enter' && placementNav(`/placement/events/${drive.id}/process`)}
                     style={{ cursor: 'pointer' }}
                   >
                     <Flex justify="space-between" align="flex-start" mb={6}>
@@ -1141,7 +1144,7 @@ const Events = () => {
                         {!['completed', 'closed'].includes((drive.placement_status || '').toLowerCase()) && (
                           <Tooltip label="Send Notification"><Button size="sm" bg="gray.50" color="gray.400" _hover={{ bg: 'orange.600', color: 'white' }} w={9} h={9} borderRadius="xl" onClick={(e) => handleSendNotification(drive, e)} aria-label="Send Notification" isLoading={notifyingDriveId === drive.id}><BellIcon boxSize={4} /></Button></Tooltip>
                         )}
-                        <Tooltip label="Configure Eligibility"><Button size="sm" bg="gray.50" color="gray.400" _hover={{ bg: 'teal.600', color: 'white' }} w={9} h={9} borderRadius="xl" onClick={(e) => { e.stopPropagation(); navigate(`/placement/events/${drive.id}/process?clicked_add_students=true`); }} aria-label="Eligibility"><CheckCircleIcon boxSize={4} /></Button></Tooltip>
+                        <Tooltip label="Configure Eligibility"><Button size="sm" bg="gray.50" color="gray.400" _hover={{ bg: 'teal.600', color: 'white' }} w={9} h={9} borderRadius="xl" onClick={(e) => { e.stopPropagation(); placementNav(`/placement/events/${drive.id}/process?clicked_add_students=true`); }} aria-label="Eligibility"><CheckCircleIcon boxSize={4} /></Button></Tooltip>
                         <Tooltip label="Edit"><Button size="sm" bg="gray.50" color="gray.400" _hover={{ bg: 'blue.600', color: 'white' }} w={9} h={9} borderRadius="xl" onClick={(e) => { e.stopPropagation(); handleEditClick(drive); }} aria-label="Edit"><SettingsIcon boxSize={4} /></Button></Tooltip>
                       </HStack>
                     </Flex>
