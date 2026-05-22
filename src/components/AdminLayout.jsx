@@ -68,8 +68,7 @@ const AdminLayout = ({ children, fullWidth = false, compactTop = false }) => {
       links: [
         { label: "View All Students", path: "/placement/students", ariaLabel: "View Students" },
         { label: "Showcase Projects", path: "/placement/gallery/showcase", ariaLabel: "Showcase Projects" },
-        { label: "Manage Projects", path: "/placement/gallery/manage", ariaLabel: "Manage Projects" },
-        { label: "Calendar", path: "/placement/calendar", ariaLabel: "Calendar of Events" }
+        { label: "Manage Projects", path: "/placement/gallery/manage", ariaLabel: "Manage Projects" }
       ]
     },
     {

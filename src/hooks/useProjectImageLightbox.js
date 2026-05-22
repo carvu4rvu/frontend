@@ -19,11 +19,30 @@ export function useProjectImageLightbox() {
   const openProjectImages = useCallback((project, startUrlOrIndex = 0) => {
     const images = getProjectLightboxImages(project);
     if (!images.length) return;
-    const startIndex =
-      typeof startUrlOrIndex === 'number'
-        ? startUrlOrIndex
-        : indexInLightboxImages(images, startUrlOrIndex);
-    openImages(images, startIndex, project);
+
+    if (typeof startUrlOrIndex === 'number') {
+      openImages(images, startUrlOrIndex, project);
+      return;
+    }
+
+    const clicked = resolveSnapUrl(startUrlOrIndex);
+    if (clicked) {
+      const exactIdx = images.findIndex(
+        (u) => u === clicked || resolveSnapUrl(u) === clicked
+      );
+      if (exactIdx >= 0) {
+        openImages(images, exactIdx, project);
+        return;
+      }
+      openImages(
+        [clicked, ...images.filter((u) => resolveSnapUrl(u) !== clicked && u !== clicked)],
+        0,
+        project
+      );
+      return;
+    }
+
+    openImages(images, indexInLightboxImages(images, startUrlOrIndex), project);
   }, [openImages]);
 
   const closeLightbox = useCallback(() => {

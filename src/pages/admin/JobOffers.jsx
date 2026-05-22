@@ -63,6 +63,18 @@ function normalizeSchoolName(school) {
   return name.toUpperCase();
 }
 
+const PAGE_SIZE = 25;
+const TABLE_SCROLL_MAX_H = 'calc(100vh - 320px)';
+
+const stickyHeaderTh = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 3,
+  bg: 'gray.50',
+  borderBottom: '2px solid',
+  borderColor: 'gray.100',
+};
+
 const JobOffers = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -158,6 +170,7 @@ const JobOffers = () => {
   const [selectedBatch, setSelectedBatch] = useState('');
   const [selectedSchools, setSelectedSchools] = useState([]);
   const [ctcSort, setCtcSort] = useState('none');
+  const [page, setPage] = useState(1);
 
   // New Offer Form State
   const [newOffer, setNewOffer] = useState({
@@ -690,6 +703,7 @@ const JobOffers = () => {
     setSelectedJobType('');
     setSelectedBatch('');
     setSelectedSchools([]);
+    setPage(1);
   };
 
   const handleDownloadExcel = () => {
@@ -844,6 +858,24 @@ const JobOffers = () => {
     });
     return list;
   }, [filteredOffersBase, ctcSort, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOffers.length / PAGE_SIZE));
+
+  const paginatedOffers = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredOffers.slice(start, start + PAGE_SIZE);
+  }, [filteredOffers, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCompany, selectedJobType, selectedBatch, selectedSchools, ctcSort]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pageStart = filteredOffers.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(page * PAGE_SIZE, filteredOffers.length);
 
   return (
     <AdminLayout>
@@ -1042,28 +1074,40 @@ const JobOffers = () => {
           </Box>
 
           {/* Offers Table */}
-          <Box bg="white" borderRadius="xl" shadow="sm" overflowX="auto" border="1px solid" borderColor="gray.100">
-            <Table variant="simple" size="sm">
+          <Box
+            bg="white"
+            borderRadius="xl"
+            shadow="sm"
+            border="1px solid"
+            borderColor="gray.100"
+            maxH={TABLE_SCROLL_MAX_H}
+            overflow="auto"
+          >
+            <Table
+              variant="simple"
+              size="sm"
+              sx={{ borderCollapse: 'separate', borderSpacing: 0, minW: 'max-content' }}
+            >
               <Thead bg="gray.50" borderBottom="2px solid" borderColor="gray.100">
                 <Tr>
                   {/* Student Info Columns */}
-                  {visibleColumns.includes('usn') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">USN</Th>}
-                  {visibleColumns.includes('student') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Student</Th>}
-                  {visibleColumns.includes('batch') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Batch</Th>}
-                  {visibleColumns.includes('school') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">School</Th>}
-                  {visibleColumns.includes('program') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Program</Th>}
+                  {visibleColumns.includes('usn') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">USN</Th>}
+                  {visibleColumns.includes('student') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Student</Th>}
+                  {visibleColumns.includes('batch') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Batch</Th>}
+                  {visibleColumns.includes('school') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">School</Th>}
+                  {visibleColumns.includes('program') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Program</Th>}
                   
                   {/* Common Offer Columns */}
-                  {visibleColumns.includes('company') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Company</Th>}
-                  {visibleColumns.includes('designation') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Designation</Th>}
-                  {visibleColumns.includes('job_type') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Job Type</Th>}
-                  {visibleColumns.includes('academic_year') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Academic Year</Th>}
-                  {visibleColumns.includes('source') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Source</Th>}
-                  {visibleColumns.includes('remarks') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Remarks</Th>}
+                  {visibleColumns.includes('company') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Company</Th>}
+                  {visibleColumns.includes('designation') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Designation</Th>}
+                  {visibleColumns.includes('job_type') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Job Type</Th>}
+                  {visibleColumns.includes('academic_year') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Academic Year</Th>}
+                  {visibleColumns.includes('source') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Source</Th>}
+                  {visibleColumns.includes('remarks') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Remarks</Th>}
                   
                   {/* Placement Specific Columns */}
                   {visibleColumns.includes('ctc_min') && (
-                    <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">
+                    <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">
                       <Button
                         variant="ghost"
                         size="xs"
@@ -1080,20 +1124,20 @@ const JobOffers = () => {
                       </Button>
                     </Th>
                   )}
-                  {visibleColumns.includes('ctc_max') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">CTC Max</Th>}
-                  {visibleColumns.includes('ctc_variable') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Variable Pay</Th>}
-                  {visibleColumns.includes('ctc_stock') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Stock (LPA)</Th>}
-                  {visibleColumns.includes('type_of_hiring') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Hiring Type</Th>}
-                  {visibleColumns.includes('job_description') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Job Description</Th>}
+                  {visibleColumns.includes('ctc_max') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">CTC Max</Th>}
+                  {visibleColumns.includes('ctc_variable') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Variable Pay</Th>}
+                  {visibleColumns.includes('ctc_stock') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Stock (LPA)</Th>}
+                  {visibleColumns.includes('type_of_hiring') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Hiring Type</Th>}
+                  {visibleColumns.includes('job_description') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Job Description</Th>}
                   
                   {/* Capstone Specific Columns */}
-                  {visibleColumns.includes('internship_duration') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Duration (Months)</Th>}
-                  {visibleColumns.includes('stipend_min') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Stipend Min</Th>}
-                  {visibleColumns.includes('stipend_max') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Stipend Max</Th>}
+                  {visibleColumns.includes('internship_duration') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Duration (Months)</Th>}
+                  {visibleColumns.includes('stipend_min') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Stipend Min</Th>}
+                  {visibleColumns.includes('stipend_max') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Stipend Max</Th>}
                   
                   {/* Status and Actions - Always Last */}
-                  {visibleColumns.includes('offer_status') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Status</Th>}
-                  {visibleColumns.includes('actions') && <Th color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Actions</Th>}
+                  {visibleColumns.includes('offer_status') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Status</Th>}
+                  {visibleColumns.includes('actions') && <Th sx={stickyHeaderTh} color="gray.600" fontSize="xs" textTransform="uppercase" py={4} letterSpacing="wider" whiteSpace="nowrap">Actions</Th>}
                 </Tr>
               </Thead>
               <Tbody>
@@ -1111,7 +1155,7 @@ const JobOffers = () => {
                     </Td>
                   </Tr>
                 ) : (
-                  filteredOffers.map((offer) => {
+                  paginatedOffers.map((offer) => {
                     // Consolidated values - pick from placement or capstone based on source
                     const companyName = offer.company_name || offer.capstone_company_name || '-';
                     const designation = offer.placement_designation || offer.capstone_designation || offer.designation || '-';
@@ -1270,6 +1314,27 @@ const JobOffers = () => {
               </Tbody>
             </Table>
           </Box>
+
+          {!loading && filteredOffers.length > 0 && (
+            <Flex justify="space-between" align="center" mt={4} wrap="wrap" gap={3}>
+              <Text fontSize="sm" color="gray.600">
+                Showing {pageStart}–{pageEnd} of {filteredOffers.length} offers
+              </Text>
+              {totalPages > 1 && (
+                <HStack spacing={3}>
+                  <Button size="sm" isDisabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+                    Prev
+                  </Button>
+                  <Text fontSize="sm" color="gray.700">
+                    Page {page} of {totalPages}
+                  </Text>
+                  <Button size="sm" isDisabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
+                    Next
+                  </Button>
+                </HStack>
+              )}
+            </Flex>
+          )}
           
           {/* Column Selector Modal */}
           <Modal isOpen={isColumnModalOpen} onClose={() => setIsColumnModalOpen(false)} size="4xl" scrollBehavior="inside">

@@ -147,6 +147,7 @@ const AddStudentsToDrive = ({ driveId, onCancel, onSuccess, embedded = false, ex
   // Selection state
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [isSelectingAll, setIsSelectingAll] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -221,6 +222,44 @@ const AddStudentsToDrive = ({ driveId, onCancel, onSuccess, embedded = false, ex
     }).catch(() => { setSpecializationList([]); setMajorList([]); });
   }, [JSON.stringify(selectedProgramIds)]);
 
+  const buildListParams = useCallback(
+    (page, pageSize = PAGE_SIZE, bustCache = false) => {
+      const params = {
+        page,
+        page_size: pageSize,
+        drive_id: driveId,
+        opt_in_only: true,
+        exclude_placement_violations: true,
+        exclude_disciplinary_records: true,
+      };
+      if (bustCache) params._bustCache = true;
+      if (debouncedSearch?.trim()) params.search = debouncedSearch.trim();
+      if (selectedSchoolIds?.length) params.school_ids = selectedSchoolIds.join(',');
+      if (selectedProgramIds?.length) params.program_ids = selectedProgramIds.join(',');
+      if (selectedSpecializationIds?.length) params.specialization_ids = selectedSpecializationIds.join(',');
+      if (selectedMajorIds?.length) params.major_ids = selectedMajorIds.join(',');
+      if (minCGPA) params.min_cgpa = minCGPA;
+      if (maxActiveBacklogs) params.max_backlogs = maxActiveBacklogs;
+      if (maxBacklogHistory) params.max_backlog_history = maxBacklogHistory;
+      if (joiningYears?.trim()) params.joining_years = joiningYears.trim();
+      if (graduationYears?.trim()) params.graduation_years = graduationYears.trim();
+      return params;
+    },
+    [
+      driveId,
+      debouncedSearch,
+      selectedSchoolIds,
+      selectedProgramIds,
+      selectedSpecializationIds,
+      selectedMajorIds,
+      minCGPA,
+      maxActiveBacklogs,
+      maxBacklogHistory,
+      joiningYears,
+      graduationYears,
+    ]
+  );
+
   const fetchStudents = useCallback(
     async ({ page = 1, bustCache = false } = {}) => {
       if (!driveId) return;
@@ -234,25 +273,7 @@ const AddStudentsToDrive = ({ driveId, onCancel, onSuccess, embedded = false, ex
 
       try {
         setLoading(true);
-        const params = {
-          page,
-          page_size: PAGE_SIZE,
-          drive_id: driveId,
-          opt_in_only: true,
-          exclude_placement_violations: true,
-          exclude_disciplinary_records: true,
-        };
-        if (bustCache) params._bustCache = true;
-        if (debouncedSearch?.trim()) params.search = debouncedSearch.trim();
-        if (selectedSchoolIds?.length) params.school_ids = selectedSchoolIds.join(',');
-        if (selectedProgramIds?.length) params.program_ids = selectedProgramIds.join(',');
-        if (selectedSpecializationIds?.length) params.specialization_ids = selectedSpecializationIds.join(',');
-        if (selectedMajorIds?.length) params.major_ids = selectedMajorIds.join(',');
-        if (minCGPA) params.min_cgpa = minCGPA;
-        if (maxActiveBacklogs) params.max_backlogs = maxActiveBacklogs;
-        if (maxBacklogHistory) params.max_backlog_history = maxBacklogHistory;
-        if (joiningYears?.trim()) params.joining_years = joiningYears.trim();
-        if (graduationYears?.trim()) params.graduation_years = graduationYears.trim();
+        const params = buildListParams(page, PAGE_SIZE, bustCache);
 
         const data = await PlacementService.getAllStudents(params, { signal: ac.signal });
         if (generation !== fetchGenerationRef.current || ac.signal.aborted || data == null) return;
@@ -278,20 +299,7 @@ const AddStudentsToDrive = ({ driveId, onCancel, onSuccess, embedded = false, ex
         }
       }
     },
-    [
-      driveId,
-      debouncedSearch,
-      selectedSchoolIds,
-      selectedProgramIds,
-      selectedSpecializationIds,
-      selectedMajorIds,
-      minCGPA,
-      maxActiveBacklogs,
-      maxBacklogHistory,
-      joiningYears,
-      graduationYears,
-      toast,
-    ]
+    [driveId, buildListParams, toast]
   );
 
   const goToPage = useCallback((page) => {
@@ -393,19 +401,63 @@ const AddStudentsToDrive = ({ driveId, onCancel, onSuccess, embedded = false, ex
   const indexOfFirstItem = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const indexOfLastItem = Math.min(currentPage * PAGE_SIZE, totalCount);
 
-  const handleSelectAll = (e) => {
-      if (e.target.checked) {
-          setSelectedStudents((prev) => {
-            const onPage = selectableOnPage.map((s) => s.usn);
-            return [...new Set([...prev, ...onPage])];
-          });
-      } else {
-          setSelectedStudents((prev) => {
-            const onPageSet = new Set(selectableOnPage.map((s) => s.usn));
-            return prev.filter((usn) => !onPageSet.has(usn));
-          });
-      }
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedStudents((prev) => {
+        const onPage = selectableOnPage.map((s) => s.usn);
+        return [...new Set([...prev, ...onPage])];
+      });
+    } else {
+      setSelectedStudents((prev) => {
+        const onPageSet = new Set(selectableOnPage.map((s) => s.usn));
+        return prev.filter((usn) => !onPageSet.has(usn));
+      });
+    }
   };
+
+  const handleSelectAllOnPage = () => {
+    if (selectableOnPage.length === 0) return;
+    handleSelectAll(true);
+  };
+
+  const handleSelectAllMatching = async () => {
+    if (!driveId || totalCount === 0 || isSelectingAll) return;
+    setIsSelectingAll(true);
+    try {
+      const usns = new Set();
+      let page = 1;
+      let pages = 1;
+      do {
+        const data = await PlacementService.getAllStudents(buildListParams(page, 100));
+        (data?.students ?? []).forEach((s) => {
+          if (s?.usn && !existingUsnsSet.has(s.usn)) usns.add(s.usn);
+        });
+        pages = data?.totalPages ?? 1;
+        page += 1;
+      } while (page <= pages);
+
+      setSelectedStudents([...usns]);
+      toast({
+        title: 'Selection updated',
+        description: `Selected ${usns.size.toLocaleString()} student${usns.size === 1 ? '' : 's'} matching current filters.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: 'Could not select all',
+        description: error?.message || 'Failed to load all matching students.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSelectingAll(false);
+    }
+  };
+
+  const handleClearSelection = () => setSelectedStudents([]);
 
   const allOnPageSelected =
     selectableOnPage.length > 0
@@ -720,7 +772,7 @@ const AddStudentsToDrive = ({ driveId, onCancel, onSuccess, embedded = false, ex
 
         {/* Table toolbar */}
         <Flex align="center" justify="space-between" mb={3} flexWrap="wrap" gap={2}>
-          <HStack spacing={2} align="center">
+          <HStack spacing={2} align="center" flexWrap="wrap">
             <Text fontSize="sm" fontWeight="600" color="gray.700">Students</Text>
             <Badge colorScheme="green" variant="subtle" borderRadius="full" px={2}>
               {!hasFetchedStudents || loading
@@ -732,6 +784,36 @@ const AddStudentsToDrive = ({ driveId, onCancel, onSuccess, embedded = false, ex
                 ({alreadyInDriveCount} already in this drive)
               </Text>
             )}
+          </HStack>
+          <HStack spacing={2} flexWrap="wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              colorScheme="blue"
+              onClick={handleSelectAllOnPage}
+              isDisabled={!hasFetchedStudents || loading || selectableOnPage.length === 0}
+            >
+              Select page ({selectableOnPage.length})
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              colorScheme="blue"
+              onClick={handleSelectAllMatching}
+              isLoading={isSelectingAll}
+              loadingText="Selecting..."
+              isDisabled={!hasFetchedStudents || loading || totalCount === 0}
+            >
+              Select all matching ({totalCount.toLocaleString()})
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleClearSelection}
+              isDisabled={selectedStudents.length === 0}
+            >
+              Clear selection
+            </Button>
           </HStack>
         </Flex>
 

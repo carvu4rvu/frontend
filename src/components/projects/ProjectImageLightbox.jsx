@@ -14,8 +14,7 @@ import ProgressiveImage from './ProgressiveImage';
 
 /**
  * Full-screen image viewer with prev/next navigation.
- * @param {string[]} images - resolved URL strings
- * @param {object} [project] - for snap_variants in progressive upgrades
+ * Loads low-res first, then progressively upgrades to full quality.
  */
 export default function ProjectImageLightbox({
   isOpen,
@@ -60,8 +59,18 @@ export default function ProjectImageLightbox({
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="full" motionPreset="none" isCentered>
       <ModalOverlay bg="blackAlpha.900" />
-      <ModalContent bg="transparent" boxShadow="none" maxW="100vw" maxH="100vh" m={0}>
-        <ModalBody p={0} display="flex" alignItems="center" justifyContent="center" minH="100vh" position="relative">
+      <ModalContent bg="transparent" boxShadow="none" maxW="100vw" w="100vw" h="100vh" maxH="100vh" m={0}>
+        <ModalBody
+          p={0}
+          display="flex"
+          flexDirection="column"
+          alignItems="stretch"
+          justifyContent="center"
+          minH="100vh"
+          h="100vh"
+          position="relative"
+          bg="blackAlpha.900"
+        >
           <IconButton
             icon={<CloseIcon />}
             aria-label="Close"
@@ -109,17 +118,31 @@ export default function ProjectImageLightbox({
             </>
           )}
 
-          <Box maxW="min(96vw, 1400px)" maxH="88vh" w="100%" px={{ base: 12, md: 20 }} py={12}>
+          <Box
+            className="project-image-lightbox__stage"
+            position="relative"
+            flex="1"
+            w="100%"
+            maxW="100vw"
+            h="calc(100vh - 2rem)"
+            minH="50vh"
+            px={{ base: 14, md: 18 }}
+            py={{ base: 10, md: 12 }}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
             <ProgressiveImage
               key={current}
               src={current}
               project={project}
               profile="lightbox"
-              priority={1}
+              priority={0}
+              className="project-image-lightbox__image"
               w="100%"
-              maxW="100%"
-              maxH="88vh"
-              mx="auto"
+              h="100%"
+              maxW="min(98vw, 1920px)"
+              maxH="92vh"
               objectFit="contain"
             />
           </Box>

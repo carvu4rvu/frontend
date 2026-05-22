@@ -599,6 +599,28 @@
   background: #f8fafc;
 }
 
+.alumni-portal__modal-content--danger .chakra-modal__header {
+  background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 48%, #dc2626 100%);
+  border-bottom-color: #fecaca;
+}
+
+.alumni-portal__modal-content--danger .chakra-modal__body {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.alumni-portal__confirm-box {
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.alumni-portal__confirm-box--danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
 /* Alumni detail — /placement/alumni/:identifier */
 .alumni-detail {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;

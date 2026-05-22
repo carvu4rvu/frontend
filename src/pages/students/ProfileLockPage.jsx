@@ -58,6 +58,39 @@ const SEM_FIELDS = Array.from({ length: 8 }, (_, i) => ({
   label: `Sem ${i + 1}`,
 }));
 
+const TABLE_SCROLL_MAX_H = 'calc(100vh - 260px)';
+
+const stickyCornerTh = {
+  position: 'sticky',
+  left: 0,
+  top: 0,
+  zIndex: 4,
+  bg: 'gray.50',
+  borderRight: '1px solid',
+  borderColor: 'gray.200',
+  boxShadow: '2px 2px 4px -2px rgba(0,0,0,0.1)',
+};
+
+const stickyHeaderTh = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 3,
+  bg: 'gray.50',
+  borderBottom: '2px solid',
+  borderColor: 'gray.200',
+};
+
+const stickyFirstColTd = {
+  position: 'sticky',
+  left: 0,
+  zIndex: 2,
+  bg: 'white',
+  borderRight: '1px solid',
+  borderColor: 'gray.200',
+  boxShadow: '2px 0 4px -2px rgba(0,0,0,0.08)',
+  'tr:hover &': { bg: 'gray.50' },
+};
+
 export default function ProfileLockPage() {
   const toast = useToast();
   
@@ -175,7 +208,7 @@ export default function ProfileLockPage() {
     if (field === 'lock_reason') setSavingKey(key);
 
     try {
-      await PlacementService.updateStudentProfileLock(usn, { [field]: value });
+      await PlacementService.updateStudentProfileLocks(usn, { [field]: value });
       // Update the actual row in state so the view stays synced after saving
       setRows((prev) =>
         prev.map((r) => (r.usn === usn ? { ...r, [field]: value } : r))
@@ -285,18 +318,34 @@ export default function ProfileLockPage() {
               />
             </Box>
 
-            <Box bg="white" borderRadius="xl" shadow="sm" overflowX="auto" border="1px solid" borderColor="gray.200">
-              <Table size="sm" variant="simple">
+            <Box
+              bg="white"
+              borderRadius="xl"
+              shadow="sm"
+              border="1px solid"
+              borderColor="gray.200"
+              maxH={TABLE_SCROLL_MAX_H}
+              overflow="auto"
+            >
+              <Table
+                size="sm"
+                variant="simple"
+                sx={{ borderCollapse: 'separate', borderSpacing: 0, minW: 'max-content' }}
+              >
                 <Thead bg="gray.50">
                   <Tr>
-                    <Th>USN</Th>
-                    <Th>Name</Th>
-                    <Th>Email</Th>
-                    <Th textAlign="center">Active</Th>
-                    {SECTION_FIELDS.map((f) => <Th key={f.key} textAlign="center">{f.label}</Th>)}
-                    {SEM_FIELDS.map((f) => <Th key={f.key} textAlign="center">{f.label}</Th>)}
-                    <Th>By</Th>
-                    <Th>Reason</Th>
+                    <Th sx={stickyCornerTh} whiteSpace="nowrap">USN</Th>
+                    <Th sx={stickyHeaderTh} whiteSpace="nowrap">Name</Th>
+                    <Th sx={stickyHeaderTh} whiteSpace="nowrap">Email</Th>
+                    <Th sx={stickyHeaderTh} textAlign="center" whiteSpace="nowrap">Active</Th>
+                    {SECTION_FIELDS.map((f) => (
+                      <Th key={f.key} sx={stickyHeaderTh} textAlign="center" whiteSpace="nowrap">{f.label}</Th>
+                    ))}
+                    {SEM_FIELDS.map((f) => (
+                      <Th key={f.key} sx={stickyHeaderTh} textAlign="center" whiteSpace="nowrap">{f.label}</Th>
+                    ))}
+                    <Th sx={stickyHeaderTh} whiteSpace="nowrap">By</Th>
+                    <Th sx={stickyHeaderTh} whiteSpace="nowrap">Reason</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -307,7 +356,7 @@ export default function ProfileLockPage() {
                   ) : (
                     rows.map((r) => (
                       <Tr key={r.usn} _hover={{ bg: 'gray.50' }}>
-                        <Td fontWeight="bold" color="blue.600">{r.usn}</Td>
+                        <Td sx={stickyFirstColTd} fontWeight="bold" color="blue.600" whiteSpace="nowrap">{r.usn}</Td>
                         <Td whiteSpace="nowrap">{r.full_name}</Td>
                         <Td fontSize="xs">{r.college_email}</Td>
                         <Td textAlign="center">

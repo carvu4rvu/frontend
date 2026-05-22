@@ -215,7 +215,7 @@ export default function AlumniConnect() {
                   <Tr>
                     <Td colSpan={7} py={12} textAlign="center" color="gray.500">
                       {rows.length === 0
-                        ? 'No connection requests yet.'
+                        ? 'No connection requests yet. Alumni submit these from the alumni portal when they want to connect with a student.'
                         : 'No requests match your search.'}
                     </Td>
                   </Tr>
@@ -269,7 +269,7 @@ export default function AlumniConnect() {
                           >
                             View
                           </Button>
-                          {r.status === 'PENDING' && (
+                          {String(r.status || '').toUpperCase() === 'PENDING' && (
                             <>
                               <Button
                                 size="xs"
@@ -379,7 +379,7 @@ export default function AlumniConnect() {
               </Box>
             )}
           </ModalBody>
-          {detailRow && detailRow.status === 'PENDING' && (
+          {detailRow && String(detailRow.status || '').toUpperCase() === 'PENDING' && (
             <ModalFooter gap={2} borderTopWidth="1px" borderColor="gray.200">
               <Button variant="ghost" onClick={onDetailClose}>Close</Button>
               <Button

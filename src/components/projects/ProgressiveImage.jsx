@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Box } from '@chakra-ui/react';
 import { useProgressiveImage } from '../../hooks/useProgressiveImage';
+import { getFileUrl } from '../../utils/fileUrl';
 import './ProgressiveImage.css';
 
 const LAYER_FADE = 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -50,8 +51,14 @@ export default function ProgressiveImage({
   });
 
   const handleError = (e) => {
+    const target = e?.target;
+    const fallback = originalUrl ? getFileUrl(originalUrl) : null;
+    if (target && fallback && target.src !== fallback) {
+      target.src = fallback;
+      return;
+    }
     if (onError) onError(e);
-    else if (e?.target) e.target.style.display = 'none';
+    else if (target) target.style.display = 'none';
   };
 
   const containerStyle = {

@@ -7,6 +7,7 @@ import {
   isNetworkGoodForUpgrade,
   nextVariantInLadder,
 } from '../utils/imageVariants';
+import { getFileUrl } from '../utils/fileUrl';
 import { scheduleImageUpgrade } from '../utils/progressiveImageQueue';
 
 const DWELL_VISIBLE_MS = 200;
@@ -172,9 +173,28 @@ export function useProgressiveImage({
     setOverlayVisible(false);
   }, [originalUrl, project?.id, profile, enabled]);
 
+  // Lightbox is always "visible" — start upgrading immediately (no scroll intersection wait).
+  useEffect(() => {
+    if (profile !== 'lightbox' || !enabled || !originalUrl) return undefined;
+    visibleRef.current = true;
+    const kick = setTimeout(() => tryUpgradeRef.current?.(), 0);
+    const chain = setInterval(() => {
+      if (isFinalVariant(currentTypeRef.current)) return;
+      tryUpgradeRef.current?.();
+    }, 400);
+    return () => {
+      clearTimeout(kick);
+      clearInterval(chain);
+    };
+  }, [originalUrl, profile, enabled]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !enabled || !originalUrl) return undefined;
+    if (profile === 'lightbox') {
+      visibleRef.current = true;
+      return undefined;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {

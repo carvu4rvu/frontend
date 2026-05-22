@@ -17,6 +17,8 @@ import {
   VStack,
   SimpleGrid,
   useDisclosure,
+  Text,
+  Box,
 } from '@chakra-ui/react';
 import { ArrowBackIcon, EditIcon, DeleteIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import AdminLayout from '../../components/AdminLayout';
@@ -465,23 +467,40 @@ const AlumniDetails = () => {
         </Modal>
 
         <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered>
-          <ModalOverlay />
-          <ModalContent className="alumni-portal__modal-content">
-            <ModalHeader>Remove alumni</ModalHeader>
-            <ModalCloseButton />
+          <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(2px)" />
+          <ModalContent className="alumni-portal__modal-content alumni-portal__modal-content--danger">
+            <ModalHeader>Remove alumni?</ModalHeader>
+            <ModalCloseButton isDisabled={deleting} />
             <ModalBody>
-              <p>
-                Remove <strong>{alumni.full_name}</strong> from the alumni network? This deletes their alumni profile
-                and alumni login for their personal email.
-                {usn ? ' Their student (RVU) account will be restored to the student role.' : ''}
-              </p>
+              <Text fontSize="sm" color="gray.600" mb={4}>
+                This permanently removes the alumni from your network. This cannot be undone.
+              </Text>
+              <Box className="alumni-portal__confirm-box alumni-portal__confirm-box--danger">
+                <Text fontWeight="700" fontSize="lg" color="gray.900">
+                  {alumni.full_name}
+                </Text>
+                {usn && (
+                  <Text fontSize="sm" color="gray.600" mt={1} fontFamily="mono">
+                    {usn}
+                  </Text>
+                )}
+                <Text fontSize="sm" color="gray.600" mt={3}>
+                  · Alumni profile and personal-email login will be deleted
+                  {usn ? (
+                    <>
+                      <br />
+                      · Student (RVU) account will be restored to the student role
+                    </>
+                  ) : null}
+                </Text>
+              </Box>
             </ModalBody>
-            <ModalFooter>
-              <Button variant="ghost" mr={3} onClick={onDeleteClose} isDisabled={deleting}>
+            <ModalFooter gap={2}>
+              <Button variant="ghost" onClick={onDeleteClose} isDisabled={deleting}>
                 Cancel
               </Button>
               <Button colorScheme="red" onClick={handleDelete} isLoading={deleting}>
-                Remove
+                Remove alumni
               </Button>
             </ModalFooter>
           </ModalContent>

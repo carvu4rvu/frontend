@@ -20,7 +20,8 @@ export const IMAGE_PROFILES = {
   galleryTile: { initial: 'THUMB', ladder: FULL_LADDER },
   featuredHero: { initial: 'SMALL', ladder: FULL_LADDER },
   detail: { initial: 'SMALL', ladder: FULL_LADDER },
-  lightbox: { initial: 'LARGE', ladder: FULL_LADDER },
+  /** Lightbox: low-res first, then step up to full original (HD). */
+  lightbox: { initial: 'THUMB', ladder: FULL_LADDER },
 };
 
 const RENDER_QUALITIES = {
@@ -88,10 +89,22 @@ export function buildVariantMap(originalUrl, project) {
 }
 
 export function getVariantSrc(originalUrl, variantType, project) {
+  const key = resolveSnapUrl(originalUrl) || (typeof originalUrl === 'string' ? originalUrl.trim() : null);
+  // HD = full file URL (public object), not Supabase render transform — prevents black/blank lightbox
+  if (variantType === 'HD' && key) {
+    return getFileUrl(key);
+  }
+
   const map = buildVariantMap(originalUrl, project);
   const entry = map[variantType];
   if (entry?.url) return getFileUrl(entry.url);
   return getFileUrl(originalUrl);
+}
+
+/** Direct URL for lightbox / full-screen (always the stored original). */
+export function getLightboxImageSrc(originalUrl) {
+  const key = resolveSnapUrl(originalUrl) || (typeof originalUrl === 'string' ? originalUrl.trim() : null);
+  return key ? getFileUrl(key) : null;
 }
 
 export function variantWidthFor(type, project, originalUrl) {

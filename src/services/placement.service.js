@@ -303,14 +303,19 @@ export const PlacementService = {
     return run;
   },
 
-  /** Search students by USN, email, or name (for Add Violation) */
+  /** Search students by USN, email, or name (for Add Violation modal) */
   searchStudents: async (search, limit = 50) => {
     try {
       const params = new URLSearchParams();
       if (search && String(search).trim()) params.set('search', String(search).trim());
-      params.set('limit', Math.min(100, Math.max(1, limit)));
+      params.set('page', '1');
+      params.set('page_size', String(Math.min(100, Math.max(1, limit))));
+      params.set('opt_in_only', '0');
       const response = await apiFetch(`/placement/students?${params}`);
-      return response.data ?? [];
+      const payload = response.data;
+      if (payload && Array.isArray(payload.students)) return payload.students;
+      if (Array.isArray(payload)) return payload;
+      return [];
     } catch (_error) {
       return [];
     }
