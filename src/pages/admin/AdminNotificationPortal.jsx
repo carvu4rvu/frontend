@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import AdminLayout from '../../components/AdminLayout';
 import { NotificationService } from '../../services/notification.service';
+import { formatDateTimeIST } from '../../utils/dateTime';
 import './AdminNotificationPortal.css';
 
 const limit = 20;
@@ -74,9 +75,7 @@ function AdminNotificationPortal() {
                         notifications.map((n) => (
                           <tr key={n.id}>
                             <td style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              {n.created_at
-                                ? new Date(n.created_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
-                                : '—'}
+                              {formatDateTimeIST(n.created_at)}
                             </td>
                             <td className="cell-title">{n.title}</td>
                             <td>{n.target_type || '—'} {n.target_role ? `(${n.target_role})` : ''}</td>

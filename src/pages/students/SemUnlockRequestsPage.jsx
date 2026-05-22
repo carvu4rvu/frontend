@@ -35,6 +35,9 @@ import { FaSearch, FaTimes, FaLockOpen, FaEye } from 'react-icons/fa';
 import { PlacementService } from '../../services/placement.service';
 import { StudentProfileService } from '../../services/studentProfile.service';
 import { getFileUrl } from '../../utils/fileUrl';
+import { formatDateTimeIST } from '../../utils/dateTime';
+
+const formatDate = (d) => formatDateTimeIST(d);
 import { useNavigate } from 'react-router-dom';
 import '../student/profile/AcademicsProfile.css';
 
@@ -152,14 +155,6 @@ export default function SemUnlockRequestsPage() {
     }
   };
 
-  const formatDate = (d) => {
-    if (!d) return '—';
-    try {
-      return new Date(d).toLocaleString();
-    } catch {
-      return d;
-    }
-  };
 
   const openViewDetails = async (row) => {
     setDetailRow(row);

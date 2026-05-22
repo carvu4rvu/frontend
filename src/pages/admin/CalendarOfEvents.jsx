@@ -21,6 +21,7 @@ import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 import { EventsService } from '../../services/events.service';
+import { formatTimeIST, formatMonthYearIST, toIstDateKey } from '../../utils/dateTime';
 import { useAuth } from '../../context/AuthContext';
 
 const CalendarOfEvents = () => {
@@ -63,17 +64,10 @@ const CalendarOfEvents = () => {
     });
   }, [events, current]);
 
-  const formatDate = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
   const formatDMY = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const key = toIstDateKey(d);
+    if (!key) return '—';
+    const [y, m, day] = key.split('-');
     return `${day}-${m}-${y}`;
   };
 
@@ -98,7 +92,7 @@ const CalendarOfEvents = () => {
           title: `${companyName(drive)} Drive`,
           description: drive.job_description || 'Placement Drive',
           event_date: dateRaw,
-          start_time: dateRaw ? new Date(dateRaw).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null,
+          start_time: dateRaw ? formatTimeIST(dateRaw) : null,
           type: 'Placement',
           notification_remarks: drive.placement_status
         };
@@ -113,7 +107,7 @@ const CalendarOfEvents = () => {
           title: ev.title || 'Event',
           description: ev.details || ev.type || 'Event',
           event_date: ev.event_datetime,
-          start_time: ev.event_datetime ? new Date(ev.event_datetime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : null,
+          start_time: ev.event_datetime ? formatTimeIST(ev.event_datetime) : null,
           type: 'Event'
         }));
       setEvents([...placementEvents, ...mappedEvents]);
@@ -143,12 +137,8 @@ const CalendarOfEvents = () => {
   }, []);
 
   const dayEvents = (d) => {
-    const iso = formatDate(d);
-    return monthEvents.filter(e => {
-      if (!e.event_date) return false;
-      const eDate = new Date(e.event_date);
-      return formatDate(eDate) === iso;
-    });
+    const iso = toIstDateKey(d);
+    return monthEvents.filter((e) => e.event_date && toIstDateKey(e.event_date) === iso);
   };
 
   return (
@@ -203,7 +193,7 @@ const CalendarOfEvents = () => {
                     <HStack justify="center" align="center" spacing={4}>
                       <IconButton aria-label="Previous month" size="sm" variant="ghost" colorScheme="whiteAlpha" icon={<FiChevronLeft />} onClick={() => setCurrent(new Date(current.getFullYear(), current.getMonth() - 1, 1))} />
                       <Heading as="h1" fontSize={{ base: 'md', sm: 'lg' }} fontWeight="bold" textTransform="uppercase">
-                        {current.toLocaleString(undefined, { month: 'short' })} {current.getFullYear()}
+                        {formatMonthYearIST(current)}
                       </Heading>
                       <IconButton aria-label="Next month" size="sm" variant="ghost" colorScheme="whiteAlpha" icon={<FiChevronRight />} onClick={() => setCurrent(new Date(current.getFullYear(), current.getMonth() + 1, 1))} />
                     </HStack>

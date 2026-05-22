@@ -18,6 +18,7 @@ const AlumniLayout = ({ children }) => {
   const { profile: alumniProfile, profileImage, displayName } = useAlumniProfile();
   const location = useLocation();
   const navigate = useNavigate();
+  const campusEventsPage = isCampusEventsPath(location.pathname);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {

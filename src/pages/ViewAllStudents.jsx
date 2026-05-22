@@ -63,6 +63,7 @@ import {
 } from '@chakra-ui/react';
 import { SearchIcon, ViewIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, AddIcon, DownloadIcon, AttachmentIcon } from '@chakra-ui/icons';
 import { MdViewColumn } from 'react-icons/md';
+import { formatDateIST } from '../utils/dateTime';
 import './ViewAllStudents.css';
 import { StudentProfileService } from '../services/studentProfile.service';
 import { PlacementService } from '../services/placement.service';
@@ -1687,7 +1688,7 @@ const ViewAllStudents = () => {
           </Badge>
         );
       case 'is_registered': return s.is_registered ? 'Yes' : 'No';
-      case 'created_at': return s.created_at ? new Date(s.created_at).toLocaleDateString() : '—';
+      case 'created_at': return formatDateIST(s.created_at);
       default: return s[id] != null ? String(s[id]) : '—';
     }
   };

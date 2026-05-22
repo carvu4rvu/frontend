@@ -24,6 +24,7 @@ import { ArrowBackIcon, EditIcon, DeleteIcon, ExternalLinkIcon } from '@chakra-u
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 import { usePlacementBack } from '../../hooks/usePlacementBack';
+import { formatDateTimeIST } from '../../utils/dateTime';
 import './AlumniPortal.css';
 
 function formatOfferMeta(alum) {
@@ -43,9 +44,8 @@ function formatOfferSource(source) {
 
 function formatDate(value) {
   if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const formatted = formatDateTimeIST(value);
+  return formatted === '—' ? null : formatted;
 }
 
 function getInitials(name) {

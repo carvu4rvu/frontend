@@ -6,6 +6,15 @@ const placementStudentsInflight = new Map();
 
 const DEFAULT_PAGE_SIZE = 50;
 
+/** Normalize student process / applications API body to an array. */
+function normalizeStudentProcessList(body) {
+  if (Array.isArray(body)) return body;
+  if (Array.isArray(body?.data)) return body.data;
+  if (Array.isArray(body?.applications)) return body.applications;
+  if (Array.isArray(body?.processRecords)) return body.processRecords;
+  return [];
+}
+
 let schoolsCache = null;
 let schoolsInflight = null;
 
@@ -16,10 +25,10 @@ export const PlacementService = {
    */
   getStudentProcess: async (usn) => {
     try {
-      // Adjust endpoint as per your backend route structure
       const response = await apiFetch(`/placement/student/${usn}/applications`);
-      return response.data;
-    } catch (_error) {
+      return normalizeStudentProcessList(response.data);
+    } catch (error) {
+      console.warn('[getStudentProcess]', usn, error?.message || error);
       return [];
     }
   },

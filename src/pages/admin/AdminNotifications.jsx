@@ -19,6 +19,7 @@ import {
 } from '@chakra-ui/react';
 import AdminLayout from '../../components/AdminLayout';
 import { NotificationService } from '../../services/notification.service';
+import { formatDateIST } from '../../utils/dateTime';
 import './AdminNotifications.css';
 
 const AdminNotifications = () => {
@@ -96,7 +97,7 @@ const AdminNotifications = () => {
                           {n.target_type || '—'} {n.target_role ? `(${n.target_role})` : ''}
                         </Td>
                         <Td>{n.recipient_count ?? 0}</Td>
-                        <Td>{n.created_at ? new Date(n.created_at).toLocaleDateString() : '—'}</Td>
+                        <Td>{formatDateIST(n.created_at)}</Td>
                       </Tr>
                     ))
                   )}

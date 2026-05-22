@@ -62,6 +62,7 @@ import { ViewIcon, StarIcon, SearchIcon } from '@chakra-ui/icons';
 import { FaExternalLinkAlt, FaGithub, FaUser, FaChevronLeft, FaChevronDown, FaTrash, FaPlus, FaLink } from 'react-icons/fa';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { resolveAppBack } from '../../utils/placementNavigationHistory';
+import { formatShortDateIST, formatDateIST } from '../../utils/dateTime';
 import AdminLayout from '../../components/AdminLayout';
 import PassThroughLayout from '../../components/PassThroughLayout';
 import { PlacementService } from '../../services/placement.service';
@@ -529,7 +530,7 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent,
                           <Flex justify="space-between" py={2}>
                             <Text fontSize="sm" color="gray.700">Submission Date</Text>
                             <Text fontSize="sm" fontWeight="medium" color="gray.900">
-                              {project.submitted_at ? new Date(project.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                              {formatShortDateIST(project.submitted_at)}
                             </Text>
                           </Flex>
                         </VStack>
@@ -762,10 +763,10 @@ export default function AdminProjectDetail({ variant = 'admin', LayoutComponent,
                               <Tr key={link.id} _hover={{ bg: 'gray.50' }}>
                                 <Td px={6} py={4} fontFamily="mono" fontSize="sm" color="blue.600">{link.share_token?.slice(0, 12)}…</Td>
                                 <Td px={6} py={4} fontSize="sm" color="gray.700">
-                                  {link.created_at ? new Date(link.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                  {formatShortDateIST(link.created_at)}
                                 </Td>
                                 <Td px={6} py={4} fontSize="sm" color={link.expires_at ? 'gray.800' : 'gray.600'} fontStyle={!link.expires_at ? 'italic' : 'normal'}>
-                                  {link.expires_at ? new Date(link.expires_at).toLocaleDateString() : 'Never'}
+                                  {link.expires_at ? formatDateIST(link.expires_at) : 'Never'}
                                 </Td>
                                 <Td px={6} py={4} textAlign="center">
                                   <Badge

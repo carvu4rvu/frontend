@@ -34,6 +34,9 @@ import { FaSearch, FaCheck, FaTimes, FaPhone, FaEye } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
+import { formatDateTimeIST } from '../../utils/dateTime';
+
+const formatDate = (d) => formatDateTimeIST(d);
 
 const STATUS_COLORS = {
   PENDING: 'orange',
@@ -135,14 +138,6 @@ export default function AlumniConnect() {
     updateStatus(actionId, 'REJECTED', remarks);
   };
 
-  const formatDate = (d) => {
-    if (!d) return '—';
-    try {
-      return new Date(d).toLocaleString();
-    } catch {
-      return d;
-    }
-  };
 
   const openDetail = (row) => {
     setDetailRow(row);

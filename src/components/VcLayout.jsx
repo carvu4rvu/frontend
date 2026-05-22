@@ -51,7 +51,6 @@ const VcLayout = ({ children }) => {
     { path: '/placement/companies', label: 'Companies' },
     { path: '/placement/vc-projects', label: 'Student Projects' },
     { path: '/placement/vc-events', label: 'Events' },
-    { path: '/placement/vc-notifications', label: 'Notifications' },
   ];
 
   const isActive = (path) => {

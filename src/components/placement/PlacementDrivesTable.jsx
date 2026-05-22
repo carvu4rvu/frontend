@@ -32,6 +32,7 @@ import {
   formatEligibilityGroupsPlain,
 } from '../../utils/eligibilityDisplay';
 import { getCompanyLogoRaw } from '../../utils/companyLogo';
+import { formatDateIST } from '../../utils/dateTime';
 import {
   getDisplayCTCValue,
   getStatusColor,
@@ -241,7 +242,7 @@ export default function PlacementDrivesTable({
             >
               <Box as={MdCalendarToday} boxSize={3} /> Drive:{' '}
               {drive.event_datetime
-                ? new Date(drive.event_datetime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })
+                ? formatDateIST(drive.event_datetime)
                 : '—'}
             </Flex>
             <Flex
@@ -255,11 +256,7 @@ export default function PlacementDrivesTable({
               textTransform="uppercase"
             >
               <Box as={MdHourglassEmpty} boxSize={3} /> Reg:{' '}
-              {drive.last_date_to_registration
-                ? new Date(drive.last_date_to_registration).toLocaleDateString('en-IN', {
-                    timeZone: 'Asia/Kolkata',
-                  })
-                : '—'}
+              {formatDateIST(drive.last_date_to_registration)}
             </Flex>
           </Box>
         );

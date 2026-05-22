@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useToast } from '@chakra-ui/react';
 import { FiBell, FiX, FiSearch, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import { NotificationService } from '../../services/notification.service';
 import { PlacementService } from '../../services/placement.service';
+import { consumeCampusNotificationPrefill } from '../../utils/campusEventNotification';
+import { formatDateTimeIST } from '../../utils/dateTime';
 import './AdminNotificationPortal.css';
 
 const formatRecipientId = (o) => (o.entity_id != null ? String(o.entity_id) : o.usn || (o.id != null ? String(o.id) : ''));
@@ -59,6 +62,7 @@ function formatStatusDisplay(n) {
 export default function AdminNotificationPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const toast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -103,6 +107,7 @@ export default function AdminNotificationPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [composeFromEvent, setComposeFromEvent] = useState(false);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -127,10 +132,14 @@ export default function AdminNotificationPage() {
   }, [loadHistory]);
 
   useEffect(() => {
-    const state = location.state;
+    const stored = consumeCampusNotificationPrefill();
+    const state =
+      stored ||
+      (location.state && Object.keys(location.state).length > 0 ? location.state : null);
     const shouldPrefill =
-      (state?.prefillNotification || state?.fromEvent) &&
-      state?.event &&
+      state &&
+      (state.prefillNotification || state.fromEvent) &&
+      state.event &&
       typeof state.event === 'object';
     if (!shouldPrefill) return;
 
@@ -143,10 +152,15 @@ export default function AdminNotificationPage() {
     const openId = state.openNotificationId;
     const defaultType = state.fromEvent ? 'EVENT' : 'PLACEMENT';
     const notifType = eventType || defaultType;
+    const showComposeFirst =
+      state.openComposeStep === true ||
+      state.fromEvent === true ||
+      Boolean(String(title).trim() && String(message).trim());
 
+    setComposeFromEvent(Boolean(state.fromEvent));
     setEditId(openId != null && openId !== '' ? Number(openId) : null);
     setAddOpen(true);
-    setStep(openId != null && openId !== '' ? 2 : 1);
+    setStep(showComposeFirst ? 1 : openId != null && openId !== '' ? 2 : 1);
     setForm({
       notification_type: notifType,
       title: String(title),
@@ -210,6 +224,7 @@ export default function AdminNotificationPage() {
   const closeAddModal = useCallback(() => {
     setAddOpen(false);
     setEditId(null);
+    setComposeFromEvent(false);
   }, []);
 
   const openDeleteConfirm = useCallback((n) => {
@@ -566,18 +581,41 @@ export default function AdminNotificationPage() {
         });
         notifId = created.id;
       }
-      await NotificationService.send(notifId, {
+      const result = await NotificationService.send(notifId, {
         target_type: 'CUSTOM',
         user_ids: userIds,
       });
+      const sentCount =
+        result?.total_recipients ??
+        result?.inserted ??
+        recipientCount;
       closeAddModal();
       loadHistory();
+      toast({
+        title: 'Notification sent successfully',
+        description:
+          sentCount != null
+            ? `Delivered to ${sentCount} recipient${sentCount === 1 ? '' : 's'}.`
+            : 'Your notification has been sent.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'bottom',
+      });
     } catch (e) {
       setSendError(e.message || 'Failed to create or send notification');
+      toast({
+        title: 'Failed to send notification',
+        description: e.message || 'Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'bottom',
+      });
     } finally {
       setSending(false);
     }
-  }, [form, recipientCount, editId, allRecipientIds, closeAddModal, loadHistory]);
+  }, [form, recipientCount, editId, allRecipientIds, closeAddModal, loadHistory, toast]);
 
   return (
     <div className="notification-portal__view active view-history">
@@ -672,12 +710,7 @@ export default function AdminNotificationPage() {
                     return (
                       <tr key={`${n.id}-${mergeCount}-${n.title}`}>
                         <td className="notification-portal__cell-timestamp">
-                          {n.created_at
-                            ? new Date(n.created_at).toLocaleString(undefined, {
-                                dateStyle: 'short',
-                                timeStyle: 'short',
-                              })
-                            : '—'}
+                          {formatDateTimeIST(n.created_at)}
                         </td>
                         <td className="cell-title">
                           {n.title}
@@ -836,7 +869,11 @@ export default function AdminNotificationPage() {
           <div className="notification-portal__add-modal" data-type={form.notification_type}>
             <header className="notification-portal__add-modal-header">
               <h2 id="add-notification-title">
-                {editId ? 'Edit Notification' : 'Add Notification'}
+                {composeFromEvent
+                  ? 'Send event notification'
+                  : editId
+                    ? 'Edit Notification'
+                    : 'Add Notification'}
               </h2>
               <button type="button" className="notification-portal__add-modal-close" onClick={closeAddModal} aria-label="Close">
                 <FiX size={20} />

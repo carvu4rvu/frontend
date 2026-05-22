@@ -118,6 +118,9 @@ const EventsDriveRedirect = () => {
 const isStudentPath = (path) =>
   path === '/student-dashboard' || path.startsWith('/student/');
 
+/** Unknown /student/* URLs redirect to the student dashboard instead of a broken route. */
+const StudentUnknownRouteRedirect = () => <Navigate to="/student-dashboard" replace />;
+
 /** Alumni portal paths share one AlumniLayout via router Outlet (excludes admin routes like alumni-connect). */
 const isAlumniPortalPath = (path) =>
   path.startsWith('/placement/alumni-') && path !== '/placement/alumni-connect';
@@ -659,6 +662,7 @@ const router = createBrowserRouter([
             <AlumniEvents
               LayoutComponent={AdminLayout}
               fetchEvents={() => EventsService.list()}
+              manageEvents
             />
           </PlacementProtectedRoute>
         ),
@@ -756,6 +760,16 @@ const router = createBrowserRouter([
       { path: "/student/placements/events", element: <PlacementProtectedRoute><StudentEvents /></PlacementProtectedRoute> },
       { path: "/student/calendar", element: <PlacementProtectedRoute><StudentCalendarOfEvents /></PlacementProtectedRoute> },
       { path: "/student/placements/drive/:id", element: <PlacementProtectedRoute><StudentDriveDetails /></PlacementProtectedRoute> },
+      { path: "/student/placements", element: <Navigate to="/student/placements/feed" replace /> },
+      { path: "/student/applications", element: <Navigate to="/student-dashboard" replace /> },
+      {
+        path: "/student/*",
+        element: (
+          <PlacementProtectedRoute>
+            <StudentUnknownRouteRedirect />
+          </PlacementProtectedRoute>
+        ),
+      },
     ]
   }
 ]);

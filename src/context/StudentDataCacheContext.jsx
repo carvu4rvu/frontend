@@ -118,8 +118,10 @@ export function StudentDataCacheProvider({ children }) {
         };
       }
 
+      const applications = Array.isArray(processData) ? processData : [];
+
       updateCache('dashboard', {
-        applications: processData || [],
+        applications,
         completionPercentage: completion,
         missingSections,
         resumeUploaded,
@@ -128,8 +130,20 @@ export function StudentDataCacheProvider({ children }) {
         academicSnapshot,
         portfolioCounts,
       });
+
+      if (applications.length > 0) {
+        setCache((prev) => ({
+          ...prev,
+          placementFeed: {
+            ...prev.placementFeed,
+            processRecords: applications,
+            loaded: prev.placementFeed.loaded,
+          },
+        }));
+      }
     } catch (err) {
       console.error('Dashboard fetch error:', err);
+      updateCache('dashboard', { loaded: true });
     } finally {
       if (!silent) setLoadingForKey('dashboard', false);
     }
@@ -143,11 +157,14 @@ export function StudentDataCacheProvider({ children }) {
         PlacementService.getAllDrives(),
         PlacementService.getStudentProcess(usn),
       ]);
+      const processRecords = Array.isArray(processData) ? processData : [];
       updateCache('placementFeed', {
-        drives: drivesData || [],
-        processRecords: processData || [],
+        drives: Array.isArray(drivesData) ? drivesData : [],
+        processRecords,
       });
-    } catch {
+    } catch (err) {
+      console.error('Placement feed fetch error:', err);
+      updateCache('placementFeed', { loaded: true });
     } finally {
       if (!silent) setLoadingForKey('placementFeed', false);
     }

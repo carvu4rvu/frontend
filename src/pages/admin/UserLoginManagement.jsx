@@ -56,6 +56,9 @@ import {
 } from 'react-icons/fa';
 import AdminLayout from '../../components/AdminLayout';
 import './UserLoginManagement.css';
+import { formatDateTimeIST } from '../../utils/dateTime';
+
+const formatDate = (d) => formatDateTimeIST(d);
 import { 
   getUserLoginList, 
   getStudentsWithoutLogin, 
@@ -469,15 +472,6 @@ const UserLoginManagement = () => {
     }
   };
 
-  const formatDate = (d) => {
-    if (!d) return '—';
-    try {
-      const dt = new Date(d);
-      return dt.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
-    } catch {
-      return '—';
-    }
-  };
 
   // Company login handlers
   const handleCreateCompanyLogin = async () => {

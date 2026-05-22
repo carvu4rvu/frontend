@@ -55,6 +55,7 @@ import {
   formatEligibilityGroupsPlain,
 } from '../../utils/eligibilityDisplay';
 import { PlacementService } from '../../services/placement.service';
+import { formatDateIST } from '../../utils/dateTime';
 import { NotificationService } from '../../services/notification.service';
 import { buildCompanyLogoById, getCompanyLogoRaw } from '../../utils/companyLogo';
 import {
@@ -637,10 +638,10 @@ const Events = () => {
         return (
           <Box fontSize="11px">
             <Flex as="p" alignItems="center" gap={1} color="gray.600" fontWeight="bold" textTransform="uppercase" letterSpacing="tighter">
-              <Box as={MdCalendarToday} boxSize={3} /> Drive: {drive.event_datetime ? new Date(drive.event_datetime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
+              <Box as={MdCalendarToday} boxSize={3} /> Drive: {formatDateIST(drive.event_datetime)}
             </Flex>
             <Flex as="p" alignItems="center" gap={1} color="red.400" fontWeight="bold" mt={1} letterSpacing="tighter" textTransform="uppercase">
-              <Box as={MdHourglassEmpty} boxSize={3} /> Reg: {drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
+              <Box as={MdHourglassEmpty} boxSize={3} /> Reg: {formatDateIST(drive.last_date_to_registration)}
             </Flex>
           </Box>
         );
@@ -862,8 +863,8 @@ const Events = () => {
         return parts.join('\n');
       }
       case 'important_dates':
-        const driveDate = drive.event_datetime ? new Date(drive.event_datetime).toLocaleDateString() : '—';
-        const regDate = drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString() : '—';
+        const driveDate = formatDateIST(drive.event_datetime);
+        const regDate = formatDateIST(drive.last_date_to_registration);
         return `Drive: ${driveDate}\nReg: ${regDate}`;
       case 'openings_reg':
         return `Regs: ${registeredCount(drive)} | Seats: ${drive.number_of_openings ?? '—'}`;
@@ -893,8 +894,14 @@ const Events = () => {
       case 'variable_pct': return ctc.variable ?? '';
       case 'stock': return ctc.stock ?? '';
       case 'stipend': return (stipend.avg || stipend.min || stipend.max) != null ? `₹${parseInt(stipend.avg || stipend.min || stipend.max || 0, 10).toLocaleString()}` : '';
-      case 'drive_date': return drive.event_datetime ? new Date(drive.event_datetime).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
-      case 'registration_deadline': return drive.last_date_to_registration ? new Date(drive.last_date_to_registration).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
+      case 'drive_date': {
+        const v = formatDateIST(drive.event_datetime);
+        return v === '—' ? '' : v;
+      }
+      case 'registration_deadline': {
+        const v = formatDateIST(drive.last_date_to_registration);
+        return v === '—' ? '' : v;
+      }
       case 'registrations_count': return registeredCount(drive) ?? '';
       case 'number_of_openings': return drive.number_of_openings ?? '';
       case 'job_type': return drive.job_type || '';

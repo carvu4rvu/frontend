@@ -52,6 +52,7 @@ import {
   sortProcessesForAllRoundsView,
 } from '../../utils/placementRoundProgression';
 import { usePlacementBack } from '../../hooks/usePlacementBack';
+import { formatShortDateIST } from '../../utils/dateTime';
 import './DriveProcess.css';
 
 /** Map round display name (from drive.process_rounds) to API field key */
@@ -189,15 +190,11 @@ function isRoundPassed(process, field) {
   return process[field] === true;
 }
 
-/** Format date for display */
+/** Format date for display (IST) */
 function formatDate(dateStr) {
   if (!dateStr) return '-';
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+  const v = formatShortDateIST(dateStr);
+  return v === '—' ? '-' : v;
 }
 
 /** Column labels for export download */

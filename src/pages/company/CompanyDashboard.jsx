@@ -36,6 +36,7 @@ import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import { CompanyService } from '../../services/company.service';
 import { resolveCompanyLogoUrl } from '../../utils/companyLogo';
+import { formatDateIST, formatRelativeTimeIST } from '../../utils/dateTime';
 import './CompanyDashboard.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -98,20 +99,6 @@ const CompanyDashboard = () => {
     }
   };
 
-  const formatTimeAgo = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  };
 
   const {
     company,
@@ -240,7 +227,7 @@ const CompanyDashboard = () => {
               </HStack>
               <VStack align="end" spacing={1}>
                 <Text color="whiteAlpha.700" fontSize="sm">
-                  {new Date().toLocaleDateString('en-IN', {
+                  {formatDateIST(new Date(), {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
@@ -354,7 +341,7 @@ const CompanyDashboard = () => {
                             {activity.type === 'offer_accepted' && ' accepted an offer'}
                           </Text>
                           <Text fontSize="xs" color={colors.secondary}>
-                            {formatTimeAgo(activity.timestamp)}
+                            {formatRelativeTimeIST(activity.timestamp)}
                           </Text>
                         </Box>
                         <Badge

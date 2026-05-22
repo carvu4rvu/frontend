@@ -50,6 +50,7 @@ import { FiFileText, FiFolder } from 'react-icons/fi';
 import { PlacementService } from '../../services/placement.service';
 import AdminLayout from '../../components/AdminLayout';
 import PlacementReportPreview from '../../components/placement/PlacementReportPreview';
+import { formatShortDateIST, formatDateTimeIST } from '../../utils/dateTime';
 import './PlacementReportsPage.css';
 
 const TABS = [
@@ -57,21 +58,9 @@ const TABS = [
   { id: 'history', label: 'Report History', icon: FiFolder },
 ];
 
-function formatDate(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+const formatDate = (iso) => formatShortDateIST(iso);
 
-function formatDateTime(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+const formatDateTime = (iso) => formatDateTimeIST(iso);
 
 function StatusBadge({ status }) {
   const scheme = status === 'ready' ? 'green' : status === 'failed' ? 'red' : 'yellow';

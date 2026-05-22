@@ -34,6 +34,7 @@ import { Link as RouterLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useStudentDataCache } from "../context/StudentDataCacheContext";
+import { usePlacementTrackPolicy } from "../context/PlacementTrackPolicyContext";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, BarElement } from "chart.js";
 import { Doughnut, Line, Bar } from "react-chartjs-2";
 
@@ -81,6 +82,7 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
   const location = useLocation();
   const toast = useToast();
   const { user, loading: authLoading } = useAuth();
+  const { policy: trackPolicy } = usePlacementTrackPolicy();
   const {
     cache,
     loading,
@@ -99,13 +101,24 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
     ? Math.min(100, Math.max(0, dash.completionPercentage))
     : 0;
   const applications = dash.applications || [];
+  const processRecords = useMemo(() => {
+    const fromDash = Array.isArray(applications) ? applications : [];
+    const fromFeed = cache.placementFeed?.processRecords;
+    if (fromDash.length > 0) return fromDash;
+    if (Array.isArray(fromFeed) && fromFeed.length > 0) return fromFeed;
+    return fromDash;
+  }, [applications, cache.placementFeed?.processRecords]);
   const missingSections = dash.missingSections || [];
   const resumeUploaded = dash.resumeUploaded === true;
   const optIn = dash.optIn === true;
   const placementPolicyAgreed = dash.placementPolicyAgreed === true;
   const portfolioCounts = dash.portfolioCounts;
   const drives = (isViewMode ? viewData.placementFeed : cache.placementFeed)?.drives || [];
-  const processRecords = (isViewMode ? viewData.placementFeed : cache.placementFeed)?.processRecords || [];
+  const viewProcessRecords = isViewMode
+    ? (viewData.placementFeed?.processRecords?.length
+        ? viewData.placementFeed.processRecords
+        : viewData.dashboard?.applications || [])
+    : processRecords;
   const events = (isViewMode ? viewData.events : cache.events)?.list || [];
   const unreadCount = (isViewMode ? viewData.notifications : cache.notifications)?.unreadCount ?? 0;
   const jobOffers = (isViewMode ? viewData.jobOffers : cache.jobOffers)?.list || [];
@@ -114,50 +127,67 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
 
   useEffect(() => {
     if (isViewMode || authLoading || !studentUSN) return;
-    clearCache("dashboard");
     fetchDashboard(studentUSN);
-  }, [isViewMode, studentUSN, authLoading, clearCache, fetchDashboard]);
+  }, [isViewMode, studentUSN, authLoading, fetchDashboard]);
 
   useEffect(() => {
     if (isViewMode || !studentUSN) return;
-    fetchPlacementFeed(studentUSN);
     fetchEvents();
     fetchNotifications();
-    fetchJobOffers(studentUSN);
-  }, [isViewMode, studentUSN, fetchPlacementFeed, fetchEvents, fetchNotifications, fetchJobOffers]);
+    if (trackPolicy?.opt_in === true || dash.optIn === true) {
+      fetchPlacementFeed(studentUSN);
+      fetchJobOffers(studentUSN);
+    }
+  }, [
+    isViewMode,
+    studentUSN,
+    trackPolicy?.opt_in,
+    dash.optIn,
+    fetchPlacementFeed,
+    fetchEvents,
+    fetchNotifications,
+    fetchJobOffers,
+  ]);
 
   const isLoading = !isViewMode && !cache.dashboard.loaded && loading.dashboard;
 
-  const totalApplications = applications.length;
+  const statsSource = isViewMode ? viewProcessRecords : processRecords;
+  const totalApplications = statsSource.length;
   const companiesApplied = useMemo(() => {
     const set = new Set();
-    (processRecords || []).forEach((p) => {
+    (statsSource || []).forEach((p) => {
       const name = p.drive?.company?.company_name || p.drive?.company_name;
       const id = p.drive?.company_id || p.placement_drive_id;
       if (name) set.add(name);
       else if (id) set.add(String(id));
     });
     return set.size;
-  }, [processRecords]);
+  }, [statsSource]);
 
   const isRoundPassed = (v) => {
     if (v === true) return true;
     if (v === false) return false;
     if (v == null || v === "") return false;
     const s = String(v).toLowerCase().trim();
-    return s !== "pending" && s !== "rejected" && s !== "not scheduled" && s !== "false" && s !== "no";
+    if (['pass', 'passed', 'cleared', 'selected', 'yes', 'true', 'completed'].includes(s)) return true;
+    if (['pending', 'rejected', 'not scheduled', 'false', 'no', 'fail', 'failed', 'absent'].includes(s)) return false;
+    return s.length > 0;
   };
 
-  const getFinalSelectStatus = (p) =>
-    String((p?.final_select_status ?? p?.finalSelectStatus ?? "")).trim().toLowerCase();
+  const getFinalSelectStatus = (p) => {
+    const raw = p?.final_select_status ?? p?.finalSelectStatus;
+    if (raw === true) return 'selected';
+    if (raw === false) return 'rejected';
+    return String(raw ?? '').trim().toLowerCase();
+  };
 
-  const oaPassed = (processRecords || []).filter((p) => isRoundPassed(p.oa_status ?? p.oaStatus)).length;
-  const gdPassed = (processRecords || []).filter((p) => isRoundPassed(p.gd_status ?? p.gdStatus)).length;
-  const technicalPassed = (processRecords || []).filter((p) => isRoundPassed(p.technical_round_status ?? p.technicalRoundStatus)).length;
-  const interviewPassed = (processRecords || []).filter((p) => isRoundPassed(p.interview_status ?? p.interviewStatus)).length;
-  const hrPassed = (processRecords || []).filter((p) => isRoundPassed(p.hr_round_status ?? p.hrRoundStatus)).length;
-  const selectedCount = (processRecords || []).filter((p) => getFinalSelectStatus(p) === "selected").length;
-  const rejectedCount = (processRecords || []).filter((p) => getFinalSelectStatus(p) === "rejected").length;
+  const oaPassed = (statsSource || []).filter((p) => isRoundPassed(p.oa_status ?? p.oaStatus)).length;
+  const gdPassed = (statsSource || []).filter((p) => isRoundPassed(p.gd_status ?? p.gdStatus)).length;
+  const technicalPassed = (statsSource || []).filter((p) => isRoundPassed(p.technical_round_status ?? p.technicalRoundStatus)).length;
+  const interviewPassed = (statsSource || []).filter((p) => isRoundPassed(p.interview_status ?? p.interviewStatus)).length;
+  const hrPassed = (statsSource || []).filter((p) => isRoundPassed(p.hr_round_status ?? p.hrRoundStatus)).length;
+  const selectedCount = (statsSource || []).filter((p) => getFinalSelectStatus(p) === "selected").length;
+  const rejectedCount = (statsSource || []).filter((p) => getFinalSelectStatus(p) === "rejected").length;
 
   const pieData = useMemo(() => {
     const counts = [oaPassed, gdPassed, technicalPassed, interviewPassed, hrPassed, selectedCount, rejectedCount];
@@ -183,7 +213,7 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
   }, [oaPassed, gdPassed, technicalPassed, interviewPassed, hrPassed, selectedCount, rejectedCount]);
 
   const timelineData = useMemo(() => {
-    const dates = (processRecords || [])
+    const dates = (statsSource || [])
       .map((p) => p.created_at || p.updated_at)
       .filter(Boolean)
       .map((d) => new Date(d));
@@ -217,7 +247,7 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
 
     if (labels.length === 0) return { labels: ["No data"], data: [0] };
     return { labels, data };
-  }, [processRecords]);
+  }, [statsSource]);
 
   const barChartData = useMemo(
     () => ({
@@ -237,7 +267,7 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
     [timelineData]
   );
 
-  const processByDriveId = (processRecords || []).reduce((acc, p) => {
+  const processByDriveId = (statsSource || []).reduce((acc, p) => {
     const id = p?.placement_drive_id ?? p?.drive?.id;
     if (id != null) acc[id] = p;
     return acc;
@@ -378,6 +408,11 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
         <Heading size="sm" color={ACCENT} mb={3}>
           Your numbers
         </Heading>
+        {!isViewMode && !optIn && trackPolicy?.opt_in !== true && (
+          <Text fontSize="sm" color="orange.600" mb={3}>
+            Opt in to placement from your Personal profile to apply for drives and see live application counts here.
+          </Text>
+        )}
         <SimpleGrid columns={{ base: 2, sm: 3, md: 4, lg: 4, xl: 8 }} gap={{ base: 3, md: 4 }} mb={6} w="100%" minChildWidth={{ base: "120px", sm: "140px" }}>
           <StatCard icon={<FaBriefcase />} title="Applications" value={totalApplications} color={ACCENT} to={isViewMode ? undefined : "/student/placements/feed"} />
           <StatCard icon={<FaBuilding />} title="Companies applied" value={companiesApplied} color="#4299e1" to={isViewMode ? undefined : "/student/placements/feed"} />

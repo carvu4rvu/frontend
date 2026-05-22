@@ -44,7 +44,12 @@ import { buildPlacementNavState } from '../../utils/placementNavigationHistory';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
 import AlumniRegistrationCodes from './AlumniRegistrationCodes';
+import { formatDateTimeIST } from '../../utils/dateTime';
 import './AlumniPortal.css';
+
+function formatConversionBatchWhen(createdAt) {
+  return formatDateTimeIST(createdAt);
+}
 
 function AlumniTabLabel({ icon, children }) {
   return (
@@ -77,17 +82,6 @@ function logStatusColorScheme(status) {
   return 'gray';
 }
 
-function formatConversionBatchWhen(createdAt) {
-  if (!createdAt) return '—';
-  try {
-    return new Date(createdAt).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  } catch {
-    return createdAt;
-  }
-}
 
 function formatOfferMeta(alum) {
   const parts = [];

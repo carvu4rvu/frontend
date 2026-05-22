@@ -23,10 +23,11 @@ import {
   Wrap,
   WrapItem,
 } from '@chakra-ui/react';
+import { formatShortDateIST } from '../../utils/dateTime';
 
 function formatDate(iso) {
-  if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const v = formatShortDateIST(iso);
+  return v === '—' ? '-' : v;
 }
 
 export default function PlacementReportPreview({ report }) {

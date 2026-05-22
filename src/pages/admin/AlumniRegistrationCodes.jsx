@@ -32,6 +32,7 @@ import {
 } from '@chakra-ui/react';
 import { AddIcon, DeleteIcon, CopyIcon } from '@chakra-ui/icons';
 import { PlacementService } from '../../services/placement.service';
+import { formatDateIST } from '../../utils/dateTime';
 import './AlumniPortal.css';
 
 const AlumniRegistrationCodes = () => {
@@ -190,7 +191,7 @@ const AlumniRegistrationCodes = () => {
                     </Badge>
                   </Td>
                   <Td fontSize="sm" color="gray.500">
-                    {code.created_at ? new Date(code.created_at).toLocaleDateString() : '—'}
+                    {formatDateIST(code.created_at)}
                   </Td>
                   <Td>
                     {code.is_active && (

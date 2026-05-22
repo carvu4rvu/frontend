@@ -106,53 +106,52 @@ export default function ManageAcademicPage() {
     fetchSchools();
   }, [fetchSchools]);
 
+  // Clear invalid filter selections when data changes (keep empty = show all)
   useEffect(() => {
-    if (schools.length > 0 && !selectedSchoolId) {
-      setSelectedSchoolId(String(schools[0].id));
-    }
-    if (schools.length > 0 && selectedSchoolId && !schools.some((s) => String(s.id) === selectedSchoolId)) {
-      setSelectedSchoolId(String(schools[0].id));
+    if (selectedSchoolId && !schools.some((s) => String(s.id) === selectedSchoolId)) {
+      setSelectedSchoolId('');
     }
   }, [schools, selectedSchoolId]);
 
   useEffect(() => {
-    if (schools.length > 0 && !selectedMinorSchoolId) {
-      setSelectedMinorSchoolId(String(schools[0].id));
-    }
-    if (schools.length > 0 && selectedMinorSchoolId && !schools.some((s) => String(s.id) === selectedMinorSchoolId)) {
-      setSelectedMinorSchoolId(String(schools[0].id));
+    if (selectedMinorSchoolId && !schools.some((s) => String(s.id) === selectedMinorSchoolId)) {
+      setSelectedMinorSchoolId('');
     }
   }, [schools, selectedMinorSchoolId]);
 
   const majorSchool = schools.find((s) => String(s.id) === selectedMajorSchoolId);
   const programsForMajorSchool = majorSchool?.programs || [];
   useEffect(() => {
-    if (schools.length > 0 && !selectedMajorSchoolId) setSelectedMajorSchoolId(String(schools[0].id));
-    if (schools.length > 0 && selectedMajorSchoolId && !schools.some((s) => String(s.id) === selectedMajorSchoolId)) {
-      setSelectedMajorSchoolId(String(schools[0].id));
+    if (selectedMajorSchoolId && !schools.some((s) => String(s.id) === selectedMajorSchoolId)) {
+      setSelectedMajorSchoolId('');
+      setSelectedMajorProgramId('');
     }
   }, [schools, selectedMajorSchoolId]);
   useEffect(() => {
-    if (programsForMajorSchool.length > 0 && (!selectedMajorProgramId || !programsForMajorSchool.some((p) => String(p.id) === selectedMajorProgramId))) {
-      setSelectedMajorProgramId(String(programsForMajorSchool[0].id));
+    if (
+      selectedMajorProgramId &&
+      !programsForMajorSchool.some((p) => String(p.id) === selectedMajorProgramId)
+    ) {
+      setSelectedMajorProgramId('');
     }
-    if (programsForMajorSchool.length === 0) setSelectedMajorProgramId('');
-  }, [selectedMajorSchoolId, programsForMajorSchool, selectedMajorProgramId]);
+  }, [programsForMajorSchool, selectedMajorProgramId]);
 
   const specSchool = schools.find((s) => String(s.id) === selectedSpecSchoolId);
   const programsForSpecSchool = specSchool?.programs || [];
   useEffect(() => {
-    if (schools.length > 0 && !selectedSpecSchoolId) setSelectedSpecSchoolId(String(schools[0].id));
-    if (schools.length > 0 && selectedSpecSchoolId && !schools.some((s) => String(s.id) === selectedSpecSchoolId)) {
-      setSelectedSpecSchoolId(String(schools[0].id));
+    if (selectedSpecSchoolId && !schools.some((s) => String(s.id) === selectedSpecSchoolId)) {
+      setSelectedSpecSchoolId('');
+      setSelectedSpecProgramId('');
     }
   }, [schools, selectedSpecSchoolId]);
   useEffect(() => {
-    if (programsForSpecSchool.length > 0 && (!selectedSpecProgramId || !programsForSpecSchool.some((p) => String(p.id) === selectedSpecProgramId))) {
-      setSelectedSpecProgramId(String(programsForSpecSchool[0].id));
+    if (
+      selectedSpecProgramId &&
+      !programsForSpecSchool.some((p) => String(p.id) === selectedSpecProgramId)
+    ) {
+      setSelectedSpecProgramId('');
     }
-    if (programsForSpecSchool.length === 0) setSelectedSpecProgramId('');
-  }, [selectedSpecSchoolId, programsForSpecSchool, selectedSpecProgramId]);
+  }, [programsForSpecSchool, selectedSpecProgramId]);
 
   const openAdd = () => {
     setEditingSchool(null);
@@ -247,22 +246,155 @@ export default function ManageAcademicPage() {
   const deleteDisabledMessage = 'Cannot delete because students are associated with this school.';
 
   const selectedSchool = schools.find((s) => String(s.id) === selectedSchoolId);
-  const programsForSchool = selectedSchool?.programs || [];
   const selectedMinorSchool = schools.find((s) => String(s.id) === selectedMinorSchoolId);
-  const minorsForSchool = selectedMinorSchool?.minors || [];
   const selectedMajorProgram = programsForMajorSchool.find((p) => String(p.id) === selectedMajorProgramId);
-  const majorsForProgram = selectedMajorProgram?.majors || [];
   const selectedSpecProgram = programsForSpecSchool.find((p) => String(p.id) === selectedSpecProgramId);
-  const specializationsForProgram = selectedSpecProgram?.specializations || [];
 
   const sortById = (a, b) => (Number(a?.id) || 0) - (Number(b?.id) || 0);
   const sortedSchools = useMemo(() => [...schools].sort(sortById), [schools]);
-  const sortedProgramsForSchool = useMemo(() => [...programsForSchool].sort(sortById), [programsForSchool]);
   const sortedProgramsForMajorSchool = useMemo(() => [...programsForMajorSchool].sort(sortById), [programsForMajorSchool]);
   const sortedProgramsForSpecSchool = useMemo(() => [...programsForSpecSchool].sort(sortById), [programsForSpecSchool]);
-  const sortedMinorsForSchool = useMemo(() => [...minorsForSchool].sort(sortById), [minorsForSchool]);
-  const sortedMajorsForProgram = useMemo(() => [...majorsForProgram].sort(sortById), [majorsForProgram]);
-  const sortedSpecializationsForProgram = useMemo(() => [...specializationsForProgram].sort(sortById), [specializationsForProgram]);
+
+  const allProgramsFlat = useMemo(() => {
+    const rows = [];
+    sortedSchools.forEach((s) => {
+      [...(s.programs || [])].sort(sortById).forEach((p) => {
+        rows.push({
+          ...p,
+          schoolId: s.id,
+          schoolName: s.name,
+          schoolAbbrev: s.abbreviation,
+        });
+      });
+    });
+    return rows;
+  }, [sortedSchools]);
+
+  const displayedPrograms = useMemo(() => {
+    if (!selectedSchoolId) return allProgramsFlat;
+    return allProgramsFlat.filter((p) => String(p.schoolId) === selectedSchoolId);
+  }, [allProgramsFlat, selectedSchoolId]);
+
+  const allMinorsFlat = useMemo(() => {
+    const rows = [];
+    sortedSchools.forEach((s) => {
+      [...(s.minors || [])].sort(sortById).forEach((m) => {
+        rows.push({
+          ...m,
+          schoolId: s.id,
+          schoolName: s.name,
+          schoolAbbrev: s.abbreviation,
+        });
+      });
+    });
+    return rows;
+  }, [sortedSchools]);
+
+  const displayedMinors = useMemo(() => {
+    if (!selectedMinorSchoolId) return allMinorsFlat;
+    return allMinorsFlat.filter((m) => String(m.schoolId) === selectedMinorSchoolId);
+  }, [allMinorsFlat, selectedMinorSchoolId]);
+
+  const allMajorsFlat = useMemo(() => {
+    const rows = [];
+    sortedSchools.forEach((s) => {
+      [...(s.programs || [])].sort(sortById).forEach((p) => {
+        [...(p.majors || [])].sort(sortById).forEach((m) => {
+          rows.push({
+            ...m,
+            schoolId: s.id,
+            schoolName: s.name,
+            programId: p.id,
+            programName: p.name,
+          });
+        });
+      });
+    });
+    return rows;
+  }, [sortedSchools]);
+
+  const displayedMajors = useMemo(() => {
+    let rows = allMajorsFlat;
+    if (selectedMajorSchoolId) {
+      rows = rows.filter((m) => String(m.schoolId) === selectedMajorSchoolId);
+    }
+    if (selectedMajorProgramId) {
+      rows = rows.filter((m) => String(m.programId) === selectedMajorProgramId);
+    }
+    return rows;
+  }, [allMajorsFlat, selectedMajorSchoolId, selectedMajorProgramId]);
+
+  const allSpecializationsFlat = useMemo(() => {
+    const rows = [];
+    sortedSchools.forEach((s) => {
+      [...(s.programs || [])].sort(sortById).forEach((p) => {
+        [...(p.specializations || [])].sort(sortById).forEach((spec) => {
+          rows.push({
+            ...spec,
+            schoolId: s.id,
+            schoolName: s.name,
+            programId: p.id,
+            programName: p.name,
+          });
+        });
+      });
+    });
+    return rows;
+  }, [sortedSchools]);
+
+  const displayedSpecializations = useMemo(() => {
+    let rows = allSpecializationsFlat;
+    if (selectedSpecSchoolId) {
+      rows = rows.filter((s) => String(s.schoolId) === selectedSpecSchoolId);
+    }
+    if (selectedSpecProgramId) {
+      rows = rows.filter((s) => String(s.programId) === selectedSpecProgramId);
+    }
+    return rows;
+  }, [allSpecializationsFlat, selectedSpecSchoolId, selectedSpecProgramId]);
+
+  const allProgramsForMajorFilter = useMemo(() => {
+    if (selectedMajorSchoolId) return sortedProgramsForMajorSchool;
+    const rows = [];
+    sortedSchools.forEach((s) => {
+      (s.programs || []).forEach((p) => rows.push({ ...p, schoolId: s.id }));
+    });
+    return [...rows].sort(sortById);
+  }, [selectedMajorSchoolId, sortedProgramsForMajorSchool, sortedSchools]);
+
+  const allProgramsForSpecFilter = useMemo(() => {
+    if (selectedSpecSchoolId) return sortedProgramsForSpecSchool;
+    const rows = [];
+    sortedSchools.forEach((s) => {
+      (s.programs || []).forEach((p) => rows.push({ ...p, schoolId: s.id }));
+    });
+    return [...rows].sort(sortById);
+  }, [selectedSpecSchoolId, sortedProgramsForSpecSchool, sortedSchools]);
+
+  const findProgramContext = useCallback((programId) => {
+    if (!programId) return null;
+    for (const s of sortedSchools) {
+      const p = (s.programs || []).find((pr) => String(pr.id) === String(programId));
+      if (p) return { school: s, program: p };
+    }
+    return null;
+  }, [sortedSchools]);
+
+  const majorProgramContext = useMemo(
+    () => findProgramContext(selectedMajorProgramId),
+    [findProgramContext, selectedMajorProgramId]
+  );
+  const specProgramContext = useMemo(
+    () => findProgramContext(selectedSpecProgramId),
+    [findProgramContext, selectedSpecProgramId]
+  );
+
+  const showProgramSchoolColumn = !selectedSchoolId;
+  const showMinorSchoolColumn = !selectedMinorSchoolId;
+  const showMajorSchoolColumn = !selectedMajorSchoolId;
+  const showMajorProgramColumn = !selectedMajorProgramId;
+  const showSpecSchoolColumn = !selectedSpecSchoolId;
+  const showSpecProgramColumn = !selectedSpecProgramId;
 
   const openAddProgram = () => {
     setEditingProgram(null);
@@ -637,14 +769,14 @@ export default function ManageAcademicPage() {
               <TabPanel px={0} pt={4}>
                 <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={2}>
                   <FormControl maxW="320px">
-                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">School</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Filter by school</FormLabel>
                     <Select
                       value={selectedSchoolId}
                       onChange={(e) => setSelectedSchoolId(e.target.value)}
                       bg="white"
                       borderColor="gray.300"
-                      placeholder="Select a school"
                     >
+                      <option value="">All schools</option>
                       {sortedSchools.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name || s.abbreviation || `School ${s.id}`}
@@ -652,90 +784,99 @@ export default function ManageAcademicPage() {
                       ))}
                     </Select>
                   </FormControl>
-                  <Button
-                    leftIcon={<AddIcon />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={openAddProgram}
-                    isDisabled={!selectedSchoolId}
-                  >
-                    Add Program
-                  </Button>
+                  <Tooltip label={!selectedSchoolId ? 'Select a school filter to add a program' : ''} isDisabled={!!selectedSchoolId}>
+                    <Button
+                      leftIcon={<AddIcon />}
+                      colorScheme="blue"
+                      size="sm"
+                      onClick={openAddProgram}
+                      isDisabled={!selectedSchoolId}
+                    >
+                      Add Program
+                    </Button>
+                  </Tooltip>
                 </Flex>
-                {!selectedSchoolId ? (
-                  <Text color="gray.500" py={6}>Select a school to view and manage its programs.</Text>
-                ) : (
-                  <TableContainer>
-                    <Table variant="simple" size="sm">
-                      <Thead bg="gray.50">
+                <TableContainer>
+                  <Table variant="simple" size="sm">
+                    <Thead bg="gray.50">
+                      <Tr>
+                        <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
+                        {showProgramSchoolColumn && (
+                          <Th fontWeight="600" color="gray.700">School</Th>
+                        )}
+                        <Th fontWeight="600" color="gray.700">Program name</Th>
+                        <Th fontWeight="600" color="gray.700">Graduation level</Th>
+                        <Th fontWeight="600" color="gray.700" textAlign="center">Min duration (yr)</Th>
+                        <Th fontWeight="600" color="gray.700" textAlign="center">Max duration (yr)</Th>
+                        <Th fontWeight="600" color="gray.700" textAlign="center">Students</Th>
+                        <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {displayedPrograms.length === 0 ? (
                         <Tr>
-                          <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
-                          <Th fontWeight="600" color="gray.700">Program name</Th>
-                          <Th fontWeight="600" color="gray.700">Graduation level</Th>
-                          <Th fontWeight="600" color="gray.700" textAlign="center">Min duration (yr)</Th>
-                          <Th fontWeight="600" color="gray.700" textAlign="center">Max duration (yr)</Th>
-                          <Th fontWeight="600" color="gray.700" textAlign="center">Students</Th>
-                          <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
+                          <Td
+                            colSpan={showProgramSchoolColumn ? 8 : 7}
+                            textAlign="center"
+                            py={8}
+                            color="gray.500"
+                          >
+                            {selectedSchoolId ? 'No programs for this school.' : 'No programs yet.'}
+                          </Td>
                         </Tr>
-                      </Thead>
-                      <Tbody>
-                        {sortedProgramsForSchool.length === 0 ? (
-                          <Tr>
-                            <Td colSpan={7} textAlign="center" py={8} color="gray.500">
-                              No programs for this school.
+                      ) : (
+                        displayedPrograms.map((prog) => (
+                          <Tr key={prog.id} _hover={{ bg: 'gray.50' }}>
+                            <Td textAlign="center" fontSize="sm" color="gray.600">{prog.id}</Td>
+                            {showProgramSchoolColumn && (
+                              <Td fontWeight="medium">{prog.schoolName || '—'}</Td>
+                            )}
+                            <Td fontWeight="medium">{prog.name || '—'}</Td>
+                            <Td>{prog.graduation_level ?? '—'}</Td>
+                            <Td textAlign="center">{prog.min_duration_years ?? '—'}</Td>
+                            <Td textAlign="center">{prog.max_duration_years ?? '—'}</Td>
+                            <Td textAlign="center">{prog.totalStudents ?? 0}</Td>
+                            <Td textAlign="right">
+                              <HStack spacing={2} justify="flex-end">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  leftIcon={<EditIcon />}
+                                  colorScheme="blue"
+                                  onClick={() => openEditProgram(prog)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  leftIcon={<DeleteIcon />}
+                                  colorScheme="red"
+                                  onClick={() => initiateDelete('program', prog)}
+                                >
+                                  Delete
+                                </Button>
+                              </HStack>
                             </Td>
                           </Tr>
-                        ) : (
-                          sortedProgramsForSchool.map((prog) => (
-                            <Tr key={prog.id} _hover={{ bg: 'gray.50' }}>
-                              <Td textAlign="center" fontSize="sm" color="gray.600">{prog.id}</Td>
-                              <Td fontWeight="medium">{prog.name || '—'}</Td>
-                              <Td>{prog.graduation_level ?? '—'}</Td>
-                              <Td textAlign="center">{prog.min_duration_years ?? '—'}</Td>
-                              <Td textAlign="center">{prog.max_duration_years ?? '—'}</Td>
-                              <Td textAlign="center">{prog.totalStudents ?? 0}</Td>
-                              <Td textAlign="right">
-                                <HStack spacing={2} justify="flex-end">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    leftIcon={<EditIcon />}
-                                    colorScheme="blue"
-                                    onClick={() => openEditProgram(prog)}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    leftIcon={<DeleteIcon />}
-                                    colorScheme="red"
-                                    onClick={() => initiateDelete('program', prog)}
-                                  >
-                                    Delete
-                                  </Button>
-                                </HStack>
-                              </Td>
-                            </Tr>
-                          ))
-                        )}
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
-                )}
+                        ))
+                      )}
+                    </Tbody>
+                  </Table>
+                </TableContainer>
               </TabPanel>
 
               <TabPanel px={0} pt={4}>
                 <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={2}>
                   <FormControl maxW="320px">
-                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">School</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Filter by school</FormLabel>
                     <Select
                       value={selectedMinorSchoolId}
                       onChange={(e) => setSelectedMinorSchoolId(e.target.value)}
                       bg="white"
                       borderColor="gray.300"
-                      placeholder="Select a school"
                     >
+                      <option value="">All schools</option>
                       {sortedSchools.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name || s.abbreviation || `School ${s.id}`}
@@ -743,229 +884,300 @@ export default function ManageAcademicPage() {
                       ))}
                     </Select>
                   </FormControl>
-                  <Button
-                    leftIcon={<AddIcon />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={openAddMinor}
-                    isDisabled={!selectedMinorSchoolId}
-                  >
-                    Add Minor
-                  </Button>
+                  <Tooltip label={!selectedMinorSchoolId ? 'Select a school filter to add a minor' : ''} isDisabled={!!selectedMinorSchoolId}>
+                    <Button
+                      leftIcon={<AddIcon />}
+                      colorScheme="blue"
+                      size="sm"
+                      onClick={openAddMinor}
+                      isDisabled={!selectedMinorSchoolId}
+                    >
+                      Add Minor
+                    </Button>
+                  </Tooltip>
                 </Flex>
-                {!selectedMinorSchoolId ? (
-                  <Text color="gray.500" py={6}>Select a school to view and manage its minors.</Text>
-                ) : (
-                  <TableContainer>
-                    <Table variant="simple" size="sm">
-                      <Thead bg="gray.50">
+                <TableContainer>
+                  <Table variant="simple" size="sm">
+                    <Thead bg="gray.50">
+                      <Tr>
+                        <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
+                        {showMinorSchoolColumn && (
+                          <Th fontWeight="600" color="gray.700">School</Th>
+                        )}
+                        <Th fontWeight="600" color="gray.700">Minor name</Th>
+                        <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {displayedMinors.length === 0 ? (
                         <Tr>
-                          <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
-                          <Th fontWeight="600" color="gray.700">Minor name</Th>
-                          <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
+                          <Td
+                            colSpan={showMinorSchoolColumn ? 4 : 3}
+                            textAlign="center"
+                            py={8}
+                            color="gray.500"
+                          >
+                            {selectedMinorSchoolId ? 'No minors for this school.' : 'No minors yet.'}
+                          </Td>
                         </Tr>
-                      </Thead>
-                      <Tbody>
-                        {sortedMinorsForSchool.length === 0 ? (
-                          <Tr>
-                            <Td colSpan={3} textAlign="center" py={8} color="gray.500">
-                              No minors for this school.
+                      ) : (
+                        displayedMinors.map((minor) => (
+                          <Tr key={minor.id} _hover={{ bg: 'gray.50' }}>
+                            <Td textAlign="center" fontSize="sm" color="gray.600">{minor.id}</Td>
+                            {showMinorSchoolColumn && (
+                              <Td fontWeight="medium">{minor.schoolName || '—'}</Td>
+                            )}
+                            <Td fontWeight="medium">{minor.name || '—'}</Td>
+                            <Td textAlign="right">
+                              <HStack spacing={2} justify="flex-end">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  leftIcon={<EditIcon />}
+                                  colorScheme="blue"
+                                  onClick={() => openEditMinor(minor)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  leftIcon={<DeleteIcon />}
+                                  colorScheme="red"
+                                  onClick={() => initiateDelete('minor', minor)}
+                                >
+                                  Delete
+                                </Button>
+                              </HStack>
                             </Td>
                           </Tr>
-                        ) : (
-                          sortedMinorsForSchool.map((minor) => (
-                            <Tr key={minor.id} _hover={{ bg: 'gray.50' }}>
-                              <Td textAlign="center" fontSize="sm" color="gray.600">{minor.id}</Td>
-                              <Td fontWeight="medium">{minor.name || '—'}</Td>
-                              <Td textAlign="right">
-                                <HStack spacing={2} justify="flex-end">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    leftIcon={<EditIcon />}
-                                    colorScheme="blue"
-                                    onClick={() => openEditMinor(minor)}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    leftIcon={<DeleteIcon />}
-                                    colorScheme="red"
-                                    onClick={() => initiateDelete('minor', minor)}
-                                  >
-                                    Delete
-                                  </Button>
-                                </HStack>
-                              </Td>
-                            </Tr>
-                          ))
-                        )}
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
-                )}
+                        ))
+                      )}
+                    </Tbody>
+                  </Table>
+                </TableContainer>
               </TabPanel>
 
               <TabPanel px={0} pt={4}>
                 <Flex align="center" mb={4} flexWrap="nowrap" justify="space-between" gap={4} w="full">
                   <HStack gap={4} flexWrap="nowrap" align="flex-end" flex="1" minW={0}>
                     <FormControl maxW="200px" minW="140px">
-                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">School</FormLabel>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Filter by school</FormLabel>
                       <Select
                         value={selectedMajorSchoolId}
-                        onChange={(e) => setSelectedMajorSchoolId(e.target.value)}
+                        onChange={(e) => {
+                          setSelectedMajorSchoolId(e.target.value);
+                          setSelectedMajorProgramId('');
+                        }}
                         bg="white"
                         borderColor="gray.300"
-                        placeholder="Select school"
                       >
+                        <option value="">All schools</option>
                         {sortedSchools.map((s) => (
                           <option key={s.id} value={s.id}>{s.name || s.abbreviation || `School ${s.id}`}</option>
                         ))}
                       </Select>
                     </FormControl>
                     <FormControl maxW="240px" minW="160px">
-                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Program</FormLabel>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Filter by program</FormLabel>
                       <Select
                         value={selectedMajorProgramId}
                         onChange={(e) => setSelectedMajorProgramId(e.target.value)}
                         bg="white"
                         borderColor="gray.300"
-                        placeholder="Select program"
                       >
-                        {sortedProgramsForMajorSchool.map((p) => (
+                        <option value="">All programs</option>
+                        {allProgramsForMajorFilter.map((p) => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                       </Select>
                     </FormControl>
                   </HStack>
-                  <Button
-                    leftIcon={<AddIcon />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={openAddMajor}
-                    isDisabled={!selectedMajorProgramId}
-                    flexShrink={0}
+                  <Tooltip
+                    label={!selectedMajorProgramId ? 'Select a program filter to add a major' : ''}
+                    isDisabled={!!selectedMajorProgramId}
                   >
-                    Add Major
-                  </Button>
+                    <Button
+                      leftIcon={<AddIcon />}
+                      colorScheme="blue"
+                      size="sm"
+                      onClick={openAddMajor}
+                      isDisabled={!selectedMajorProgramId}
+                      flexShrink={0}
+                    >
+                      Add Major
+                    </Button>
+                  </Tooltip>
                 </Flex>
-                {!selectedMajorProgramId ? (
-                  <Text color="gray.500" py={6}>Select a school and program to view and manage majors.</Text>
-                ) : (
-                  <TableContainer>
-                    <Table variant="simple" size="sm">
-                      <Thead bg="gray.50">
-                        <Tr>
-                          <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
-                          <Th fontWeight="600" color="gray.700">Major name</Th>
-                          <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {sortedMajorsForProgram.length === 0 ? (
-                          <Tr>
-                            <Td colSpan={3} textAlign="center" py={8} color="gray.500">No majors for this program.</Td>
-                          </Tr>
-                        ) : (
-                          sortedMajorsForProgram.map((m) => (
-                            <Tr key={m.id} _hover={{ bg: 'gray.50' }}>
-                              <Td textAlign="center" fontSize="sm" color="gray.600">{m.id}</Td>
-                              <Td fontWeight="medium">{m.name || '—'}</Td>
-                              <Td textAlign="right">
-                                <HStack spacing={2} justify="flex-end">
-                                  <Button size="sm" variant="outline" leftIcon={<EditIcon />} colorScheme="blue" onClick={() => openEditMajor(m)}>Edit</Button>
-                                  <Button size="sm" variant="ghost" leftIcon={<DeleteIcon />} colorScheme="red" onClick={() => initiateDelete('major', m)}>Delete</Button>
-                                </HStack>
-                              </Td>
-                            </Tr>
-                          ))
+                <TableContainer>
+                  <Table variant="simple" size="sm">
+                    <Thead bg="gray.50">
+                      <Tr>
+                        <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
+                        {showMajorSchoolColumn && (
+                          <Th fontWeight="600" color="gray.700">School</Th>
                         )}
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
-                )}
+                        {showMajorProgramColumn && (
+                          <Th fontWeight="600" color="gray.700">Program</Th>
+                        )}
+                        <Th fontWeight="600" color="gray.700">Major name</Th>
+                        <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {displayedMajors.length === 0 ? (
+                        <Tr>
+                          <Td
+                            colSpan={
+                              3 +
+                              (showMajorSchoolColumn ? 1 : 0) +
+                              (showMajorProgramColumn ? 1 : 0)
+                            }
+                            textAlign="center"
+                            py={8}
+                            color="gray.500"
+                          >
+                            {selectedMajorProgramId
+                              ? 'No majors for this program.'
+                              : selectedMajorSchoolId
+                                ? 'No majors for this school.'
+                                : 'No majors yet.'}
+                          </Td>
+                        </Tr>
+                      ) : (
+                        displayedMajors.map((m) => (
+                          <Tr key={m.id} _hover={{ bg: 'gray.50' }}>
+                            <Td textAlign="center" fontSize="sm" color="gray.600">{m.id}</Td>
+                            {showMajorSchoolColumn && (
+                              <Td fontWeight="medium">{m.schoolName || '—'}</Td>
+                            )}
+                            {showMajorProgramColumn && (
+                              <Td>{m.programName || '—'}</Td>
+                            )}
+                            <Td fontWeight="medium">{m.name || '—'}</Td>
+                            <Td textAlign="right">
+                              <HStack spacing={2} justify="flex-end">
+                                <Button size="sm" variant="outline" leftIcon={<EditIcon />} colorScheme="blue" onClick={() => openEditMajor(m)}>Edit</Button>
+                                <Button size="sm" variant="ghost" leftIcon={<DeleteIcon />} colorScheme="red" onClick={() => initiateDelete('major', m)}>Delete</Button>
+                              </HStack>
+                            </Td>
+                          </Tr>
+                        ))
+                      )}
+                    </Tbody>
+                  </Table>
+                </TableContainer>
               </TabPanel>
 
               <TabPanel px={0} pt={4}>
                 <Flex align="center" mb={4} flexWrap="nowrap" justify="space-between" gap={4} w="full">
                   <HStack gap={4} flexWrap="nowrap" align="flex-end" flex="1" minW={0}>
                     <FormControl maxW="200px" minW="140px">
-                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">School</FormLabel>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Filter by school</FormLabel>
                       <Select
                         value={selectedSpecSchoolId}
-                        onChange={(e) => setSelectedSpecSchoolId(e.target.value)}
+                        onChange={(e) => {
+                          setSelectedSpecSchoolId(e.target.value);
+                          setSelectedSpecProgramId('');
+                        }}
                         bg="white"
                         borderColor="gray.300"
-                        placeholder="Select school"
                       >
+                        <option value="">All schools</option>
                         {sortedSchools.map((s) => (
                           <option key={s.id} value={s.id}>{s.name || s.abbreviation || `School ${s.id}`}</option>
                         ))}
                       </Select>
                     </FormControl>
                     <FormControl maxW="240px" minW="160px">
-                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Program</FormLabel>
+                      <FormLabel fontSize="sm" fontWeight="600" color="gray.700">Filter by program</FormLabel>
                       <Select
                         value={selectedSpecProgramId}
                         onChange={(e) => setSelectedSpecProgramId(e.target.value)}
                         bg="white"
                         borderColor="gray.300"
-                        placeholder="Select program"
                       >
-                        {sortedProgramsForSpecSchool.map((p) => (
+                        <option value="">All programs</option>
+                        {allProgramsForSpecFilter.map((p) => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                       </Select>
                     </FormControl>
                   </HStack>
-                  <Button
-                    leftIcon={<AddIcon />}
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={openAddSpec}
-                    isDisabled={!selectedSpecProgramId}
-                    flexShrink={0}
+                  <Tooltip
+                    label={!selectedSpecProgramId ? 'Select a program filter to add a specialization' : ''}
+                    isDisabled={!!selectedSpecProgramId}
                   >
-                    Add Specialization
-                  </Button>
+                    <Button
+                      leftIcon={<AddIcon />}
+                      colorScheme="blue"
+                      size="sm"
+                      onClick={openAddSpec}
+                      isDisabled={!selectedSpecProgramId}
+                      flexShrink={0}
+                    >
+                      Add Specialization
+                    </Button>
+                  </Tooltip>
                 </Flex>
-                {!selectedSpecProgramId ? (
-                  <Text color="gray.500" py={6}>Select a school and program to view and manage specializations.</Text>
-                ) : (
-                  <TableContainer>
-                    <Table variant="simple" size="sm">
-                      <Thead bg="gray.50">
-                        <Tr>
-                          <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
-                          <Th fontWeight="600" color="gray.700">Specialization name</Th>
-                          <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {sortedSpecializationsForProgram.length === 0 ? (
-                          <Tr>
-                            <Td colSpan={3} textAlign="center" py={8} color="gray.500">No specializations for this program.</Td>
-                          </Tr>
-                        ) : (
-                          sortedSpecializationsForProgram.map((s) => (
-                            <Tr key={s.id} _hover={{ bg: 'gray.50' }}>
-                              <Td textAlign="center" fontSize="sm" color="gray.600">{s.id}</Td>
-                              <Td fontWeight="medium">{s.name || '—'}</Td>
-                              <Td textAlign="right">
-                                <HStack spacing={2} justify="flex-end">
-                                  <Button size="sm" variant="outline" leftIcon={<EditIcon />} colorScheme="blue" onClick={() => openEditSpec(s)}>Edit</Button>
-                                  <Button size="sm" variant="ghost" leftIcon={<DeleteIcon />} colorScheme="red" onClick={() => initiateDelete('spec', s)}>Delete</Button>
-                                </HStack>
-                              </Td>
-                            </Tr>
-                          ))
+                <TableContainer>
+                  <Table variant="simple" size="sm">
+                    <Thead bg="gray.50">
+                      <Tr>
+                        <Th fontWeight="600" color="gray.700" textAlign="center">ID</Th>
+                        {showSpecSchoolColumn && (
+                          <Th fontWeight="600" color="gray.700">School</Th>
                         )}
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
-                )}
+                        {showSpecProgramColumn && (
+                          <Th fontWeight="600" color="gray.700">Program</Th>
+                        )}
+                        <Th fontWeight="600" color="gray.700">Specialization name</Th>
+                        <Th fontWeight="600" color="gray.700" textAlign="right">Actions</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {displayedSpecializations.length === 0 ? (
+                        <Tr>
+                          <Td
+                            colSpan={
+                              3 +
+                              (showSpecSchoolColumn ? 1 : 0) +
+                              (showSpecProgramColumn ? 1 : 0)
+                            }
+                            textAlign="center"
+                            py={8}
+                            color="gray.500"
+                          >
+                            {selectedSpecProgramId
+                              ? 'No specializations for this program.'
+                              : selectedSpecSchoolId
+                                ? 'No specializations for this school.'
+                                : 'No specializations yet.'}
+                          </Td>
+                        </Tr>
+                      ) : (
+                        displayedSpecializations.map((s) => (
+                          <Tr key={s.id} _hover={{ bg: 'gray.50' }}>
+                            <Td textAlign="center" fontSize="sm" color="gray.600">{s.id}</Td>
+                            {showSpecSchoolColumn && (
+                              <Td fontWeight="medium">{s.schoolName || '—'}</Td>
+                            )}
+                            {showSpecProgramColumn && (
+                              <Td>{s.programName || '—'}</Td>
+                            )}
+                            <Td fontWeight="medium">{s.name || '—'}</Td>
+                            <Td textAlign="right">
+                              <HStack spacing={2} justify="flex-end">
+                                <Button size="sm" variant="outline" leftIcon={<EditIcon />} colorScheme="blue" onClick={() => openEditSpec(s)}>Edit</Button>
+                                <Button size="sm" variant="ghost" leftIcon={<DeleteIcon />} colorScheme="red" onClick={() => initiateDelete('spec', s)}>Delete</Button>
+                              </HStack>
+                            </Td>
+                          </Tr>
+                        ))
+                      )}
+                    </Tbody>
+                  </Table>
+                </TableContainer>
               </TabPanel>
             </TabPanels>
           </Tabs>
@@ -1197,15 +1409,17 @@ export default function ManageAcademicPage() {
         <ModalContent>
           <ModalHeader>{editingMajor ? 'Edit Major' : 'Add Major'}</ModalHeader>
           <ModalBody>
-            {!editingMajor && selectedMajorSchoolId && selectedMajorProgramId && (
+            {!editingMajor && majorProgramContext && (
               <>
                 <FormControl mb={2}>
                   <FormLabel fontSize="sm" color="gray.600">School</FormLabel>
-                  <Text fontWeight="medium">{majorSchool?.name || majorSchool?.abbreviation || '—'}</Text>
+                  <Text fontWeight="medium">
+                    {majorProgramContext.school?.name || majorProgramContext.school?.abbreviation || '—'}
+                  </Text>
                 </FormControl>
                 <FormControl mb={4}>
                   <FormLabel fontSize="sm" color="gray.600">Program</FormLabel>
-                  <Text fontWeight="medium">{selectedMajorProgram?.name || '—'}</Text>
+                  <Text fontWeight="medium">{majorProgramContext.program?.name || '—'}</Text>
                 </FormControl>
               </>
             )}
@@ -1228,15 +1442,17 @@ export default function ManageAcademicPage() {
         <ModalContent>
           <ModalHeader>{editingSpec ? 'Edit Specialization' : 'Add Specialization'}</ModalHeader>
           <ModalBody>
-            {!editingSpec && selectedSpecSchoolId && selectedSpecProgramId && (
+            {!editingSpec && specProgramContext && (
               <>
                 <FormControl mb={2}>
                   <FormLabel fontSize="sm" color="gray.600">School</FormLabel>
-                  <Text fontWeight="medium">{specSchool?.name || specSchool?.abbreviation || '—'}</Text>
+                  <Text fontWeight="medium">
+                    {specProgramContext.school?.name || specProgramContext.school?.abbreviation || '—'}
+                  </Text>
                 </FormControl>
                 <FormControl mb={4}>
                   <FormLabel fontSize="sm" color="gray.600">Program</FormLabel>
-                  <Text fontWeight="medium">{selectedSpecProgram?.name || '—'}</Text>
+                  <Text fontWeight="medium">{specProgramContext.program?.name || '—'}</Text>
                 </FormControl>
               </>
             )}

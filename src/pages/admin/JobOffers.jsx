@@ -44,15 +44,13 @@ import {
   AlertTitle,
   AlertDescription,
 } from '@chakra-ui/react';
-import { SearchIcon, AddIcon, ArrowBackIcon, DownloadIcon, EditIcon } from '@chakra-ui/icons';
+import { SearchIcon, AddIcon, DownloadIcon, EditIcon } from '@chakra-ui/icons';
 import { BsLayoutThreeColumns } from 'react-icons/bs';
 import { FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import { IconButton } from '@chakra-ui/react';
 import * as XLSX from 'xlsx';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
-import { usePlacementBack } from '../../hooks/usePlacementBack';
-
 /** Unique school acronym only — strips program suffixes like " - BTECH" or " (HONS)". */
 function normalizeSchoolName(school) {
   if (!school || !String(school).trim()) return 'Other';
@@ -932,16 +930,6 @@ const JobOffers = () => {
                 size="sm"
               >
                 Export Excel
-              </Button>
-              <Button 
-                variant="outline" 
-                borderColor="gray.300"
-                onClick={goBack}
-                size="sm"
-                bg="white"
-                leftIcon={<ArrowBackIcon />}
-              >
-                {backLabel}
               </Button>
             </HStack>
           </Flex>

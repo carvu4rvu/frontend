@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Box, Flex, Heading, Spinner } from '@chakra-ui/react';
+import { Box, Flex, Heading, Spinner, Button, IconButton, Tooltip } from '@chakra-ui/react';
+import { AddIcon, EditIcon, DeleteIcon, BellIcon } from '@chakra-ui/icons';
 import { getFileUrl } from '../../utils/fileUrl';
+import { formatDateTimeIST } from '../../utils/dateTime';
 import '../../pages/EventsPage.css';
 
 const TABS = [
@@ -9,15 +11,6 @@ const TABS = [
   { id: 'completed', label: 'Done', status: 'completed' },
   { id: 'failed', label: 'Failed', status: 'failed' },
 ];
-
-function formatDatetime(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
 
 function getEventImageUrl(event) {
   if (!event) return null;
@@ -34,11 +27,18 @@ function getEventImageUrl(event) {
   return null;
 }
 
-function EventCard({ event }) {
+function EventCard({
+  event,
+  manageMode,
+  onEdit,
+  onDelete,
+  onSendNotification,
+  notifying,
+}) {
   const imgUrl = getEventImageUrl(event);
 
   return (
-    <div className="events-card">
+    <div className={`events-card${manageMode ? ' events-card--manage' : ''}`}>
       <div className="events-card-image-wrap">
         {imgUrl ? (
           <img src={imgUrl} alt="" className="events-card-image" />
@@ -61,18 +61,67 @@ function EventCard({ event }) {
       <div className="events-card-body">
         <div className="events-card-type">{event.type}</div>
         <div className="events-card-title">{event.title}</div>
-        <div className="events-card-datetime">{formatDatetime(event.event_datetime)}</div>
+        <div className="events-card-datetime">{formatDateTimeIST(event.event_datetime)}</div>
         <span className={`status-badge status-${event.status || 'scheduled'}`}>
           {event.status || 'scheduled'}
         </span>
         {event.details && <div className="events-card-details">{event.details}</div>}
+        {manageMode && (
+          <div className="events-card-actions">
+            <Tooltip label="Edit event">
+              <IconButton
+                aria-label="Edit event"
+                icon={<EditIcon />}
+                size="sm"
+                variant="outline"
+                colorScheme="blue"
+                className="events-card-action-btn"
+                onClick={() => onEdit?.(event)}
+              />
+            </Tooltip>
+            <Tooltip label="Send notification">
+              <IconButton
+                aria-label="Send notification"
+                icon={<BellIcon />}
+                size="sm"
+                variant="outline"
+                colorScheme="orange"
+                className="events-card-action-btn"
+                isLoading={notifying}
+                onClick={() => onSendNotification?.(event)}
+              />
+            </Tooltip>
+            <Tooltip label="Delete event">
+              <IconButton
+                aria-label="Delete event"
+                icon={<DeleteIcon />}
+                size="sm"
+                variant="outline"
+                colorScheme="red"
+                className="events-card-action-btn"
+                onClick={() => onDelete?.(event)}
+              />
+            </Tooltip>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 /** Shared campus events page — same layout as /student/placements/events */
-export function CampusEventsView({ events = [], loading = false }) {
+export function CampusEventsView({
+  events = [],
+  loading = false,
+  manageMode = false,
+  onAddEvent,
+  onEditEvent,
+  onDeleteEvent,
+  onSendNotification,
+  onNotifyVcDigest,
+  notifyingEventId = null,
+  notifyingVcDigest = false,
+}) {
   const [activeTab, setActiveTab] = useState('scheduled');
   const list = Array.isArray(events) ? events : [];
 
@@ -83,9 +132,36 @@ export function CampusEventsView({ events = [], loading = false }) {
   return (
     <Box className="events-page-shell" bg="gray.50" minH="80vh" py={8} w="100%">
       <div className="events-layout-inner">
-        <Heading size="lg" color="#166534" mb={6}>
-          Events
-        </Heading>
+        <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={3}>
+          <Heading size="lg" color="#166534" m={0}>
+            Events
+          </Heading>
+          {manageMode && (
+            <Flex gap={2} flexWrap="wrap">
+              <Button
+                leftIcon={<AddIcon />}
+                colorScheme="green"
+                size="sm"
+                onClick={onAddEvent}
+              >
+                Add Event
+              </Button>
+              {onNotifyVcDigest && (
+                <Button
+                  leftIcon={<BellIcon />}
+                  colorScheme="orange"
+                  variant="outline"
+                  size="sm"
+                  onClick={onNotifyVcDigest}
+                  isLoading={notifyingVcDigest}
+                  loadingText="Sending…"
+                >
+                  Notify VC
+                </Button>
+              )}
+            </Flex>
+          )}
+        </Flex>
 
         <div className="events-page">
           <ul className="events-tabs">
@@ -120,7 +196,15 @@ export function CampusEventsView({ events = [], loading = false }) {
             ) : (
               <div className="events-grid">
                 {currentList.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
+                  <EventCard
+                    key={ev.id}
+                    event={ev}
+                    manageMode={manageMode}
+                    onEdit={onEditEvent}
+                    onDelete={onDeleteEvent}
+                    onSendNotification={onSendNotification}
+                    notifying={notifyingEventId === ev.id}
+                  />
                 ))}
               </div>
             )}

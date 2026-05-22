@@ -17,30 +17,8 @@ import { useAuth } from '../../context/AuthContext';
 import { PlacementService } from '../../services/placement.service';
 import { getFileUrl } from '../../utils/fileUrl';
 import { getDisplayProjectSnaps } from '../../utils/projectSnaps';
+import { formatDateTimeIST, formatRelativeTimeIST } from '../../utils/dateTime';
 import './AlumniDashboard.css';
-
-function formatEventDate(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-IN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Kolkata',
-  });
-}
-
-function formatTimeAgo(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const diffMs = Date.now() - d;
-  const mins = Math.floor(diffMs / 60000);
-  const hours = Math.floor(diffMs / 3600000);
-  const days = Math.floor(diffMs / 86400000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString('en-IN', { dateStyle: 'medium' });
-}
 
 function isUpcoming(iso) {
   return iso && new Date(iso) >= new Date();
@@ -293,7 +271,7 @@ const AlumniDashboard = () => {
                           {ev.type || 'Event'}
                         </Badge>
                         <div className="alumni-dash__event-title">{ev.title}</div>
-                        <div className="alumni-dash__event-date">{formatEventDate(ev.event_datetime)}</div>
+                        <div className="alumni-dash__event-date">{formatDateTimeIST(ev.event_datetime)}</div>
                         {ev.location && (
                           <div className="alumni-dash__event-meta">{ev.location}</div>
                         )}
@@ -342,7 +320,7 @@ const AlumniDashboard = () => {
                           <p className="alumni-dash__notif-msg">{n.message.slice(0, 120)}{n.message.length > 120 ? '…' : ''}</p>
                         )}
                       </div>
-                      <span className="alumni-dash__notif-time">{formatTimeAgo(n.createdAt)}</span>
+                      <span className="alumni-dash__notif-time">{formatRelativeTimeIST(n.createdAt)}</span>
                     </div>
                   ))}
                 </div>
@@ -504,7 +482,7 @@ const AlumniDashboard = () => {
                       </p>
                       {(hr.opportunity_type || hr.created_at) && (
                         <p className="alumni-dash__hr-meta">
-                          {[hr.opportunity_type, hr.created_at && formatTimeAgo(hr.created_at)].filter(Boolean).join(' · ')}
+                          {[hr.opportunity_type, hr.created_at && formatRelativeTimeIST(hr.created_at)].filter(Boolean).join(' · ')}
                         </p>
                       )}
                     </li>

@@ -1,18 +1,12 @@
 import { getDisplayCTCValue } from './placementDriveDisplay';
+import { formatDateTimeIST, formatDateIST } from './dateTime';
 
 /**
  * Build prefill payload for a placement drive notification.
  */
 export function buildDriveNotificationContent(drive, companyName) {
-  const eventDate = drive.event_datetime
-    ? new Date(drive.event_datetime).toLocaleString(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
-    : '—';
-  const regDate = drive.last_date_to_registration
-    ? new Date(drive.last_date_to_registration).toLocaleDateString()
-    : '—';
+  const eventDate = formatDateTimeIST(drive.event_datetime);
+  const regDate = formatDateIST(drive.last_date_to_registration);
   const ctcVal = getDisplayCTCValue(drive.ctc_structure);
   const ctc = ctcVal != null ? `${ctcVal} LPA` : drive.ctc ? String(drive.ctc) : 'TBD';
   const name = drive.company_name || companyName || 'Company';

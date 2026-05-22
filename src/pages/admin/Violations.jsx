@@ -55,6 +55,7 @@ import {
 import { AddIcon, SearchIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import AdminLayout from '../../components/AdminLayout';
 import { PlacementService } from '../../services/placement.service';
+import { formatDateTimeIST, formatDateIST } from '../../utils/dateTime';
 
 const PLACEMENT_VIOLATION_TYPES = ['OFFER_REJECTED', 'NO_SHOW', 'MULTIPLE_OFFERS_ACCEPTED', 'DOCUMENT_FRAUD', 'POLICY_BREACH', 'OTHER'];
 const DISCIPLINARY_VIOLATION_TYPES = ['CHEATING', 'MISCONDUCT', 'HARASSMENT', 'ACADEMIC_FRAUD', 'BEHAVIORAL', 'OTHER'];
@@ -65,23 +66,9 @@ const headerColor = '#fbeec8';
 const borderColor = '#c2b38a';
 const cardBg = '#ffffff';
 
-const formatDate = (d) => {
-  if (!d) return '—';
-  try {
-    return new Date(d).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
-  } catch {
-    return '—';
-  }
-};
+const formatDate = (d) => formatDateTimeIST(d);
 
-const formatDateOnly = (d) => {
-  if (!d) return '—';
-  try {
-    return new Date(d).toLocaleDateString();
-  } catch {
-    return '—';
-  }
-};
+const formatDateOnly = (d) => formatDateIST(d);
 
 const Violations = () => {
   const navigate = useNavigate();

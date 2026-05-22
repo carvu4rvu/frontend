@@ -45,6 +45,7 @@ import {
 import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyService } from '../../services/company.service';
 import { getFileUrl } from '../../utils/fileUrl';
+import { formatShortDateIST } from '../../utils/dateTime';
 import { ProjectShowcase } from '../../components/student/projects/ProjectShowcase';
 import '../../pages/student/profile/ProjectsProfile.css';
 import { usePlacementBack } from '../../hooks/usePlacementBack';
@@ -110,14 +111,7 @@ const CompanyStudentView = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const formatDate = (dateString) => formatShortDateIST(dateString);
 
   const MandatoryDetailRow = ({ label, value }) => (
     <div className="company-student-view-row">

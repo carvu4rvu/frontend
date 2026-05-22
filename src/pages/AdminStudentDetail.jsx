@@ -48,6 +48,7 @@ import {
 import AdminLayout from '../components/AdminLayout';
 import { StudentProfileService } from '../services/studentProfile.service';
 import { PlacementService } from '../services/placement.service';
+import { formatDateIST } from '../utils/dateTime';
 import { getFileUrl } from '../utils/fileUrl';
 import { calculateProfileCompletion } from '../utils/profileHelper';
 import './admin/AdminStudentDetail.css';
@@ -571,7 +572,7 @@ const AdminStudentDetail = ({ embedded = false }) => {
                     {int.mentor_name && <Text fontSize="xs" color="gray.500" mt={1}>Mentor: {int.mentor_name}</Text>}
                     {int.start_date && int.end_date && (
                       <Text fontSize="xs" color="gray.500" mt={1}>
-                        Duration: {new Date(int.start_date).toLocaleDateString()} - {new Date(int.end_date).toLocaleDateString()}
+                        Duration: {formatDateIST(int.start_date)} - {formatDateIST(int.end_date)}
                       </Text>
                     )}
                   </Box>
@@ -670,7 +671,7 @@ const AdminStudentDetail = ({ embedded = false }) => {
                     {t.skills && <Text fontSize="xs" color="gray.500" mt={1}>Skills: {t.skills}</Text>}
                     {t.start_date && t.end_date && (
                       <Text fontSize="xs" color="gray.500" mt={1}>
-                        Duration: {new Date(t.start_date).toLocaleDateString()} - {new Date(t.end_date).toLocaleDateString()}
+                        Duration: {formatDateIST(t.start_date)} - {formatDateIST(t.end_date)}
                       </Text>
                     )}
                   </Box>
@@ -696,7 +697,7 @@ const AdminStudentDetail = ({ embedded = false }) => {
                         <HStack spacing={2} mt={2}>
                           {c.certification_type && <Badge colorScheme="purple">{c.certification_type}</Badge>}
                           {c.score && <Badge colorScheme="green">Score: {c.score}</Badge>}
-                          {c.issue_date && <Badge colorScheme="blue">{new Date(c.issue_date).toLocaleDateString()}</Badge>}
+                          {c.issue_date && <Badge colorScheme="blue">{formatDateIST(c.issue_date)}</Badge>}
                         </HStack>
                       </Box>
                       {c.proof_document && (
@@ -714,7 +715,7 @@ const AdminStudentDetail = ({ embedded = false }) => {
                     )}
                     {c.expiry_date && (
                       <Text fontSize="xs" color="gray.500" mt={1}>
-                        Expires: {new Date(c.expiry_date).toLocaleDateString()}
+                        Expires: {formatDateIST(c.expiry_date)}
                       </Text>
                     )}
                   </Box>
@@ -740,7 +741,7 @@ const AdminStudentDetail = ({ embedded = false }) => {
                         <HStack spacing={2} mt={2}>
                           {p.publication_type && <Badge colorScheme="purple">{p.publication_type}</Badge>}
                           {p.author_count && <Badge colorScheme="blue">{p.author_count} authors</Badge>}
-                          {p.publication_date && <Badge colorScheme="gray">{new Date(p.publication_date).toLocaleDateString()}</Badge>}
+                          {p.publication_date && <Badge colorScheme="gray">{formatDateIST(p.publication_date)}</Badge>}
                         </HStack>
                       </Box>
                       <VStack spacing={1} align="end">

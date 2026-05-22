@@ -18,18 +18,12 @@ import { FiChevronLeft, FiChevronRight, FiCalendar } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { PlacementService } from '../../../services/placement.service';
 import { EventsService } from '../../../services/events.service';
-
-const formatDate = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
+import { formatTimeIST, formatMonthYearIST, toIstDateKey } from '../../../utils/dateTime';
 
 const formatDMY = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const key = toIstDateKey(d);
+  if (!key) return '—';
+  const [y, m, day] = key.split('-');
   return `${day}-${m}-${y}`;
 };
 
@@ -101,7 +95,7 @@ export const StudentCalendarOfEvents = () => {
           title: `${companyName(drive)} Drive`,
           description: drive.job_description || 'Placement Drive',
           event_date: dateRaw,
-          start_time: dateRaw ? new Date(dateRaw).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null,
+          start_time: dateRaw ? formatTimeIST(dateRaw) : null,
           type: 'Placement',
           placement_status: drive.placement_status,
         };
@@ -116,7 +110,7 @@ export const StudentCalendarOfEvents = () => {
           title: ev.title || 'Event',
           description: ev.details || ev.type || 'Event',
           event_date: ev.event_datetime,
-          start_time: ev.event_datetime ? new Date(ev.event_datetime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : null,
+          start_time: ev.event_datetime ? formatTimeIST(ev.event_datetime) : null,
           type: 'Event',
         }));
       setEvents([...placementEvents, ...mappedEvents]);
@@ -135,12 +129,8 @@ export const StudentCalendarOfEvents = () => {
   const handleDayClick = (d) => setSelectedDate(d);
 
   const dayEvents = (d) => {
-    const iso = formatDate(d);
-    return monthEvents.filter((e) => {
-      if (!e.event_date) return false;
-      const eDate = new Date(e.event_date);
-      return formatDate(eDate) === iso;
-    });
+    const iso = toIstDateKey(d);
+    return monthEvents.filter((e) => e.event_date && toIstDateKey(e.event_date) === iso);
   };
 
   const handleEventClick = (e) => {
@@ -219,7 +209,7 @@ export const StudentCalendarOfEvents = () => {
                   opacity={canGoPrev ? 1 : 0.5}
                 />
                 <Heading as="h1" fontSize={{ base: 'lg', sm: 'xl' }} fontWeight="bold" textTransform="uppercase">
-                  {current.toLocaleString(undefined, { month: 'short' })} {current.getFullYear()}
+                  {formatMonthYearIST(current)}
                 </Heading>
                 <IconButton
                   aria-label="Next month"

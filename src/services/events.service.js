@@ -43,6 +43,18 @@ export const EventsService = {
     await apiFetch(`${BASE}/${id}`, { method: 'DELETE' });
   },
 
+  /** One notification per campus event, each sent to all VC users */
+  notifyVcDigest: async () => {
+    const { data } = await apiFetch(`${BASE}/notify-vc-digest`, { method: 'POST' });
+    return data;
+  },
+
+  /** One notification for a single campus event to all VC users */
+  notifyVcForEvent: async (eventId) => {
+    const { data } = await apiFetch(`${BASE}/${eventId}/notify-vc`, { method: 'POST' });
+    return data;
+  },
+
   /** Upload cover image to system-assets/events/{id}.jpg */
   uploadImage: async (eventId, file) => {
     if (!file || !(file instanceof File)) {
