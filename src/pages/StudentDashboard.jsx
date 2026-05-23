@@ -35,16 +35,203 @@ import { useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useStudentDataCache } from "../context/StudentDataCacheContext";
 import { usePlacementTrackPolicy } from "../context/PlacementTrackPolicyContext";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, BarElement } from "chart.js";
-import { Doughnut, Line, Bar } from "react-chartjs-2";
+import { buildStudentDriveSummaries, buildAllDrivesStackedChart, buildStudentRoundOutcomesDoughnut } from "../utils/studentDriveFunnel";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
+import { Doughnut, Bar } from "react-chartjs-2";
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler, BarElement);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const CARD_BG = "white";
 const CARD_SHADOW = "md";
 const CARD_RADIUS = "xl";
 const ACCENT = "#20343c";
 const ACCENT_LIGHT = "#d4a960";
+
+const StudentDriveStackedChart = ({ drives }) => {
+  const chartBundle = useMemo(() => buildAllDrivesStackedChart(drives), [drives]);
+  const { labels, datasets, stageOrder } = chartBundle;
+
+  const chartData = useMemo(() => ({ labels, datasets }), [labels, datasets]);
+
+  const chartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            boxWidth: 10,
+            padding: 10,
+            font: { size: 10 },
+            usePointStyle: true,
+          },
+        },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          filter: (item) => item.raw > 0,
+          callbacks: {
+            title: (items) => {
+              const idx = items[0]?.dataIndex;
+              return drives[idx]?.title || items[0]?.label || "";
+            },
+            label: (ctx) => ` ${ctx.dataset.label}: Passed`,
+            footer: (items) => {
+              const driveIdx = items[0]?.dataIndex;
+              const funnel = drives[driveIdx]?.round_funnel || [];
+              const passed = funnel.filter((s) => s.status === "passed").length;
+              const failed = funnel.find((s) => s.status === "failed");
+              if (failed) return `${passed} cleared · Stopped at ${failed.label}`;
+              return `${passed} of ${funnel.length} stages cleared`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false },
+          ticks: { font: { size: 10, weight: "600" }, maxRotation: 40, minRotation: 0 },
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          suggestedMax: Math.max(stageOrder.length, 3),
+          ticks: { stepSize: 1, precision: 0 },
+          grid: { color: "#f1f5f9" },
+          title: {
+            display: true,
+            text: "Rounds cleared",
+            font: { size: 10 },
+            color: "#64748b",
+          },
+        },
+      },
+    }),
+    [drives, stageOrder.length]
+  );
+
+  if (!drives?.length) {
+    return (
+      <Flex direction="column" align="center" justify="center" h="100%" py={4}>
+        <Icon as={FaBriefcase} boxSize={8} color="gray.300" mb={2} />
+        <Text color="gray.500" fontSize="sm" textAlign="center" px={4}>
+          Apply to placement drives to compare your round progress across companies here.
+        </Text>
+      </Flex>
+    );
+  }
+
+  return <Bar data={chartData} options={chartOptions} />;
+};
+
+const StudentRoundOutcomesChart = ({ drives }) => {
+  const chartBundle = useMemo(() => buildStudentRoundOutcomesDoughnut(drives), [drives]);
+  const { labels, datasets, passRate, totals, totalCheckpoints, empty, segmentMeta } = chartBundle;
+
+  const chartData = useMemo(() => ({ labels, datasets }), [labels, datasets]);
+
+  const chartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "62%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            boxWidth: 10,
+            padding: 12,
+            font: { size: 10 },
+            usePointStyle: true,
+            generateLabels: (chart) => {
+              const data = chart.data;
+              return (data.labels || []).map((label, i) => {
+                const value = data.datasets[0]?.data[i] ?? 0;
+                const pct = totalCheckpoints > 0 ? Math.round((value / totalCheckpoints) * 100) : 0;
+                return {
+                  text: `${label} · ${value} (${pct}%)`,
+                  fillStyle: data.datasets[0]?.backgroundColor?.[i],
+                  hidden: false,
+                  index: i,
+                };
+              });
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const value = ctx.raw;
+              const pct = totalCheckpoints > 0 ? ((value / totalCheckpoints) * 100).toFixed(1) : 0;
+              return ` ${ctx.label}: ${value} (${pct}%)`;
+            },
+          },
+        },
+      },
+    }),
+    [totalCheckpoints]
+  );
+
+  if (empty || !drives?.length) {
+    return (
+      <Flex direction="column" align="center" justify="center" h="100%" py={6}>
+        <Icon as={FaChartBar} boxSize={8} color="gray.300" mb={2} />
+        <Text color="gray.500" fontSize="sm" textAlign="center" px={4}>
+          Apply to drives to see how your rounds are tracking.
+        </Text>
+      </Flex>
+    );
+  }
+
+  return (
+    <Grid templateColumns={{ base: "1fr", sm: "1fr 120px" }} gap={3} h="100%" alignItems="center">
+      <Box position="relative" h={{ base: "180px", sm: "200px" }} minW={0}>
+        <Doughnut data={chartData} options={chartOptions} />
+        <Flex
+          position="absolute"
+          top="42%"
+          left="50%"
+          transform="translate(-50%, -50%)"
+          direction="column"
+          align="center"
+          pointerEvents="none"
+          textAlign="center"
+        >
+          <Text fontSize="2xl" fontWeight="800" color={ACCENT} lineHeight="1">
+            {passRate}%
+          </Text>
+          <Text fontSize="10px" color="gray.500" fontWeight="600" textTransform="uppercase" letterSpacing="wider">
+            Clear rate
+          </Text>
+        </Flex>
+      </Box>
+      <VStack spacing={2} align="stretch" display={{ base: "none", sm: "flex" }}>
+        <Box p={2} borderRadius="md" bg="green.50" border="1px solid" borderColor="green.100">
+          <Text fontSize="10px" color="green.700" fontWeight="600">Cleared</Text>
+          <Text fontSize="lg" fontWeight="700" color="green.800">{totals.passed}</Text>
+        </Box>
+        <Box p={2} borderRadius="md" bg="red.50" border="1px solid" borderColor="red.100">
+          <Text fontSize="10px" color="red.700" fontWeight="600">Failed</Text>
+          <Text fontSize="lg" fontWeight="700" color="red.800">{totals.failed}</Text>
+        </Box>
+        <Box p={2} borderRadius="md" bg="gray.50" border="1px solid" borderColor="gray.200">
+          <Text fontSize="10px" color="gray.600" fontWeight="600">Pending</Text>
+          <Text fontSize="lg" fontWeight="700" color={ACCENT}>{totals.pending + totals.not_reached}</Text>
+        </Box>
+      </VStack>
+      <SimpleGrid columns={3} spacing={2} display={{ base: "grid", sm: "none" }} w="100%">
+        {(segmentMeta || []).slice(0, 3).map((seg) => (
+          <Box key={seg.key} textAlign="center" p={2} borderRadius="md" bg="gray.50">
+            <Text fontSize="lg" fontWeight="700" color={ACCENT}>{seg.value}</Text>
+            <Text fontSize="10px" color="gray.600" noOfLines={1}>{seg.label}</Text>
+          </Box>
+        ))}
+      </SimpleGrid>
+    </Grid>
+  );
+};
 
 const StatCard = ({ icon, title, value, color = ACCENT, to }) => {
   const content = (
@@ -184,87 +371,12 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
   const oaPassed = (statsSource || []).filter((p) => isRoundPassed(p.oa_status ?? p.oaStatus)).length;
   const gdPassed = (statsSource || []).filter((p) => isRoundPassed(p.gd_status ?? p.gdStatus)).length;
   const technicalPassed = (statsSource || []).filter((p) => isRoundPassed(p.technical_round_status ?? p.technicalRoundStatus)).length;
-  const interviewPassed = (statsSource || []).filter((p) => isRoundPassed(p.interview_status ?? p.interviewStatus)).length;
   const hrPassed = (statsSource || []).filter((p) => isRoundPassed(p.hr_round_status ?? p.hrRoundStatus)).length;
   const selectedCount = (statsSource || []).filter((p) => getFinalSelectStatus(p) === "selected").length;
-  const rejectedCount = (statsSource || []).filter((p) => getFinalSelectStatus(p) === "rejected").length;
 
-  const pieData = useMemo(() => {
-    const counts = [oaPassed, gdPassed, technicalPassed, interviewPassed, hrPassed, selectedCount, rejectedCount];
-    const labels = [
-      `OA Passed: ${oaPassed}`,
-      `GD Passed: ${gdPassed}`,
-      `Technical Passed: ${technicalPassed}`,
-      `Interview Passed: ${interviewPassed}`,
-      `HR Passed: ${hrPassed}`,
-      `Selected: ${selectedCount}`,
-      `Rejected: ${rejectedCount}`,
-    ];
-    return {
-      labels,
-      datasets: [
-        {
-          data: counts,
-          backgroundColor: ["#4299e1", "#38b2ac", "#ed8936", "#9f7aea", "#d53f8c", "#276749", "#e53e3e"],
-          borderWidth: 0,
-        },
-      ],
-    };
-  }, [oaPassed, gdPassed, technicalPassed, interviewPassed, hrPassed, selectedCount, rejectedCount]);
-
-  const timelineData = useMemo(() => {
-    const dates = (statsSource || [])
-      .map((p) => p.created_at || p.updated_at)
-      .filter(Boolean)
-      .map((d) => new Date(d));
-    if (dates.length === 0) return { labels: [], data: [] };
-
-    const getWeekStart = (d) => {
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d);
-      monday.setDate(diff);
-      monday.setHours(0, 0, 0, 0);
-      return monday.getTime();
-    };
-
-    const byWeek = {};
-    dates.forEach((d) => {
-      const key = getWeekStart(d);
-      byWeek[key] = (byWeek[key] || 0) + 1;
-    });
-
-    const minTs = Math.min(...dates.map((d) => getWeekStart(d)));
-    const maxTs = Math.max(...dates.map((d) => getWeekStart(d)), Date.now());
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
-    const labels = [];
-    const data = [];
-    for (let ts = minTs; ts <= maxTs; ts += weekMs) {
-      const d = new Date(ts);
-      labels.push(d.toLocaleDateString(undefined, { month: "short", day: "numeric" }));
-      data.push(byWeek[ts] || 0);
-    }
-
-    if (labels.length === 0) return { labels: ["No data"], data: [0] };
-    return { labels, data };
-  }, [statsSource]);
-
-  const barChartData = useMemo(
-    () => ({
-      labels: timelineData.labels.length ? timelineData.labels : ["No data"],
-      datasets: [
-        {
-          label: "Drives attended",
-          data: timelineData.data.length ? timelineData.data : [0],
-          backgroundColor: ACCENT,
-          borderColor: ACCENT,
-          borderWidth: 0,
-          barPercentage: 0.7,
-          categoryPercentage: 0.8,
-        },
-      ],
-    }),
-    [timelineData]
+  const studentDriveSummaries = useMemo(
+    () => buildStudentDriveSummaries(statsSource),
+    [statsSource]
   );
 
   const processByDriveId = (statsSource || []).reduce((acc, p) => {
@@ -419,78 +531,33 @@ export const StudentDashboard = ({ viewData = null, basePath = null, studentName
           <StatCard icon={<FaChartBar />} title="OA passed" value={oaPassed} color="#48bb78" to={isViewMode ? undefined : "/student/placements/feed"} />
           <StatCard icon={<FaChartBar />} title="GD passed" value={gdPassed} color="#38b2ac" to={isViewMode ? undefined : "/student/placements/feed"} />
           <StatCard icon={<FaChartBar />} title="Technical passed" value={technicalPassed} color="#ed8936" to={isViewMode ? undefined : "/student/placements/feed"} />
-          <StatCard icon={<FaChartBar />} title="Interview passed" value={interviewPassed} color="#9f7aea" to={isViewMode ? undefined : "/student/placements/feed"} />
           <StatCard icon={<FaChartBar />} title="HR passed" value={hrPassed} color="#d53f8c" to={isViewMode ? undefined : "/student/placements/feed"} />
+          <StatCard icon={<FaCheckCircle />} title="Selected" value={selectedCount} color="#276749" to={isViewMode ? undefined : "/student/placements/feed"} />
           <StatCard icon={<FaBriefcase />} title="Offers" value={jobOffers.length} color={ACCENT_LIGHT} to={isViewMode ? undefined : "/student/placements/offers"} />
         </SimpleGrid>
 
         {/* Charts row */}
         <Grid templateColumns={{ base: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" }} gap={{ base: 4, lg: 5 }} mb={6} w="100%" minW={0}>
           <Box bg={CARD_BG} p={4} borderRadius={CARD_RADIUS} shadow={CARD_SHADOW} minW={0}>
-            <Heading size="sm" color={ACCENT} mb={3}>
-              Process rounds (pie)
+            <Heading size="sm" color={ACCENT} mb={1}>
+              Round outcomes
             </Heading>
-            <Box h="240px" display="flex" alignItems="center" justifyContent="center">
-              <Doughnut
-                data={pieData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: "left",
-                      align: "start",
-                      labels: {
-                        boxWidth: 14,
-                        padding: 12,
-                        usePointStyle: true,
-                      },
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (ctx) => {
-                          const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                          const value = ctx.raw;
-                          const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                          return ` ${ctx.label} (${pct}%)`;
-                        },
-                      },
-                    },
-                  },
-                }}
-              />
+            <Text fontSize="xs" color="gray.500" mb={3}>
+              Cleared vs failed vs upcoming checkpoints across all your drives
+            </Text>
+            <Box h="240px" minW={0}>
+              <StudentRoundOutcomesChart drives={studentDriveSummaries} />
             </Box>
           </Box>
           <Box bg={CARD_BG} p={4} borderRadius={CARD_RADIUS} shadow={CARD_SHADOW} minW={0}>
-            <Heading size="sm" color={ACCENT} mb={3}>
-              Drives attended (timeline)
+            <Heading size="sm" color={ACCENT} mb={2}>
+              All drives — round progress
             </Heading>
-            <Box h="240px">
-              <Bar
-                data={barChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { position: "top" },
-                    tooltip: {
-                      callbacks: {
-                        label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw}`,
-                      },
-                    },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: { stepSize: 1, precision: 0 },
-                      grid: { display: true },
-                    },
-                    x: {
-                      grid: { display: false },
-                    },
-                  },
-                }}
-              />
+            <Text fontSize="xs" color="gray.500" mb={2}>
+              Stacked bars show rounds you cleared per company (taller = further in the process)
+            </Text>
+            <Box h="210px" minW={0}>
+              <StudentDriveStackedChart drives={studentDriveSummaries} />
             </Box>
           </Box>
         </Grid>
