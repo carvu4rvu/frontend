@@ -32,7 +32,6 @@ import {
 } from 'react-icons/fa';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
-import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import { CompanyService } from '../../services/company.service';
 import { resolveCompanyLogoUrl } from '../../utils/companyLogo';
@@ -187,19 +186,16 @@ const CompanyDashboard = () => {
 
   if (loading) {
     return (
-      <CompanyLayout>
-        <Flex justify="center" align="center" minH="60vh">
-          <Spinner size="xl" color={colors.accent} thickness="4px" />
-        </Flex>
-      </CompanyLayout>
+      <Flex justify="center" align="center" minH="60vh">
+        <Spinner size="xl" color={colors.accent} thickness="4px" />
+      </Flex>
     );
   }
 
   const logoUrl = company?.company_logo_link ? resolveCompanyLogoUrl(company.company_logo_link) : null;
 
   return (
-    <CompanyLayout>
-      <Box className="company-dashboard-page" minH="100vh" py={8}>
+    <Box className="company-dashboard-page" minH="100vh" py={8}>
         <Container maxW="1400px">
           {/* Welcome Header */}
           <Box className="company-dashboard-welcome" mb={8}>
@@ -451,8 +447,7 @@ const CompanyDashboard = () => {
           </Box>
         </Container>
       </Box>
-    </CompanyLayout>
-  );
-};
+    );
+  };
 
 export default CompanyDashboard;

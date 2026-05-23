@@ -24,7 +24,6 @@ import {
 } from '@chakra-ui/react';
 import { FiSearch, FiStar, FiArchive, FiMail, FiCheck, FiExternalLink } from 'react-icons/fi';
 import { Link as RouterLink } from 'react-router-dom';
-import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyService } from '../../services/company.service';
 import { formatRelativeTimeIST } from '../../utils/dateTime';
 
@@ -166,8 +165,7 @@ export default function CompanyNotificationsPage() {
   };
 
   return (
-    <CompanyLayout>
-      <Box bg={colors.pageBg} minH="100vh" py={8}>
+    <Box bg={colors.pageBg} minH="100vh" py={8}>
         <Container maxW="900px">
           <Heading size="lg" mb={2} color={colors.dark} fontWeight="700">
             Notifications
@@ -315,6 +313,5 @@ export default function CompanyNotificationsPage() {
           </Tabs>
         </Container>
       </Box>
-    </CompanyLayout>
   );
 }

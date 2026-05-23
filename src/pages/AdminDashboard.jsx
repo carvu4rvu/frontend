@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Heading,
@@ -85,6 +85,48 @@ const scroll = keyframes`
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 `;
+
+function formatLpaDisplay(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '0 LPA';
+  const rounded = Number.isInteger(n) ? String(n) : n.toFixed(2);
+  return `${rounded} LPA`;
+}
+
+/** Combine per-school CTC rows (from placementBySchool) for filtered dashboard view. */
+function aggregateSchoolCtcRows(rows) {
+  const distribution = [0, 0, 0, 0, 0, 0, 0, 0];
+  let maxLpa = 0;
+  let minLpa = null;
+  let weightedSum = 0;
+  let weightedCount = 0;
+
+  rows.forEach((row) => {
+    (row.ctcDistribution || []).forEach((count, idx) => {
+      if (idx < distribution.length) distribution[idx] += count;
+    });
+    const max = row.ctc?.maxLpa ?? 0;
+    const min = row.ctc?.minLpa ?? 0;
+    const avg = row.ctc?.avgLpa ?? 0;
+    const count = row.ctcOfferCount ?? 0;
+    if (max > maxLpa) maxLpa = max;
+    if (min > 0 && (minLpa == null || min < minLpa)) minLpa = min;
+    if (avg > 0 && count > 0) {
+      weightedSum += avg * count;
+      weightedCount += count;
+    }
+  });
+
+  const avgLpa = weightedCount > 0 ? weightedSum / weightedCount : 0;
+  return {
+    ctc: {
+      highest: formatLpaDisplay(maxLpa),
+      average: formatLpaDisplay(avgLpa),
+      lowest: formatLpaDisplay(minLpa ?? 0),
+    },
+    distribution,
+  };
+}
 
 // --- Sub-Components for the Dashboard ---
 
@@ -404,6 +446,33 @@ const AdminDashboard = () => {
     };
   })() : stats; // Use default stats if no filter
 
+  const displayedCtc = useMemo(() => {
+    if (selectedSchools.length === 0) return stats.ctc;
+    const rows = placementTableData.filter((row) => selectedSchools.includes(row.school));
+    if (!rows.length || !rows.some((row) => row.ctcDistribution)) return stats.ctc;
+    return aggregateSchoolCtcRows(rows).ctc;
+  }, [selectedSchools, placementTableData, stats.ctc]);
+
+  const displayedChartData = useMemo(() => {
+    if (selectedSchools.length === 0) return chartData;
+    const rows = placementTableData.filter((row) => selectedSchools.includes(row.school));
+    if (!rows.length || !rows.some((row) => row.ctcDistribution)) return chartData;
+    const { distribution } = aggregateSchoolCtcRows(rows);
+    const baseDataset = chartData.datasets?.[0] || {};
+    return {
+      labels: chartData.labels,
+      datasets: [{
+        label: baseDataset.label || 'Number of Students',
+        data: distribution,
+        borderColor: baseDataset.borderColor || '#2d3748',
+        backgroundColor: baseDataset.backgroundColor || 'rgba(45, 55, 72, 0.1)',
+        fill: baseDataset.fill ?? true,
+        tension: baseDataset.tension ?? 0.4,
+        pointBackgroundColor: baseDataset.pointBackgroundColor || '#2d3748',
+      }],
+    };
+  }, [selectedSchools, placementTableData, chartData]);
+
   const handlePartnerClick = (partner) => {
     setSelectedCompany(partner);
     onCompanyOpen();
@@ -586,9 +655,16 @@ const AdminDashboard = () => {
                   <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
                     {/* Chart */}
                     <GridItem>
-                      <Text fontSize="xs" textAlign="center" color="gray.500" mb={4}>Placement Frequency by CTC Range</Text>
+                      <Text fontSize="xs" textAlign="center" color="gray.500" mb={4}>
+                        Placement Frequency by CTC Range
+                        {selectedSchools.length > 0 && (
+                          <Text as="span" color="blue.500" fontWeight="semibold">
+                            {' '}({selectedSchools.length === 1 ? selectedSchools[0] : `${selectedSchools.length} schools`})
+                          </Text>
+                        )}
+                      </Text>
                       <Box h="300px">
-                        <Line data={chartData} options={chartOptions} />
+                        <Line data={displayedChartData} options={chartOptions} />
                       </Box>
                       <Text fontSize="xs" textAlign="center" color="gray.400" mt={2}>CTC Range (LPA)</Text>
                     </GridItem>
@@ -598,19 +674,19 @@ const AdminDashboard = () => {
                       <VStack spacing={4} align="stretch" h="100%" justify="center">
                         <CTCCard 
                           title="HIGHEST CTC" 
-                          value={stats.ctc.highest} 
+                          value={displayedCtc.highest} 
                           bg="green.50" 
                           color="green.600" 
                         />
                         <CTCCard 
                           title="AVERAGE CTC" 
-                          value={stats.ctc.average} 
+                          value={displayedCtc.average} 
                           bg="blue.50" 
                           color="blue.600" 
                         />
                         <CTCCard 
                           title="LOWEST CTC" 
-                          value={stats.ctc.lowest} 
+                          value={displayedCtc.lowest} 
                           bg="red.50" 
                           color="red.600" 
                         />

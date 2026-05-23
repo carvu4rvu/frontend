@@ -54,7 +54,6 @@ import {
   FaUserTie,
   FaBriefcase,
 } from 'react-icons/fa';
-import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import { CompanyService } from '../../services/company.service';
 import { resolveCompanyLogoUrl } from '../../utils/companyLogo';
@@ -300,17 +299,14 @@ const CompanyProfile = () => {
 
   if (loading) {
     return (
-      <CompanyLayout>
-        <Flex justify="center" align="center" minH="60vh">
-          <Spinner size="xl" color={colors.accent} thickness="4px" />
-        </Flex>
-      </CompanyLayout>
+      <Flex justify="center" align="center" minH="60vh">
+        <Spinner size="xl" color={colors.accent} thickness="4px" />
+      </Flex>
     );
   }
 
   return (
-    <CompanyLayout>
-      <Box bg={colors.pageBg} minH="100vh" py={8}>
+    <Box className="company-profile-page" minH="100vh" py={8}>
         <Container maxW="1100px">
           {/* Header */}
           <Flex justify="space-between" align="start" mb={8} flexWrap="wrap" gap={4}>
@@ -766,7 +762,6 @@ const CompanyProfile = () => {
             </Box>
           </Box>
         </Container>
-      </Box>
 
       {/* Add/Edit Contact Modal — save directly on Submit */}
       <Modal isOpen={isContactModalOpen} onClose={onContactModalClose} size="lg">
@@ -907,7 +902,7 @@ const CompanyProfile = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </CompanyLayout>
+    </Box>
   );
 };
 

@@ -160,6 +160,15 @@ export const CompanyService = {
     return response.data;
   },
 
+  /** Create share link for a project visible to this company */
+  createProjectShareLink: async (projectId, expiresInHours = 168) => {
+    const response = await apiFetch(`/company/projects/${projectId}/share-links`, {
+      method: 'POST',
+      body: JSON.stringify({ expires_in_hours: expiresInHours }),
+    });
+    return response.data;
+  },
+
   // ============== DASHBOARD ==============
   
   /** Get dashboard stats */

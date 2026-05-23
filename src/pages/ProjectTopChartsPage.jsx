@@ -51,6 +51,7 @@ export default function ProjectTopChartsPage({
     ?? (variant === 'admin' ? '/placement/gallery' : variant === 'company' ? '/company/projects' : '/placement/alumni-projects');
   const backPath =
     variant === 'admin' ? '/placement/gallery/showcase' : projectsBase;
+  const { backLabel, goBack } = usePlacementBack(backPath);
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);

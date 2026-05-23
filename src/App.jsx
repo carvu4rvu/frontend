@@ -293,6 +293,22 @@ const router = createBrowserRouter([
         errorElement: <ProjectDetailErrorBoundary />
       },
       {
+        path: "/placement/vc-projects/top-charts",
+        element: (
+          <PlacementProtectedRoute requiredRole="vc">
+            <ProjectTopChartsPage
+              LayoutComponent={VcLayout}
+              variant="alumni"
+              projectBasePath="/placement/vc-projects"
+              fetchProjects={async () => {
+                const data = await PlacementService.getAlumniProjects();
+                return Array.isArray(data) ? data : [];
+              }}
+            />
+          </PlacementProtectedRoute>
+        )
+      },
+      {
         path: "/placement/vc-events",
         element: (
           <PlacementProtectedRoute requiredRole="vc">
@@ -523,121 +539,86 @@ const router = createBrowserRouter([
       },
       // Company Routes
       {
-        path: "/company/dashboard",
+        path: "/company",
         element: (
           <PlacementProtectedRoute requiredRole="company">
-            <CompanyDashboard />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/profile",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyProfile />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/drives",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyDrives />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/drive/:id",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyDriveDetail />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/student/:usn",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyStudentView />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/offers",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyOffers />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/notifications",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyNotificationsPage />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/events",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyEvents />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/contacts",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <CompanyContacts />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/projects",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <ProjectsShowcasePage
-              LayoutComponent={CompanyLayout}
-              variant="company"
-              fetchProjects={async () => {
-                const data = await CompanyService.getProjects();
-                return Array.isArray(data) ? data : [];
-              }}
-              projectBasePath="/company/projects"
-            />
-          </PlacementProtectedRoute>
-        )
-      },
-      {
-        path: "/company/projects/project/:projectId",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <AdminProjectDetail
-              variant="company"
-              LayoutComponent={CompanyLayout}
-              fetchProjectById={CompanyService.getProjectById}
-            />
+            <CompanyLayout />
           </PlacementProtectedRoute>
         ),
-        errorElement: <ProjectDetailErrorBoundary />
-      },
-      {
-        path: "/company/projects/top-charts",
-        element: (
-          <PlacementProtectedRoute requiredRole="company">
-            <ProjectTopChartsPage
-              LayoutComponent={CompanyLayout}
-              variant="company"
-              projectBasePath="/company/projects"
-              fetchProjects={async () => {
-                const data = await CompanyService.getProjects();
-                return Array.isArray(data) ? data : [];
-              }}
-            />
-          </PlacementProtectedRoute>
-        )
+        children: [
+          {
+            path: "dashboard",
+            element: <CompanyDashboard />
+          },
+          {
+            path: "profile",
+            element: <CompanyProfile />
+          },
+          {
+            path: "drives",
+            element: <CompanyDrives />
+          },
+          {
+            path: "drive/:id",
+            element: <CompanyDriveDetail />
+          },
+          {
+            path: "student/:usn",
+            element: <CompanyStudentView />
+          },
+          {
+            path: "offers",
+            element: <CompanyOffers />
+          },
+          {
+            path: "notifications",
+            element: <CompanyNotificationsPage />
+          },
+          {
+            path: "events",
+            element: <CompanyEvents />
+          },
+          {
+            path: "contacts",
+            element: <CompanyContacts />
+          },
+          {
+            path: "projects",
+            element: (
+              <ProjectsShowcasePage
+                variant="company"
+                fetchProjects={async () => {
+                  const data = await CompanyService.getProjects();
+                  return Array.isArray(data) ? data : [];
+                }}
+                projectBasePath="/company/projects"
+              />
+            )
+          },
+          {
+            path: "projects/project/:projectId",
+            element: (
+              <AdminProjectDetail
+                variant="company"
+                fetchProjectById={CompanyService.getProjectById}
+              />
+            ),
+            errorElement: <ProjectDetailErrorBoundary />
+          },
+          {
+            path: "projects/top-charts",
+            element: (
+              <ProjectTopChartsPage
+                variant="company"
+                projectBasePath="/company/projects"
+                fetchProjects={async () => {
+                  const data = await CompanyService.getProjects();
+                  return Array.isArray(data) ? data : [];
+                }}
+              />
+            )
+          },
+        ]
       },
       {
         path: "/placement/overview",

@@ -29,7 +29,6 @@ import {
 import { ArrowBackIcon, SearchIcon } from '@chakra-ui/icons';
 import { MdAssignment, MdCardGiftcard, MdSave, MdWarning } from 'react-icons/md';
 import '../admin/DriveProcess.css';
-import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyLogo } from '../../components/CompanyLogo';
 import { getCompanyLogoRaw } from '../../utils/companyLogo';
 import { CompanyService } from '../../services/company.service';
@@ -308,24 +307,20 @@ const CompanyDriveDetail = () => {
 
   if (loading) {
     return (
-      <CompanyLayout>
-        <Flex justify="center" align="center" h="calc(100vh - 100px)">
-          <Spinner size="xl" />
-        </Flex>
-      </CompanyLayout>
+      <Flex justify="center" align="center" h="calc(100vh - 100px)">
+        <Spinner size="xl" />
+      </Flex>
     );
   }
 
   if (!drive) {
     return (
-      <CompanyLayout>
-        <Box p={5}>
-          <Text>Drive not found.</Text>
-          <Button mt={4} onClick={goBack}>
-            {backLabel}
-          </Button>
-        </Box>
-      </CompanyLayout>
+      <Box p={5}>
+        <Text>Drive not found.</Text>
+        <Button mt={4} onClick={goBack}>
+          {backLabel}
+        </Button>
+      </Box>
     );
   }
 
@@ -369,8 +364,7 @@ const CompanyDriveDetail = () => {
   const selectedCount = processes.filter((p) => p.final_select_status === true).length;
 
   return (
-    <CompanyLayout>
-      <Box className="drive-process-page" bg="#f0f0f0" color="gray.800" minH="100vh" py={0}>
+    <Box className="drive-process-page company-drive-detail" bg="#f0f0f0" color="gray.800" minH="100vh" py={0}>
         <Container maxW="100%" py={4} px={6}>
           <VStack align="stretch" spacing={4}>
             <Flex align="center" justify="space-between" flexWrap="wrap" gap={3}>
@@ -922,7 +916,6 @@ const CompanyDriveDetail = () => {
           </VStack>
         </Container>
       </Box>
-    </CompanyLayout>
   );
 };
 

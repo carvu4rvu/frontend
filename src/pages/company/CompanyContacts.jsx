@@ -45,7 +45,6 @@ import {
   FaUserTie,
   FaBriefcase,
 } from 'react-icons/fa';
-import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyService } from '../../services/company.service';
 
 const colors = {
@@ -198,17 +197,15 @@ const CompanyContacts = () => {
 
   if (loading) {
     return (
-      <CompanyLayout>
-        <Flex justify="center" align="center" minH="60vh">
-          <Spinner size="xl" color={colors.accent} thickness="4px" />
-        </Flex>
-      </CompanyLayout>
+      <Flex justify="center" align="center" minH="60vh">
+        <Spinner size="xl" color={colors.accent} thickness="4px" />
+      </Flex>
     );
   }
 
   return (
-    <CompanyLayout>
-      <Box bg={colors.pageBg} minH="100vh" py={8}>
+    <>
+      <Box className="company-contacts-page" minH="100vh" py={8}>
         <Container maxW="1200px">
           {/* Header */}
           <Flex justify="space-between" align="center" mb={8} flexWrap="wrap" gap={4}>
@@ -525,7 +522,7 @@ const CompanyContacts = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </CompanyLayout>
+    </>
   );
 };
 

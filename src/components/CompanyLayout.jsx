@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { useLocation, Link, useNavigate, Outlet } from 'react-router-dom';
 import {
   Box,
   HStack,
@@ -320,17 +320,17 @@ const CompanyLayout = ({ children }) => {
       {/* Full-bleed for drives/drive detail (match admin Events & Process pages) */}
       {location.pathname === '/company/drives' || location.pathname.startsWith('/company/drive/') ? (
         <Box bg="#f0f0f0" minH="100vh" w="100%">
-          {children}
+          {children || <Outlet />}
         </Box>
       ) : campusEventsPage ? (
         <Box p={8}>
           <Box maxW="1600px" mx="auto" w="100%">
-            {children}
+            {children || <Outlet />}
           </Box>
         </Box>
       ) : (
         <Box p={{ base: 4, md: 8 }}>
-          <Box maxW="100%">{children}</Box>
+          <Box maxW="100%">{children || <Outlet />}</Box>
         </Box>
       )}
     </Box>

@@ -17,7 +17,6 @@ import {
 } from '@chakra-ui/react';
 import { FaRocket } from 'react-icons/fa';
 import '../admin/PlacementEvents.css';
-import CompanyLayout from '../../components/CompanyLayout';
 import PlacementDrivesTable from '../../components/placement/PlacementDrivesTable';
 import { CompanyService } from '../../services/company.service';
 import {
@@ -109,11 +108,18 @@ const CompanyDrives = () => {
     navigate(`/company/drive/${drive.id}`, { state: buildPlacementNavState(location) });
   };
 
-  const showPageEmpty = !loading && !loadError && visibleDrives.length === 0;
+  if (loading) {
+    return (
+      <Flex justify="center" align="center" minH="60vh">
+        <Spinner size="xl" color="blue.500" thickness="4px" />
+      </Flex>
+    );
+  }
+
+  const showPageEmpty = !loadError && visibleDrives.length === 0;
 
   return (
-    <CompanyLayout>
-      <Box className="placement-events-page company-drives-page" minH="calc(100vh - 72px)" w="100%">
+    <Box className="company-drives-page" minH="calc(100vh - 72px)" w="100%">
         <Container maxW="container.xl" p={0} w="100%">
           <Box as="main" className="placement-events-main">
             <Box className="company-drives-hero">
@@ -188,7 +194,6 @@ const CompanyDrives = () => {
           </Box>
         </Container>
       </Box>
-    </CompanyLayout>
   );
 };
 

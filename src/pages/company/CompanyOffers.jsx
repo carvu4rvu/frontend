@@ -43,7 +43,6 @@ import {
   FaHourglassHalf,
   FaTimesCircle,
 } from 'react-icons/fa';
-import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyService } from '../../services/company.service';
 
 const colors = {
@@ -164,17 +163,14 @@ const CompanyOffers = () => {
 
   if (loading) {
     return (
-      <CompanyLayout>
-        <Flex justify="center" align="center" minH="60vh">
-          <Spinner size="xl" color={colors.accent} thickness="4px" />
-        </Flex>
-      </CompanyLayout>
+      <Flex justify="center" align="center" minH="60vh">
+        <Spinner size="xl" color={colors.accent} thickness="4px" />
+      </Flex>
     );
   }
 
   return (
-    <CompanyLayout>
-      <Box bg={colors.pageBg} minH="100vh" py={8}>
+    <Box className="company-offers-page" minH="100vh" py={8}>
         <Container maxW="1400px">
           {/* Header */}
           <Box mb={8}>
@@ -383,7 +379,6 @@ const CompanyOffers = () => {
           </Card>
         </Container>
       </Box>
-    </CompanyLayout>
   );
 };
 

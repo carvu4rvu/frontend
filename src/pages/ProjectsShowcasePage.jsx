@@ -29,6 +29,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { buildPlacementNavState } from '../utils/placementNavigationHistory';
 import PassThroughLayout from '../components/PassThroughLayout';
 import { PlacementService } from '../services/placement.service';
+import { CompanyService } from '../services/company.service';
 import { getProjectCoverImage, getShowcaseHeroImage, getShowcaseGalleryStrip, MAX_GALLERY_IMAGES } from '../utils/projectSnaps';
 import TopChartsList from '../components/projects/TopChartsList';
 import ProgressiveImage from '../components/projects/ProgressiveImage';
@@ -196,7 +197,9 @@ export default function ProjectsShowcasePage({ LayoutComponent, variant = 'admin
     if (shareLoadingId) return;
     setShareLoadingId(projectId);
     try {
-      const data = await PlacementService.createProjectShareLink(projectId, 168);
+      const data = variant === 'company'
+        ? await CompanyService.createProjectShareLink(projectId, 168)
+        : await PlacementService.createProjectShareLink(projectId, 168);
       const path = data?.url || `/projects/share/${data?.share_token}`;
       const fullUrl = `${window.location.origin}${path}`;
       try {

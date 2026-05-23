@@ -31,10 +31,23 @@ export function parseAppDate(value) {
 export function formatDateTimeIST(value, options = {}) {
   const d = parseAppDate(value);
   if (!d) return '—';
-  return d.toLocaleString(IST_LOCALE, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+
+  const defaultOptions = {
     timeZone: IST_TIMEZONE,
+  };
+
+  // If user provides specific components (weekday, year, etc.), don't use styles
+  const hasSpecificOptions = ['weekday', 'year', 'month', 'day', 'hour', 'minute', 'second'].some(
+    (key) => key in options
+  );
+
+  if (!hasSpecificOptions) {
+    defaultOptions.dateStyle = 'medium';
+    defaultOptions.timeStyle = 'short';
+  }
+
+  return d.toLocaleString(IST_LOCALE, {
+    ...defaultOptions,
     ...options,
   });
 }
@@ -43,9 +56,20 @@ export function formatDateTimeIST(value, options = {}) {
 export function formatDateIST(value, options = {}) {
   const d = parseAppDate(value);
   if (!d) return '—';
-  return d.toLocaleDateString(IST_LOCALE, {
-    dateStyle: 'medium',
+
+  const defaultOptions = {
     timeZone: IST_TIMEZONE,
+  };
+
+  // If user provides specific components (weekday, year, etc.), don't use styles
+  const hasSpecificOptions = ['weekday', 'year', 'month', 'day'].some((key) => key in options);
+
+  if (!hasSpecificOptions) {
+    defaultOptions.dateStyle = 'medium';
+  }
+
+  return d.toLocaleDateString(IST_LOCALE, {
+    ...defaultOptions,
     ...options,
   });
 }

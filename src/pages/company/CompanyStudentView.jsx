@@ -42,7 +42,6 @@ import {
   FaLightbulb,
   FaBuilding,
 } from 'react-icons/fa';
-import CompanyLayout from '../../components/CompanyLayout';
 import { CompanyService } from '../../services/company.service';
 import { getFileUrl } from '../../utils/fileUrl';
 import { formatShortDateIST } from '../../utils/dateTime';
@@ -126,24 +125,18 @@ const CompanyStudentView = () => {
 
   if (loading) {
     return (
-      <CompanyLayout>
-        <Flex justify="center" align="center" minH="60vh">
-          <Spinner size="xl" color={colors.accent} thickness="4px" />
-        </Flex>
-      </CompanyLayout>
+      <Flex justify="center" align="center" minH="60vh">
+        <Spinner size="xl" color={colors.accent} thickness="4px" />
+      </Flex>
     );
   }
 
   if (!student) {
     return (
-      <CompanyLayout>
-        <Container maxW="1200px" py={8}>
-          <VStack spacing={4}>
-            <Text>Student not found</Text>
-            <Button onClick={goBack}>{backLabel}</Button>
-          </VStack>
-        </Container>
-      </CompanyLayout>
+      <Box p={8} textAlign="center">
+        <Text fontSize="lg" mb={4}>Student not found</Text>
+        <Button onClick={goBack}>{backLabel}</Button>
+      </Box>
     );
   }
 
@@ -151,8 +144,7 @@ const CompanyStudentView = () => {
   const resumeUrl = student.profile?.resume_file ? getFileUrl(student.profile.resume_file) : null;
 
   return (
-    <CompanyLayout>
-      <Box className="company-student-view-page" minH="100vh" py={8}>
+    <Box className="company-student-view-page" minH="100vh" py={8}>
         <Container maxW="1200px">
           <Button
             className="company-student-view-back"
@@ -414,7 +406,6 @@ const CompanyStudentView = () => {
           </SimpleGrid>
         </Container>
       </Box>
-    </CompanyLayout>
   );
 };
 
